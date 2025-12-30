@@ -1,4 +1,4 @@
--- // НАСТРОЙКИ //
+-- // 1. НАСТРОЙКИ //
 _G.SpooferSettings = {
     DisplayName = { Enabled = false, Value = "grabis", Real = "" },
     UserName    = { Enabled = false, Value = "grabis_user", Real = "" }
@@ -8,71 +8,97 @@ local Players = game:GetService("Players")
 local CoreGui = gethui and gethui() or game:GetService("CoreGui")
 local LocalPlayer = Players.LocalPlayer
 
--- Получаем реальные ники
+-- Авто-получение реальных ников
 _G.SpooferSettings.DisplayName.Real = LocalPlayer.DisplayName
 _G.SpooferSettings.UserName.Real = LocalPlayer.Name
 
 local Connections = {}
 
--- Обязательная функция для Lua (чтобы точки и скобки в никах не ломали поиск)
+-- Уникальные метки, которые не встретятся в чате
+-- Мы временно заменяем имена на эти метки, чтобы разделить их
+local TOKEN_USER    = "\255_USR_\255"
+local TOKEN_DISPLAY = "\255_DSP_\255"
+
+-- Экранирование для Lua
 local function escape(text)
     return text:gsub("([^%w])", "%%%1")
 end
 
--- // ПРОСТАЯ ЗАМЕНА //
+-- // 2. ЛОГИКА ЗАМЕНЫ (НЕЗАВИСИМАЯ) //
 local function ProcessText(text)
-    local newText = text
+    local tempText = text
     local s = _G.SpooferSettings
     
-    -- Просто заменяем Display Name
-    if s.DisplayName.Enabled then
-        newText = newText:gsub(escape(s.DisplayName.Real), s.DisplayName.Value)
+    local rUser = s.UserName.Real
+    local rDisp = s.DisplayName.Real
+    local fUser = s.UserName.Value
+    local fDisp = s.DisplayName.Value
+    
+    -- ШАГ 0: СБРОС (Если текст уже содержит фейки - возвращаем в исходное)
+    -- Это нужно, чтобы не было наслоений при частых обновлениях
+    if fUser ~= "" and tempText:find(fUser, 1, true) then
+        tempText = tempText:gsub(escape(fUser), escape(rUser))
+    end
+    if fDisp ~= "" and tempText:find(fDisp, 1, true) then
+        tempText = tempText:gsub(escape(fDisp), escape(rDisp))
     end
     
-    -- Просто заменяем User Name
-    if s.UserName.Enabled then
-        newText = newText:gsub(escape(s.UserName.Real), s.UserName.Value)
+    -- ШАГ 1: ИЗОЛЯЦИЯ (Прячем реальные имена в токены)
+    -- Сначала прячем самое длинное имя, чтобы избежать конфликтов внутри слов
+    if #rUser >= #rDisp then
+        tempText = tempText:gsub(escape(rUser), TOKEN_USER)
+        tempText = tempText:gsub(escape(rDisp), TOKEN_DISPLAY)
+    else
+        tempText = tempText:gsub(escape(rDisp), TOKEN_DISPLAY)
+        tempText = tempText:gsub(escape(rUser), TOKEN_USER)
     end
     
-    return newText
+    -- Теперь у нас текст вида: "Привет, TOKEN_USER (TOKEN_DISPLAY)"
+    -- Они полностью разделены.
+    
+    -- ШАГ 2: ПОДСТАНОВКА
+    -- Если спуфер включен -> ставим ФЕЙК. Если выключен -> возвращаем РЕАЛ.
+    
+    local finalUser = s.UserName.Enabled and fUser or rUser
+    local finalDisp = s.DisplayName.Enabled and fDisp or rDisp
+    
+    -- Заменяем токены на итоговые значения
+    tempText = tempText:gsub(TOKEN_USER, function() return finalUser end)
+    tempText = tempText:gsub(TOKEN_DISPLAY, function() return finalDisp end)
+    
+    return tempText
 end
 
--- // ОБНОВЛЕНИЕ ОБЪЕКТА //
+-- // 3. ОБРАБОТКА ОБЪЕКТА //
 local function UpdateObject(obj)
-    -- Защита от удаления
     if not obj or not obj.Parent then return end
     
     pcall(function()
-        -- 1. Берем текущий текст
         local current = obj.Text
-        
-        -- 2. Если в тексте есть наши реальные имена - меняем
-        -- (Проверка find ускоряет работу, чтобы не делать gsub там где не надо)
-        if current:find(_G.SpooferSettings.DisplayName.Real, 1, true) or 
-           current:find(_G.SpooferSettings.UserName.Real, 1, true) then
-            
-            local changed = ProcessText(current)
-            
-            -- Если текст изменился - применяем
-            if current ~= changed then
-                obj.Text = changed
-            end
+        -- Если текст вообще не содержит наших имен, не тратим ресурсы
+        if not current:find(_G.SpooferSettings.UserName.Real, 1, true) and 
+           not current:find(_G.SpooferSettings.DisplayName.Real, 1, true) and
+           not current:find(_G.SpooferSettings.UserName.Value, 1, true) and 
+           not current:find(_G.SpooferSettings.DisplayName.Value, 1, true) then
+            return
+        end
+
+        local newText = ProcessText(current)
+        if current ~= newText then
+            obj.Text = newText
         end
     end)
 end
 
--- // ПОДКЛЮЧЕНИЕ //
+-- // 4. ХУКИ //
 local function Hook(obj)
     if not obj or not obj.Parent then return end
     if Connections[obj] then return end
     
     if obj:IsA("TextLabel") or obj:IsA("TextButton") or obj:IsA("TextBox") then
         Connections[obj] = true
-        
-        -- Применяем сразу
         UpdateObject(obj)
         
-        -- Слушаем изменения (чтобы таб/чат не возвращали старый ник)
         obj:GetPropertyChangedSignal("Text"):Connect(function()
             UpdateObject(obj)
         end)
@@ -83,36 +109,29 @@ local function Hook(obj)
     end
 end
 
--- // СКАНЕР //
+-- // 5. СКАНЕР //
 local function Scan(parent)
     for _, v in pairs(parent:GetDescendants()) do
         Hook(v)
     end
     parent.DescendantAdded:Connect(function(v)
         if v:IsA("TextLabel") or v:IsA("TextButton") then
-            task.wait()
+            task.wait() 
             Hook(v)
         end
     end)
 end
 
--- // ТРИГГЕР ИЗ ТВОЕГО GUI //
+-- // ТРИГГЕР //
 _G.ForceUpdateNames = function()
-    -- Обновляем настройки
     _G.SpooferSettings.DisplayName.Real = LocalPlayer.DisplayName
     _G.SpooferSettings.UserName.Real = LocalPlayer.Name
     
-    -- Обновляем имя над персонажем
     if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
         local hum = LocalPlayer.Character.Humanoid
-        if _G.SpooferSettings.DisplayName.Enabled then
-            hum.DisplayName = _G.SpooferSettings.DisplayName.Value
-        else
-            hum.DisplayName = _G.SpooferSettings.DisplayName.Real
-        end
+        hum.DisplayName = _G.SpooferSettings.DisplayName.Enabled and _G.SpooferSettings.DisplayName.Value or _G.SpooferSettings.DisplayName.Real
     end
     
-    -- Обновляем интерфейс
     for obj, _ in pairs(Connections) do
         UpdateObject(obj)
     end
@@ -124,4 +143,4 @@ task.spawn(function()
     Scan(LocalPlayer:WaitForChild("PlayerGui"))
 end)
 
-print("Simple Direct Spoofer Loaded")
+print("V9 Independent Logic Loaded")
