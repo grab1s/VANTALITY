@@ -99,5 +99,3 @@ task.spawn(function()
         end
     end
 end)
-
-print("Спуфер-бэкенд загружен. Настраивайте через _G.SpooferSettings")
