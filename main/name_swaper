@@ -1,17 +1,19 @@
 _G.SpooferSettings = {
     DisplayName = {
-        Enabled = false,      
-        Value = "grabis"    
+        Enabled = false,
+        Value = "grabis",
+        LastValue = "grabis"
     },
     UserName = {
-        Enabled = false,     
-        Value = "grabis_user" 
+        Enabled = false,
+        Value = "grabis_user",
+        LastValue = "grabis_user"
     }
 }
 
 local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
 local CoreGui = gethui and gethui() or game:GetService("CoreGui")
+local RunService = game:GetService("RunService")
 local LocalPlayer = Players.LocalPlayer
 
 local RealName = LocalPlayer.Name
@@ -20,82 +22,96 @@ local RealDisplayName = LocalPlayer.DisplayName
 local OldIndex
 OldIndex = hookmetamethod(game, "__index", newcclosure(function(self, key)
     if not checkcaller() and self == LocalPlayer then
-        
         if key == "DisplayName" and _G.SpooferSettings.DisplayName.Enabled then
             return _G.SpooferSettings.DisplayName.Value
         end
-
         if key == "Name" and _G.SpooferSettings.UserName.Enabled then
             return _G.SpooferSettings.UserName.Value
         end
     end
-
     return OldIndex(self, key)
 end))
 
-local function updateTextObject(obj)
+local function processObject(obj)
     if not obj or not obj.Parent then return end
-    
-    if obj:IsA("TextLabel") or obj:IsA("TextButton") or obj:IsA("TextBox") then
-        
-        if not _G.SpooferSettings.DisplayName.Enabled and not _G.SpooferSettings.UserName.Enabled then
-            return
-        end
+    if not (obj:IsA("TextLabel") or obj:IsA("TextButton") or obj:IsA("TextBox")) then return end
 
-        local text = obj.Text
-        local newText = text
-        local changed = false
+    local text = obj.Text
+    local newText = text
+    local changed = false
 
-        if _G.SpooferSettings.DisplayName.Enabled then
-            if text:find(RealDisplayName) then
-                newText = newText:gsub(RealDisplayName, _G.SpooferSettings.DisplayName.Value)
-                changed = true
-            end
+    if _G.SpooferSettings.DisplayName.Enabled then
+        -- Если включено: Ищем реальное имя -> меняем на фейк
+        if text:find(RealDisplayName) then
+            newText = newText:gsub(RealDisplayName, _G.SpooferSettings.DisplayName.Value)
+            changed = true
         end
+        if text:find(_G.SpooferSettings.DisplayName.LastValue) and _G.SpooferSettings.DisplayName.LastValue ~= _G.SpooferSettings.DisplayName.Value then
+             newText = newText:gsub(_G.SpooferSettings.DisplayName.LastValue, _G.SpooferSettings.DisplayName.Value)
+             changed = true
+        end
+    else
+        if text:find(_G.SpooferSettings.DisplayName.Value) then
+            newText = newText:gsub(_G.SpooferSettings.DisplayName.Value, RealDisplayName)
+            changed = true
+        end
+        if text:find(_G.SpooferSettings.DisplayName.LastValue) then
+            newText = newText:gsub(_G.SpooferSettings.DisplayName.LastValue, RealDisplayName)
+            changed = true
+        end
+    end
 
-        if _G.SpooferSettings.UserName.Enabled then
-            if text:find(RealName) then
-                newText = newText:gsub(RealName, _G.SpooferSettings.UserName.Value)
-                changed = true
-            end
+    if _G.SpooferSettings.UserName.Enabled then
+        if text:find(RealName) then
+            newText = newText:gsub(RealName, _G.SpooferSettings.UserName.Value)
+            changed = true
         end
+        if text:find(_G.SpooferSettings.UserName.LastValue) and _G.SpooferSettings.UserName.LastValue ~= _G.SpooferSettings.UserName.Value then
+             newText = newText:gsub(_G.SpooferSettings.UserName.LastValue, _G.SpooferSettings.UserName.Value)
+             changed = true
+        end
+    else
+        if text:find(_G.SpooferSettings.UserName.Value) then
+            newText = newText:gsub(_G.SpooferSettings.UserName.Value, RealName)
+            changed = true
+        end
+        if text:find(_G.SpooferSettings.UserName.LastValue) then
+             newText = newText:gsub(_G.SpooferSettings.UserName.LastValue, RealName)
+             changed = true
+        end
+    end
 
-        if changed then
-            pcall(function()
-                obj.Text = newText
-            end)
-            
-            if not obj:GetAttribute("SpoofConnection") then
-                obj:SetAttribute("SpoofConnection", true)
-                obj:GetPropertyChangedSignal("Text"):Connect(function()
-                    updateTextObject(obj) 
-                end)
-            end
-        end
+    if changed then
+        pcall(function() obj.Text = newText end)
     end
 end
 
-local function scanHierarchy(parent)
-    for _, child in pairs(parent:GetDescendants()) do
-        updateTextObject(child)
+_G.ForceUpdateNames = function()
+    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+        local hum = LocalPlayer.Character.Humanoid
+        if _G.SpooferSettings.DisplayName.Enabled then
+            hum.DisplayName = _G.SpooferSettings.DisplayName.Value
+        else
+            hum.DisplayName = RealDisplayName
+        end
     end
+
+    for _, v in pairs(CoreGui:GetDescendants()) do processObject(v) end
     
+    for _, v in pairs(LocalPlayer:WaitForChild("PlayerGui"):GetDescendants()) do processObject(v) end
+
+    _G.SpooferSettings.DisplayName.LastValue = _G.SpooferSettings.DisplayName.Value
+    _G.SpooferSettings.UserName.LastValue = _G.SpooferSettings.UserName.Value
+end
+
+local function autoListener(parent)
     parent.DescendantAdded:Connect(function(child)
-        RunService.RenderStepped:Wait()
-        updateTextObject(child)
+        if child:IsA("TextLabel") or child:IsA("TextButton") then
+            RunService.RenderStepped:Wait()
+            processObject(child)
+        end
     end)
 end
 
-task.spawn(function()
-    scanHierarchy(CoreGui) -- Интерфейс Роблокса (чат, таб)
-    scanHierarchy(LocalPlayer:WaitForChild("PlayerGui")) -- Интерфейс игры
-    
-    while task.wait(1) do
-        if _G.SpooferSettings.DisplayName.Enabled and LocalPlayer.Character then
-            local hum = LocalPlayer.Character:FindFirstChild("Humanoid")
-            if hum and hum.DisplayName ~= _G.SpooferSettings.DisplayName.Value then
-                hum.DisplayName = _G.SpooferSettings.DisplayName.Value
-            end
-        end
-    end
-end)
+autoListener(CoreGui)
+autoListener(LocalPlayer:WaitForChild("PlayerGui"))
