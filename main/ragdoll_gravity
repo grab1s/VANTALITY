@@ -1,0 +1,123 @@
+local Services = {
+    Workspace = game:GetService("Workspace"),
+    RunService = game:GetService("RunService"),
+    Debris = game:GetService("Debris")
+}
+
+_G.ExecutorLowGravity = {
+    Settings = {
+        Enabled = false,
+        RiseSpeed = 4,       
+        RotationSpeed = 1.5,
+        LifeTime = 8
+    },
+    Cache = {
+        Originals = {},
+        Clones = {}
+    }
+}
+
+local Self = _G.ExecutorLowGravity
+
+function Self:Enable()
+    self.Settings.Enabled = true
+end
+
+function Self:Disable()
+    self.Settings.Enabled = false
+end
+
+function Self:UpdateSetting(key, value)
+    if self.Settings[key] ~= nil then
+        self.Settings[key] = value
+    end
+end
+
+
+local function HideOriginal(model)
+    for _, obj in pairs(model:GetDescendants()) do
+        if obj:IsA("BasePart") or obj:IsA("Decal") then
+            obj.Transparency = 1
+            if obj:IsA("BasePart") then
+                obj.CanCollide = false 
+            end
+        elseif obj:IsA("BillboardGui") or obj:IsA("SurfaceGui") or obj:IsA("ParticleEmitter") then
+            obj.Enabled = false
+        end
+    end
+end
+
+local function ProcessRagdoll(originalModel)
+    if Self.Cache.Originals[originalModel] then return end
+    Self.Cache.Originals[originalModel] = true
+
+    originalModel.Archivable = true
+    local clone = originalModel:Clone()
+    
+    if not clone then return end
+    
+    clone.Name = "Vantality_Floater"
+    
+    for _, child in pairs(clone:GetDescendants()) do
+        if child:IsA("Script") or child:IsA("LocalScript") or child:IsA("ForceField") then
+            child:Destroy()
+        elseif child:IsA("BasePart") then
+            child.Anchored = true
+            child.CanCollide = false
+            child.Massless = true
+            child.Velocity = Vector3.zero
+        elseif child:IsA("Humanoid") then
+            child.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
+            child.HealthDisplayType = Enum.HumanoidHealthDisplayType.AlwaysOff
+            child:SetStateEnabled(Enum.HumanoidStateType.Physics, false)
+            child:SetStateEnabled(Enum.HumanoidStateType.Running, false)
+            child:SetStateEnabled(Enum.HumanoidStateType.Dead, false)
+        elseif child:IsA("Animator") then
+            child:Destroy()
+        end
+    end
+
+    clone:PivotTo(originalModel:GetPivot())
+    clone.Parent = Services.Workspace
+
+    HideOriginal(originalModel)
+
+    Self.Cache.Clones[clone] = {
+        speed = Self.Settings.RiseSpeed,
+        rot = Vector3.new(math.random(), math.random(), math.random()) * Self.Settings.RotationSpeed
+    }
+
+    Services.Debris:AddItem(clone, Self.Settings.LifeTime)
+end
+
+Services.RunService.RenderStepped:Connect(function(deltaTime)
+    if not Self.Settings.Enabled then return end
+
+    for clone, data in pairs(Self.Cache.Clones) do
+        if clone and clone.Parent then
+            local currentSpeed = Self.Settings.RiseSpeed
+            local currentRotSpeed = Self.Settings.RotationSpeed
+            
+            local currentCF = clone:GetPivot()
+            local liftCF = CFrame.new(0, currentSpeed * deltaTime, 0)
+            local rotCF = CFrame.Angles(data.rot.X * deltaTime * currentRotSpeed, data.rot.Y * deltaTime * currentRotSpeed, data.rot.Z * deltaTime * currentRotSpeed)
+            
+            clone:PivotTo(currentCF * liftCF * rotCF)
+        else
+            Self.Cache.Clones[clone] = nil
+        end
+    end
+
+    for _, obj in pairs(Services.Workspace:GetDescendants()) do
+        if obj:IsA("Model") and obj:FindFirstChild("Humanoid") and not Self.Cache.Originals[obj] then
+            if obj.Name == "Vantality_Floater" then continue end
+            
+            local hum = obj.Humanoid
+            local root = obj:FindFirstChild("HumanoidRootPart") or obj:FindFirstChild("Torso")
+            
+            if root and (hum.Health <= 0 or hum:GetState() == Enum.HumanoidStateType.Dead) then
+                ProcessRagdoll(obj)
+            end
+        end
+    end
+end)
