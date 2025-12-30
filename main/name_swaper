@@ -1,13 +1,14 @@
+-- // 1. ГЛОБАЛЬНЫЕ НАСТРОЙКИ //
 _G.SpooferSettings = {
     DisplayName = {
         Enabled = false,
         Value = "grabis",
-        Real = game:GetService("Players").LocalPlayer.DisplayName -- Запоминаем оригинал
+        Real = "Display", -- Будет перезаписано автоматически
     },
     UserName = {
         Enabled = false,
         Value = "grabis_user",
-        Real = game:GetService("Players").LocalPlayer.Name -- Запоминаем оригинал
+        Real = "User", -- Будет перезаписано автоматически
     }
 }
 
@@ -15,24 +16,46 @@ local Players = game:GetService("Players")
 local CoreGui = gethui and gethui() or game:GetService("CoreGui")
 local LocalPlayer = Players.LocalPlayer
 
-local Connections = {} 
+local RealName = LocalPlayer.Name
+local RealDisplayName = LocalPlayer.DisplayName
+_G.SpooferSettings.DisplayName.Real = RealDisplayName
+_G.SpooferSettings.UserName.Real = RealName
+
+local Connections = {}
+
+local function escape_pattern(text)
+    return text:gsub("([^%w])", "%%%1")
+end
+
+
+local function SanitizeText(text)
+    local clean = text
+    
+    local fakeDisplay = _G.SpooferSettings.DisplayName.Value
+    if fakeDisplay and fakeDisplay ~= "" and text:find(fakeDisplay, 1, true) then
+        clean = clean:gsub(escape_pattern(fakeDisplay), escape_pattern(RealDisplayName))
+    end
+
+    local fakeUser = _G.SpooferSettings.UserName.Value
+    if fakeUser and fakeUser ~= "" and clean:find(fakeUser, 1, true) then
+        clean = clean:gsub(escape_pattern(fakeUser), escape_pattern(RealName))
+    end
+    
+    return clean
+end
 
 local function ApplySpoof(text)
-    local newText = text
+    local newText = SanitizeText(text)
     
     if _G.SpooferSettings.DisplayName.Enabled then
-        local real = _G.SpooferSettings.DisplayName.Real
-        local fake = _G.SpooferSettings.DisplayName.Value
-        if text:find(real) then
-            newText = newText:gsub(real, fake)
+        if newText:find(RealDisplayName, 1, true) then
+            newText = newText:gsub(escape_pattern(RealDisplayName), escape_pattern(_G.SpooferSettings.DisplayName.Value))
         end
     end
 
     if _G.SpooferSettings.UserName.Enabled then
-        local real = _G.SpooferSettings.UserName.Real
-        local fake = _G.SpooferSettings.UserName.Value
-        if text:find(real) then
-            newText = newText:gsub(real, fake)
+        if newText:find(RealName, 1, true) then
+             newText = newText:gsub(escape_pattern(RealName), escape_pattern(_G.SpooferSettings.UserName.Value))
         end
     end
 
@@ -41,93 +64,84 @@ end
 
 local function MonitorObject(obj)
     if not obj or not obj.Parent then return end
-    if Connections[obj] then return end -- Уже следим за этим объектом
-    
+    if Connections[obj] then return end -- Уже следим
+
     if obj:IsA("TextLabel") or obj:IsA("TextButton") or obj:IsA("TextBox") then
         
-        local currentText = obj.Text
-        local spoofedText = ApplySpoof(currentText)
-        
-        if currentText ~= spoofedText then
-            pcall(function() 
-                obj.Text = spoofedText 
-            end)
-        end
+        pcall(function()
+            local current = obj.Text
+            local spoofed = ApplySpoof(current)
+            if current ~= spoofed then
+                obj.Text = spoofed
+            end
+        end)
 
         local conn = obj:GetPropertyChangedSignal("Text"):Connect(function()
-            local txt = obj.Text
+            local current = obj.Text
             
-            if ( _G.SpooferSettings.DisplayName.Enabled and txt:find(_G.SpooferSettings.DisplayName.Real) ) 
-            or ( _G.SpooferSettings.UserName.Enabled and txt:find(_G.SpooferSettings.UserName.Real) ) then
-                
-                local new = ApplySpoof(txt)
-                if new ~= txt then
-                    pcall(function() obj.Text = new end)
+            if current:find(RealName, 1, true) or current:find(RealDisplayName, 1, true) then
+                local spoofed = ApplySpoof(current)
+                if current ~= spoofed then
+                    obj.Text = spoofed
                 end
+            end
+            
+            local sanitized = SanitizeText(current)
+            if sanitized ~= current then
+                 local newSpoof = ApplySpoof(current)
+                 if current ~= newSpoof then
+                    obj.Text = newSpoof
+                 end
             end
         end)
         
         Connections[obj] = conn
         
         obj.AncestryChanged:Connect(function()
-            if not obj.Parent then
-                if Connections[obj] then
-                    Connections[obj]:Disconnect()
-                    Connections[obj] = nil
-                end
+            if not obj.Parent and Connections[obj] then
+                Connections[obj]:Disconnect()
+                Connections[obj] = nil
             end
         end)
     end
 end
 
-local function ScanAndHook(parent)
-    -- Сканируем уже существующее
+local function Scan(parent)
     for _, v in pairs(parent:GetDescendants()) do
         MonitorObject(v)
     end
-    
     parent.DescendantAdded:Connect(function(v)
         if v:IsA("TextLabel") or v:IsA("TextButton") then
-           task.wait() 
-           MonitorObject(v)
+            task.wait() -- Ждем рендера текста
+            MonitorObject(v)
         end
     end)
 end
 
-task.spawn(function()
-    ScanAndHook(CoreGui) -- Интерфейс Роблокса
-    ScanAndHook(LocalPlayer:WaitForChild("PlayerGui")) -- Интерфейс Игры
-end)
-
-
 _G.ForceUpdateNames = function()
-    _G.SpooferSettings.DisplayName.Real = LocalPlayer.DisplayName
-    _G.SpooferSettings.UserName.Real = LocalPlayer.Name
-
     if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+        local hum = LocalPlayer.Character.Humanoid
         if _G.SpooferSettings.DisplayName.Enabled then
-             LocalPlayer.Character.Humanoid.DisplayName = _G.SpooferSettings.DisplayName.Value
+            hum.DisplayName = _G.SpooferSettings.DisplayName.Value
         else
-             LocalPlayer.Character.Humanoid.DisplayName = _G.SpooferSettings.DisplayName.Real
+            hum.DisplayName = RealDisplayName
         end
     end
-    
-    for obj, conn in pairs(Connections) do
+
+    for obj, _ in pairs(Connections) do
         if obj and obj.Parent then
-            local txt = obj.Text
-            if not _G.SpooferSettings.DisplayName.Enabled and not _G.SpooferSettings.UserName.Enabled then
-                local restored = txt
-                restored = restored:gsub(_G.SpooferSettings.DisplayName.Value, _G.SpooferSettings.DisplayName.Real)
-                restored = restored:gsub(_G.SpooferSettings.UserName.Value, _G.SpooferSettings.UserName.Real)
-                pcall(function() obj.Text = restored end)
-            else
-                local spoofed = ApplySpoof(txt)
-                if spoofed ~= txt then
-                    pcall(function() obj.Text = spoofed end)
-                end
+            local current = obj.Text
+            local new = ApplySpoof(current)
+            if current ~= new then
+                pcall(function() obj.Text = new end)
             end
-        else
-            Connections[obj] = nil
         end
     end
 end
+
+task.spawn(function()
+    Scan(CoreGui)
+    Scan(LocalPlayer:WaitForChild("PlayerGui"))
+end)
+
+print("V3 Stable Spoofer Loaded")
