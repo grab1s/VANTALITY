@@ -1,3 +1,4 @@
+-- // ГЛОБАЛЬНЫЕ НАСТРОЙКИ //
 _G.SpooferSettings = {
     DisplayName = { Enabled = false, Value = "grabis", Real = "" },
     UserName    = { Enabled = false, Value = "grabis_user", Real = "" }
@@ -7,39 +8,83 @@ local Players = game:GetService("Players")
 local CoreGui = gethui and gethui() or game:GetService("CoreGui")
 local LocalPlayer = Players.LocalPlayer
 
-local RealName = LocalPlayer.Name
-local RealDisplayName = LocalPlayer.DisplayName
-_G.SpooferSettings.DisplayName.Real = RealDisplayName
-_G.SpooferSettings.UserName.Real = RealName
+-- Получаем реальные данные
+_G.SpooferSettings.DisplayName.Real = LocalPlayer.DisplayName
+_G.SpooferSettings.UserName.Real = LocalPlayer.Name
 
 local Connections = {}
 
+-- Токены (Уникальные строки, которых точно нет в чате)
+local TOKEN_DISPLAY = "\0\0_DSP_\0\0"
+local TOKEN_USER    = "\0\0_USR_\0\0"
+
+-- Функция экранирования для поиска
 local function escape(text)
     return text:gsub("([^%w])", "%%%1")
 end
 
+-- // ЛОГИКА ЗАМЕНЫ //
+local function GetSpoofedText(text)
+    local tempText = text
+    local s = _G.SpooferSettings
+    
+    -- 1. Сначала ОЧИЩАЕМ текст от старых фейков (возвращаем к оригиналу)
+    -- Это нужно, чтобы при смене настроек текст не дублировался
+    if s.DisplayName.Value ~= "" and tempText:find(s.DisplayName.Value, 1, true) then
+        tempText = tempText:gsub(escape(s.DisplayName.Value), escape(s.DisplayName.Real))
+    end
+    if s.UserName.Value ~= "" and tempText:find(s.UserName.Value, 1, true) then
+        tempText = tempText:gsub(escape(s.UserName.Value), escape(s.UserName.Real))
+    end
+
+    -- 2. ТОКЕНИЗАЦИЯ (Заменяем реальные имена на временные метки)
+    -- Важно: Сначала заменяем то, что ДЛИННЕЕ. Это предотвращает конфликты,
+    -- если одно имя содержится внутри другого.
+    
+    local dLen = #s.DisplayName.Real
+    local uLen = #s.UserName.Real
+    
+    -- Если DisplayName длиннее или равен UserName
+    if dLen >= uLen then
+        if s.DisplayName.Enabled then
+            tempText = tempText:gsub(escape(s.DisplayName.Real), TOKEN_DISPLAY)
+        end
+        if s.UserName.Enabled then
+            tempText = tempText:gsub(escape(s.UserName.Real), TOKEN_USER)
+        end
+    else
+        -- Если UserName длиннее (редко, но бывает)
+        if s.UserName.Enabled then
+            tempText = tempText:gsub(escape(s.UserName.Real), TOKEN_USER)
+        end
+        if s.DisplayName.Enabled then
+            tempText = tempText:gsub(escape(s.DisplayName.Real), TOKEN_DISPLAY)
+        end
+    end
+
+    -- 3. ПОДСТАНОВКА ФЕЙКОВ
+    -- Теперь меняем метки на нужные нам фейковые имена
+    if s.DisplayName.Enabled then
+        tempText = tempText:gsub(TOKEN_DISPLAY, s.DisplayName.Value) -- Здесь escape не нужен
+    end
+    if s.UserName.Enabled then
+        tempText = tempText:gsub(TOKEN_USER, s.UserName.Value)
+    end
+    
+    -- Если токены остались (например, галочка была выключена), возвращаем оригинал
+    tempText = tempText:gsub(TOKEN_DISPLAY, s.DisplayName.Real)
+    tempText = tempText:gsub(TOKEN_USER, s.UserName.Real)
+
+    return tempText
+end
+
+-- // ОБНОВЛЕНИЕ ОБЪЕКТА //
 local function UpdateObject(obj)
     if not obj or not obj.Parent then return end
     
     pcall(function()
         local currentText = obj.Text
-        local newText = currentText
-        
-        local s = _G.SpooferSettings
-        
-        if s.DisplayName.Value ~= "" and newText:find(s.DisplayName.Value, 1, true) then
-            newText = newText:gsub(escape(s.DisplayName.Value), s.DisplayName.Real)
-        end
-        if s.UserName.Value ~= "" and newText:find(s.UserName.Value, 1, true) then
-            newText = newText:gsub(escape(s.UserName.Value), s.UserName.Real)
-        end
-        
-        if s.DisplayName.Enabled then
-             newText = newText:gsub(escape(RealDisplayName), s.DisplayName.Value)
-        end
-        if s.UserName.Enabled then
-             newText = newText:gsub(escape(RealName), s.UserName.Value)
-        end
+        local newText = GetSpoofedText(currentText)
         
         if newText ~= currentText then
             obj.Text = newText
@@ -47,9 +92,10 @@ local function UpdateObject(obj)
     end)
 end
 
+-- // ПОДКЛЮЧЕНИЕ //
 local function HookObject(obj)
     if not obj or not obj.Parent then return end
-    if Connections[obj] then return end -- Уже следим
+    if Connections[obj] then return end
 
     if obj:IsA("TextLabel") or obj:IsA("TextButton") or obj:IsA("TextBox") then
         Connections[obj] = true
@@ -66,39 +112,45 @@ local function HookObject(obj)
     end
 end
 
+-- // СКАНЕР //
 local function Scan(parent)
     for _, v in pairs(parent:GetDescendants()) do
         HookObject(v)
     end
     parent.DescendantAdded:Connect(function(v)
         if v:IsA("TextLabel") or v:IsA("TextButton") then
-            task.wait() -- Даем такт на прогрузку текста
+            task.wait()
             HookObject(v)
         end
     end)
 end
 
+-- // ТРИГГЕР //
 _G.ForceUpdateNames = function()
+    -- Обновляем настройки реальных имен
     _G.SpooferSettings.DisplayName.Real = LocalPlayer.DisplayName
     _G.SpooferSettings.UserName.Real = LocalPlayer.Name
     
+    -- Humanoid
     if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
         local hum = LocalPlayer.Character.Humanoid
         if _G.SpooferSettings.DisplayName.Enabled then
             hum.DisplayName = _G.SpooferSettings.DisplayName.Value
         else
-            hum.DisplayName = RealDisplayName
+            hum.DisplayName = _G.SpooferSettings.DisplayName.Real
         end
     end
     
+    -- Интерфейс
     for obj, _ in pairs(Connections) do
         UpdateObject(obj)
     end
 end
 
+-- // ЗАПУСК //
 task.spawn(function()
     Scan(CoreGui)
     Scan(LocalPlayer:WaitForChild("PlayerGui"))
 end)
 
-print("Simple Spoofer V5 Loaded")
+print("Token Spoofer V6 Loaded")
