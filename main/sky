@@ -4,136 +4,143 @@ local Env = getgenv and getgenv() or _G
 
 if Env.SkyManager then
 	Env.SkyManager:Disable()
+	Env.SkyManager = nil
 end
 
-local Manager = {}
-local Storage = {
-	OldSky = nil,
-	OldClouds = nil,
-	OldSunRays = nil,
-	ActiveSky = nil,
-	ActiveClouds = nil,
-	ActiveSunRays = nil
+local Manager = {
+	IsActive = false,
+	Settings = {
+		SunSize = 11,
+		SunIntensity = 0.25,
+		SunSpread = 0.1,
+		MoonSize = 11,
+		StarCount = 3000,
+		CloudCover = 0.5,
+		CloudDensity = 0.7,
+		CloudColor = Color3.fromRGB(255, 255, 255)
+	}
 }
 
-local function CreateSky()
-	if Storage.ActiveSky then return Storage.ActiveSky end
-	
-	local oldSky = Lighting:FindFirstChildOfClass("Sky")
-	if oldSky and oldSky.Name ~= "VantalitySky" then
-		Storage.OldSky = oldSky
-		oldSky.Parent = nil
+local Storage = {
+	Old = { Sky = nil, Clouds = nil, SunRays = nil },
+	Custom = { Sky = nil, Clouds = nil, SunRays = nil }
+}
+
+local function ApplyProperties()
+	if not Manager.IsActive then return end
+
+	local S = Manager.Settings
+	local C = Storage.Custom
+
+	if C.Sky then
+		C.Sky.SunAngularSize = S.SunSize
+		C.Sky.MoonAngularSize = S.MoonSize
+		C.Sky.StarCount = S.StarCount
 	end
 
-	local sky = Instance.new("Sky")
-	sky.Name = "VantalitySky"
-	sky.SkyboxBk = "rbxassetid://1" 
-	sky.SkyboxDn = "rbxassetid://1"
-	sky.SkyboxFt = "rbxassetid://1"
-	sky.SkyboxLf = "rbxassetid://1"
-	sky.SkyboxRt = "rbxassetid://1"
-	sky.SkyboxUp = "rbxassetid://1"
-	sky.StarCount = 3000
-	sky.SunAngularSize = 11
-	sky.MoonAngularSize = 11
-	
-	if Storage.OldSky then
-		sky.SkyboxBk = Storage.OldSky.SkyboxBk
-		sky.SkyboxDn = Storage.OldSky.SkyboxDn
-		sky.SkyboxFt = Storage.OldSky.SkyboxFt
-		sky.SkyboxLf = Storage.OldSky.SkyboxLf
-		sky.SkyboxRt = Storage.OldSky.SkyboxRt
-		sky.SkyboxUp = Storage.OldSky.SkyboxUp
-	end
-	
-	sky.Parent = Lighting
-	Storage.ActiveSky = sky
-	return sky
-end
-
-local function CreateClouds()
-	if Storage.ActiveClouds then return Storage.ActiveClouds end
-
-	local oldClouds = Terrain:FindFirstChildOfClass("Clouds") or Lighting:FindFirstChildOfClass("Clouds")
-	if oldClouds and oldClouds.Name ~= "VantalityClouds" then
-		Storage.OldClouds = oldClouds
-		oldClouds.Parent = nil
+	if C.SunRays then
+		C.SunRays.Intensity = S.SunIntensity
+		C.SunRays.Spread = S.SunSpread
+		C.SunRays.Enabled = true
 	end
 
-	local clouds = Instance.new("Clouds")
-	clouds.Name = "VantalityClouds"
-	clouds.Cover = 0.5
-	clouds.Density = 0.7
-	clouds.Parent = Terrain
-	Storage.ActiveClouds = clouds
-	return clouds
-end
-
-local function CreateSunRays()
-	if Storage.ActiveSunRays then return Storage.ActiveSunRays end
-
-	local oldRays = Lighting:FindFirstChildOfClass("SunRaysEffect")
-	if oldRays and oldRays.Name ~= "VantalitySunRays" then
-		Storage.OldSunRays = oldRays
-		oldRays.Parent = nil
+	if C.Clouds then
+		C.Clouds.Cover = S.CloudCover
+		C.Clouds.Density = S.CloudDensity
+		C.Clouds.Color = S.CloudColor
+		C.Clouds.Enabled = true
 	end
-
-	local rays = Instance.new("SunRaysEffect")
-	rays.Name = "VantalitySunRays"
-	rays.Intensity = 0.25
-	rays.Spread = 0.1
-	rays.Parent = Lighting
-	Storage.ActiveSunRays = rays
-	return rays
 end
 
 function Manager:Enable()
-	CreateSky()
-	CreateClouds()
-	CreateSunRays()
+	if self.IsActive then return end
+	self.IsActive = true
+
+	local oldSky = Lighting:FindFirstChildOfClass("Sky")
+	if oldSky and oldSky.Name ~= "VantalitySky" then
+		Storage.Old.Sky = oldSky
+		oldSky.Parent = nil
+	end
+
+	local oldClouds = Terrain:FindFirstChildOfClass("Clouds") or Lighting:FindFirstChildOfClass("Clouds")
+	if oldClouds and oldClouds.Name ~= "VantalityClouds" then
+		Storage.Old.Clouds = oldClouds
+		oldClouds.Parent = nil
+	end
+
+	local oldRays = Lighting:FindFirstChildOfClass("SunRaysEffect")
+	if oldRays and oldRays.Name ~= "VantalitySunRays" then
+		Storage.Old.SunRays = oldRays
+		oldRays.Parent = nil
+	end
+
+	local newSky = Instance.new("Sky")
+	newSky.Name = "VantalitySky"
+	newSky.SkyboxBk = "rbxassetid://1"
+	newSky.SkyboxDn = "rbxassetid://1"
+	newSky.SkyboxFt = "rbxassetid://1"
+	newSky.SkyboxLf = "rbxassetid://1"
+	newSky.SkyboxRt = "rbxassetid://1"
+	newSky.SkyboxUp = "rbxassetid://1"
+	if Storage.Old.Sky then -- Копируем текстуры старого неба, чтобы не было черноты
+		newSky.SkyboxBk = Storage.Old.Sky.SkyboxBk
+		newSky.SkyboxDn = Storage.Old.Sky.SkyboxDn
+		newSky.SkyboxFt = Storage.Old.Sky.SkyboxFt
+		newSky.SkyboxLf = Storage.Old.Sky.SkyboxLf
+		newSky.SkyboxRt = Storage.Old.Sky.SkyboxRt
+		newSky.SkyboxUp = Storage.Old.Sky.SkyboxUp
+	end
+	newSky.Parent = Lighting
+	Storage.Custom.Sky = newSky
+
+	local newClouds = Instance.new("Clouds")
+	newClouds.Name = "VantalityClouds"
+	newClouds.Parent = Terrain
+	Storage.Custom.Clouds = newClouds
+
+	local newRays = Instance.new("SunRaysEffect")
+	newRays.Name = "VantalitySunRays"
+	newRays.Parent = Lighting
+	Storage.Custom.SunRays = newRays
+
+	ApplyProperties()
 end
 
 function Manager:Disable()
-	if Storage.ActiveSky then Storage.ActiveSky:Destroy() Storage.ActiveSky = nil end
-	if Storage.ActiveClouds then Storage.ActiveClouds:Destroy() Storage.ActiveClouds = nil end
-	if Storage.ActiveSunRays then Storage.ActiveSunRays:Destroy() Storage.ActiveSunRays = nil end
+	if not self.IsActive then return end
+	self.IsActive = false
 
-	if Storage.OldSky then Storage.OldSky.Parent = Lighting Storage.OldSky = nil end
-	if Storage.OldClouds then Storage.OldClouds.Parent = Terrain Storage.OldClouds = nil end
-	if Storage.OldSunRays then Storage.OldSunRays.Parent = Lighting Storage.OldSunRays = nil end
+	if Storage.Custom.Sky then Storage.Custom.Sky:Destroy() Storage.Custom.Sky = nil end
+	if Storage.Custom.Clouds then Storage.Custom.Clouds:Destroy() Storage.Custom.Clouds = nil end
+	if Storage.Custom.SunRays then Storage.Custom.SunRays:Destroy() Storage.Custom.SunRays = nil end
+
+	if Storage.Old.Sky then Storage.Old.Sky.Parent = Lighting Storage.Old.Sky = nil end
+	if Storage.Old.Clouds then Storage.Old.Clouds.Parent = Terrain Storage.Old.Clouds = nil end
+	if Storage.Old.SunRays then Storage.Old.SunRays.Parent = Lighting Storage.Old.SunRays = nil end
 end
 
 function Manager:SetSun(size, intensity, spread)
-	local sky = Storage.ActiveSky or CreateSky()
-	local rays = Storage.ActiveSunRays or CreateSunRays()
-
-	if size then sky.SunAngularSize = size end
-	
-	if intensity or spread then
-		rays.Enabled = true
-		if intensity then rays.Intensity = intensity end
-		if spread then rays.Spread = spread end
-	end
+	if size then self.Settings.SunSize = size end
+	if intensity then self.Settings.SunIntensity = intensity end
+	if spread then self.Settings.SunSpread = spread end
+	ApplyProperties()
 end
 
 function Manager:SetMoon(size)
-	local sky = Storage.ActiveSky or CreateSky()
-	if size then sky.MoonAngularSize = size end
+	if size then self.Settings.MoonSize = size end
+	ApplyProperties()
 end
 
 function Manager:SetStars(count)
-	local sky = Storage.ActiveSky or CreateSky()
-	if count then sky.StarCount = count end
+	if count then self.Settings.StarCount = count end
+	ApplyProperties()
 end
 
 function Manager:SetClouds(cover, density, color)
-	local clouds = Storage.ActiveClouds or CreateClouds()
-	clouds.Enabled = true
-	if cover then clouds.Cover = cover end
-	if density then clouds.Density = density end
-	if color then clouds.Color = color end
+	if cover then self.Settings.CloudCover = cover end
+	if density then self.Settings.CloudDensity = density end
+	if color then self.Settings.CloudColor = color end
+	ApplyProperties()
 end
-
-Manager:Enable()
 
 Env.SkyManager = Manager
