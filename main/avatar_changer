@@ -1,0 +1,406 @@
+if _G.VantalityLoaded then return end
+_G.VantalityLoaded = true
+
+local Players = game:GetService("Players")
+local HttpService = game:GetService("HttpService")
+local CoreGui = game:GetService("CoreGui")
+local Workspace = game:GetService("Workspace")
+local LocalPlayer = Players.LocalPlayer
+
+_G.VantalityState = {
+    Enabled = false,
+    TargetUsername = "",
+    IsBusy = false,
+    Connections = {},
+    AvatarLoopRunning = false
+}
+
+local StorageName = "VANTALITY_ASSETS_CACHE_RELEASE"
+local Storage = CoreGui:FindFirstChild(StorageName)
+if not Storage then
+    Storage = Instance.new("Folder")
+    Storage.Name = StorageName
+    Storage.Parent = CoreGui
+end
+
+local http_request = request or http_request or (http and http.request) or (syn and syn.request) or (fluxus and fluxus.request)
+
+local function HideObject(obj)
+    if obj:IsA("BasePart") or obj:IsA("Decal") then
+        obj.Transparency = 1
+    end
+    for _, child in pairs(obj:GetDescendants()) do
+        if child:IsA("BasePart") or child:IsA("Decal") then
+            child.Transparency = 1
+        end
+    end
+end
+
+local function ShowObject(obj)
+    if obj:IsA("BasePart") or obj:IsA("Decal") then
+        obj.Transparency = 0
+    end
+    for _, child in pairs(obj:GetDescendants()) do
+        if child:IsA("BasePart") or child:IsA("Decal") then
+            child.Transparency = 0
+        end
+    end
+end
+
+local function DownloadAsset(id, typeName)
+    local cachedName = tostring(id) .. "_" .. tostring(typeName)
+    local cached = Storage:FindFirstChild(cachedName)
+    if cached then return cached:Clone() end
+
+    local objects = nil
+    pcall(function() objects = game:GetObjects("rbxassetid://" .. id) end)
+    
+    if objects and #objects > 0 then
+        local obj = objects[1]
+        if obj:IsA("Model") then
+            local inner = obj:FindFirstChildWhichIsA("Accessory") or 
+                          obj:FindFirstChildWhichIsA("Clothing") or 
+                          obj:FindFirstChildWhichIsA("ShirtGraphic") or
+                          obj:FindFirstChildWhichIsA("Decal")
+            if inner then obj = inner end
+        end
+        obj.Name = cachedName
+        obj.Parent = Storage
+        return obj:Clone()
+    end
+    return nil
+end
+
+local function ManualWeld(character, accessory)
+    local handle = accessory:FindFirstChild("Handle")
+    if not handle then return end
+    
+    local head = character:FindFirstChild("FakeHead") or character:FindFirstChild("Head")
+    if not head then return end
+    
+    for _, v in pairs(accessory:GetDescendants()) do
+        if v:IsA("Script") or v:IsA("LocalScript") then v:Destroy() end
+    end
+
+    handle.Anchored = false
+    handle.CanCollide = false
+    accessory.Parent = character 
+
+    local weld = Instance.new("Weld")
+    weld.Name = "VantalityWeld"
+    weld.Part0 = head
+    weld.Part1 = handle
+    weld.Parent = head
+
+    local att = handle:FindFirstChildOfClass("Attachment")
+    if att then
+        weld.C1 = att.CFrame
+        if att.Name == "HatAttachment" or att.Name == "HairAttachment" then
+             weld.C0 = CFrame.new(0, 0.6, 0)
+        elseif att.Name == "FaceFrontAttachment" then
+             weld.C0 = CFrame.new(0, 0, -0.6)
+        elseif att.Name == "WaistBackAttachment" then
+             weld.C0 = CFrame.new(0, 0.2, 0.5)
+        end
+    else
+        weld.C0 = CFrame.new(0, 0.5, 0)
+    end
+end
+
+local function SnapshotCharacter(char)
+    if char:FindFirstChild("Vantality_Backup") then return end
+
+    local backup = Instance.new("Folder")
+    backup.Name = "Vantality_Backup"
+    backup.Parent = char
+    
+    local stateData = {}
+    local colors = {}
+    local parts = {"Head", "FakeHead", "Torso", "Left Arm", "Right Arm", "Left Leg", "Right Leg"}
+    for _, name in pairs(parts) do
+        local p = char:FindFirstChild(name)
+        if p and p:IsA("BasePart") then colors[name] = p.Color end
+    end
+    stateData.OriginalColors = colors
+
+    local head = char:FindFirstChild("Head")
+    if head then
+        local mesh = head:FindFirstChild("Mesh")
+        if mesh and (mesh:IsA("SpecialMesh") or mesh:IsA("BlockMesh")) then
+             stateData.OriginalFace = mesh.TextureId
+        end
+    end
+    _G.VantalityState[char] = stateData
+
+    local function stash(obj, origin)
+        if not obj then return end
+        if origin then obj:SetAttribute("VantalityOrigin", origin) end
+        obj.Parent = backup
+        HideObject(obj)
+    end
+
+    for _, v in pairs(char:GetChildren()) do
+        if v:IsA("Accessory") or v:IsA("Clothing") or v:IsA("BodyColors") or v:IsA("ShirtGraphic") or v:IsA("CharacterMesh") then
+            stash(v, "Character")
+        end
+    end
+
+    local fakeHead = char:FindFirstChild("FakeHead")
+    if fakeHead then
+        if fakeHead:IsA("MeshPart") then 
+            _G.VantalityState[char].OriginalFakeHeadTex = fakeHead.TextureID 
+            fakeHead.TextureID = "" 
+        end
+
+        for _, obj in pairs(fakeHead:GetChildren()) do
+            local n = obj.Name
+            local lowerN = n:lower()
+            if n:find("#ACCESSORY") or n:find("Pal Hair") or lowerN:find("hair") or lowerN:find("hat") or obj:IsA("Accessory") or obj:IsA("Decal") then
+                stash(obj, "FakeHead")
+            end
+        end
+    end
+
+    if head then
+        for _, obj in pairs(head:GetChildren()) do
+            if obj:IsA("Decal") then stash(obj, "Head") end
+        end
+    end
+end
+
+local function RestoreCharacter(char)
+    if not char then return end
+
+    for _, v in pairs(char:GetDescendants()) do
+        if v:GetAttribute("VantalityItem") then v:Destroy() end
+    end
+
+    local backup = char:FindFirstChild("Vantality_Backup")
+    if backup then
+        for _, obj in pairs(backup:GetChildren()) do
+            local origin = obj:GetAttribute("VantalityOrigin")
+            ShowObject(obj)
+
+            if origin == "FakeHead" then
+                local fh = char:FindFirstChild("FakeHead")
+                if fh then obj.Parent = fh end
+            elseif origin == "Head" then
+                local h = char:FindFirstChild("Head")
+                if h then obj.Parent = h end
+            else
+                obj.Parent = char
+            end
+        end
+        backup:Destroy()
+    end
+
+    local data = _G.VantalityState[char]
+    if data then
+        if data.OriginalColors then
+            for name, col in pairs(data.OriginalColors) do
+                local p = char:FindFirstChild(name)
+                if p and p:IsA("BasePart") then p.Color = col end
+            end
+        end
+        if data.OriginalFace then
+            local head = char:FindFirstChild("Head")
+            if head and head:FindFirstChild("Mesh") then
+                head.Mesh.TextureId = data.OriginalFace
+            end
+        end
+        if data.OriginalFakeHeadTex then
+            local fh = char:FindFirstChild("FakeHead")
+            if fh and fh:IsA("MeshPart") then
+                fh.TextureID = data.OriginalFakeHeadTex
+            end
+        end
+    end
+    
+    local hum = char:FindFirstChild("Humanoid")
+    if hum then hum.DisplayName = LocalPlayer.DisplayName end
+end
+
+local function ApplySkin(char)
+    if not _G.VantalityState.Enabled then return end
+    if _G.VantalityState.IsBusy then return end
+    _G.VantalityState.IsBusy = true
+
+    local targetName = _G.VantalityState.TargetUsername
+    if targetName == "" then _G.VantalityState.IsBusy = false return end
+
+    local hum = char:WaitForChild("Humanoid", 10)
+    if not hum then _G.VantalityState.IsBusy = false return end
+
+    SnapshotCharacter(char)
+
+    local savedData = _G.VantalityState[char]
+    if savedData and savedData.OriginalFace then
+        local head = char:FindFirstChild("Head")
+        if head and head:FindFirstChild("Mesh") then
+            head.Mesh.TextureId = savedData.OriginalFace
+        end
+    end
+
+    for _, v in pairs(char:GetDescendants()) do
+        if v:GetAttribute("VantalityItem") then v:Destroy() end
+    end
+
+    local s, targetId = pcall(function() return Players:GetUserIdFromNameAsync(targetName) end)
+    if not s then _G.VantalityState.IsBusy = false return end
+
+    local resp = http_request({Url = "https://avatar.roblox.com/v1/users/"..targetId.."/avatar", Method="GET"})
+    if not resp or resp.StatusCode ~= 200 then _G.VantalityState.IsBusy = false return end
+    local data = HttpService:JSONDecode(resp.Body)
+
+    if data.bodyColors then
+        local function getColor(id) return BrickColor.new(id).Color end
+        local colors = {
+            Head = getColor(data.bodyColors.headColorId),
+            Torso = getColor(data.bodyColors.torsoColorId),
+            LeftArm = getColor(data.bodyColors.leftArmColorId),
+            RightArm = getColor(data.bodyColors.rightArmColorId),
+            LeftLeg = getColor(data.bodyColors.leftLegColorId),
+            RightLeg = getColor(data.bodyColors.rightLegColorId)
+        }
+        local partsMap = {
+            ["Head"] = colors.Head, ["FakeHead"] = colors.Head,
+            ["Torso"] = colors.Torso, ["Left Arm"] = colors.LeftArm,
+            ["Right Arm"] = colors.RightArm, ["Left Leg"] = colors.LeftLeg,
+            ["Right Leg"] = colors.RightLeg
+        }
+        for name, col in pairs(partsMap) do
+            local p = char:FindFirstChild(name)
+            if p and p:IsA("BasePart") then
+                p.Color = col
+                if p:IsA("MeshPart") then p.TextureID = "" end
+            end
+        end
+    end
+
+    if data.assets then
+        for _, asset in pairs(data.assets) do
+            local id = asset.id
+            local typeName = tostring(asset.assetType.name)
+            
+            task.spawn(function()
+                local obj = nil
+                
+                if typeName == "Face" then
+                    local faceDecal = DownloadAsset(id, "Face")
+                    if faceDecal then
+                        local head = char:FindFirstChild("Head")
+                        if head and head:FindFirstChild("Mesh") then
+                             head.Mesh.TextureId = faceDecal.Texture
+                        end
+                    end
+                    return
+                end
+
+                if typeName == "Shirt" or typeName == "Pants" or typeName == "TShirt" then
+                    obj = DownloadAsset(id, typeName)
+                    if obj then obj.Parent = char end
+                
+                elseif not (typeName:find("Jacket") or typeName:find("Sweater") or typeName:find("Shoe") or typeName:find("Dress") or typeName:find("Skirt") or typeName:find("Shorts")) then
+                    obj = DownloadAsset(id, typeName)
+                    if obj and obj:IsA("Accessory") then
+                        ManualWeld(char, obj)
+                    end
+                end
+
+                if obj then obj:SetAttribute("VantalityItem", true) end
+            end)
+        end
+    end
+
+    hum.DisplayName = targetName
+    _G.VantalityState.IsBusy = false
+end
+
+local function AvatarLoop()
+    if _G.VantalityState.AvatarLoopRunning then return end
+    _G.VantalityState.AvatarLoopRunning = true
+    
+    task.spawn(function()
+        while task.wait(1) do
+            if not _G.VantalityLoaded then break end
+            
+            local targetId = LocalPlayer.UserId
+            if _G.VantalityState.Enabled and _G.VantalityState.TargetUsername ~= "" then
+                pcall(function() targetId = Players:GetUserIdFromNameAsync(_G.VantalityState.TargetUsername) end)
+            end
+            
+            local TargetHeadshot = "rbxthumb://type=AvatarHeadShot&id=" .. targetId .. "&w=420&h=420&isCircular=false"
+            
+            local guiRoots = {CoreGui, LocalPlayer:FindFirstChild("PlayerGui")}
+            for _, root in pairs(guiRoots) do
+                if root then
+                    for _, node in pairs(root:GetDescendants()) do
+                        if node:IsA("ImageLabel") or node:IsA("ImageButton") then
+                            local img = tostring(node.Image)
+                            if img:find("Avatar") or img:find("HeadShot") or img:find("rbxthumb") then
+                                if img:find(tostring(LocalPlayer.UserId)) or (_G.VantalityState.TargetUsername ~= "" and img:find(tostring(targetId))) then
+                                     if node.Image ~= TargetHeadshot then
+                                        node.Image = TargetHeadshot
+                                     end
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end)
+end
+
+local function OnCharacterAdded(char)
+    if not _G.VantalityState.Enabled then return end
+    
+    local root = char:WaitForChild("HumanoidRootPart", 10)
+    local live = Workspace:FindFirstChild("Live")
+    
+    if live and not char:IsDescendantOf(live) then
+        local start = tick()
+        repeat task.wait(0.1) until char:IsDescendantOf(live) or (tick() - start > 3)
+    end
+    
+    ApplySkin(char)
+end
+
+_G.Vantality = {}
+
+_G.Vantality.SetUsername = function(name)
+    _G.VantalityState.TargetUsername = name
+    if _G.VantalityState.Enabled then
+        local char = LocalPlayer.Character
+        if char then ApplySkin(char) end
+    end
+end
+
+_G.Vantality.Toggle = function(bool)
+    _G.VantalityState.Enabled = bool
+    local char = LocalPlayer.Character
+    if not char then return end
+    
+    if bool then
+        ApplySkin(char)
+    else
+        RestoreCharacter(char)
+    end
+end
+
+_G.Vantality.Unload = function()
+    _G.VantalityState.Enabled = false
+    _G.VantalityLoaded = false
+    local char = LocalPlayer.Character
+    if char then RestoreCharacter(char) end
+    
+    for _, conn in pairs(_G.VantalityState.Connections) do conn:Disconnect() end
+    _G.Vantality = nil
+    _G.VantalityState = nil
+end
+
+AvatarLoop()
+local conn1 = LocalPlayer.CharacterAdded:Connect(OnCharacterAdded)
+table.insert(_G.VantalityState.Connections, conn1)
+
+if LocalPlayer.Character then OnCharacterAdded(LocalPlayer.Character) end
