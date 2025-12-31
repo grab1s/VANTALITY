@@ -1,138 +1,139 @@
 local Lighting = game:GetService("Lighting")
 local Terrain = workspace:WaitForChild("Terrain")
+local Env = getgenv and getgenv() or _G
 
-if _G.SkyManager then
-	_G.SkyManager:Disable()
+if Env.SkyManager then
+	Env.SkyManager:Disable()
 end
 
 local Manager = {}
-local Cache = {
-	Sky = nil,
-	SunRays = nil,
-	Clouds = nil,
-	CreatedSky = false,
-	CreatedSunRays = false,
-	CreatedClouds = false,
-	Defaults = {}
+local Storage = {
+	OldSky = nil,
+	OldClouds = nil,
+	OldSunRays = nil,
+	ActiveSky = nil,
+	ActiveClouds = nil,
+	ActiveSunRays = nil
 }
 
-local function GetSky()
-	local sky = Lighting:FindFirstChildOfClass("Sky")
-	if not sky then
-		sky = Instance.new("Sky")
-		sky.Name = "CustomSky"
-		sky.Parent = Lighting
-		Cache.CreatedSky = true
-	else
-		Cache.Defaults.SunAngularSize = sky.SunAngularSize
-		Cache.Defaults.MoonAngularSize = sky.MoonAngularSize
-		Cache.Defaults.StarCount = sky.StarCount
+local function CreateSky()
+	if Storage.ActiveSky then return Storage.ActiveSky end
+	
+	local oldSky = Lighting:FindFirstChildOfClass("Sky")
+	if oldSky and oldSky.Name ~= "VantalitySky" then
+		Storage.OldSky = oldSky
+		oldSky.Parent = nil
 	end
-	Cache.Sky = sky
+
+	local sky = Instance.new("Sky")
+	sky.Name = "VantalitySky"
+	sky.SkyboxBk = "rbxassetid://1" 
+	sky.SkyboxDn = "rbxassetid://1"
+	sky.SkyboxFt = "rbxassetid://1"
+	sky.SkyboxLf = "rbxassetid://1"
+	sky.SkyboxRt = "rbxassetid://1"
+	sky.SkyboxUp = "rbxassetid://1"
+	sky.StarCount = 3000
+	sky.SunAngularSize = 11
+	sky.MoonAngularSize = 11
+	
+	if Storage.OldSky then
+		sky.SkyboxBk = Storage.OldSky.SkyboxBk
+		sky.SkyboxDn = Storage.OldSky.SkyboxDn
+		sky.SkyboxFt = Storage.OldSky.SkyboxFt
+		sky.SkyboxLf = Storage.OldSky.SkyboxLf
+		sky.SkyboxRt = Storage.OldSky.SkyboxRt
+		sky.SkyboxUp = Storage.OldSky.SkyboxUp
+	end
+	
+	sky.Parent = Lighting
+	Storage.ActiveSky = sky
 	return sky
 end
 
-local function GetSunRays()
-	local rays = Lighting:FindFirstChildOfClass("SunRaysEffect")
-	if not rays then
-		rays = Instance.new("SunRaysEffect")
-		rays.Name = "CustomSunRays"
-		rays.Parent = Lighting
-		Cache.CreatedSunRays = true
-	else
-		Cache.Defaults.SunRaysIntensity = rays.Intensity
-		Cache.Defaults.SunRaysSpread = rays.Spread
-		Cache.Defaults.SunRaysEnabled = rays.Enabled
-	end
-	Cache.SunRays = rays
-	return rays
-end
+local function CreateClouds()
+	if Storage.ActiveClouds then return Storage.ActiveClouds end
 
-local function GetClouds()
-	local clouds = Terrain:FindFirstChildOfClass("Clouds") or Lighting:FindFirstChildOfClass("Clouds")
-	if not clouds then
-		clouds = Instance.new("Clouds")
-		clouds.Name = "CustomClouds"
-		clouds.Parent = Terrain
-		Cache.CreatedClouds = true
-	else
-		Cache.Defaults.CloudCover = clouds.Cover
-		Cache.Defaults.CloudDensity = clouds.Density
-		Cache.Defaults.CloudColor = clouds.Color
-		Cache.Defaults.CloudEnabled = clouds.Enabled
+	local oldClouds = Terrain:FindFirstChildOfClass("Clouds") or Lighting:FindFirstChildOfClass("Clouds")
+	if oldClouds and oldClouds.Name ~= "VantalityClouds" then
+		Storage.OldClouds = oldClouds
+		oldClouds.Parent = nil
 	end
-	Cache.Clouds = clouds
+
+	local clouds = Instance.new("Clouds")
+	clouds.Name = "VantalityClouds"
+	clouds.Cover = 0.5
+	clouds.Density = 0.7
+	clouds.Parent = Terrain
+	Storage.ActiveClouds = clouds
 	return clouds
 end
 
-function Manager:SetSun(size, rayIntensity, raySpread)
-	local sky = GetSky()
-	local rays = GetSunRays()
-	
+local function CreateSunRays()
+	if Storage.ActiveSunRays then return Storage.ActiveSunRays end
+
+	local oldRays = Lighting:FindFirstChildOfClass("SunRaysEffect")
+	if oldRays and oldRays.Name ~= "VantalitySunRays" then
+		Storage.OldSunRays = oldRays
+		oldRays.Parent = nil
+	end
+
+	local rays = Instance.new("SunRaysEffect")
+	rays.Name = "VantalitySunRays"
+	rays.Intensity = 0.25
+	rays.Spread = 0.1
+	rays.Parent = Lighting
+	Storage.ActiveSunRays = rays
+	return rays
+end
+
+function Manager:Enable()
+	CreateSky()
+	CreateClouds()
+	CreateSunRays()
+end
+
+function Manager:Disable()
+	if Storage.ActiveSky then Storage.ActiveSky:Destroy() Storage.ActiveSky = nil end
+	if Storage.ActiveClouds then Storage.ActiveClouds:Destroy() Storage.ActiveClouds = nil end
+	if Storage.ActiveSunRays then Storage.ActiveSunRays:Destroy() Storage.ActiveSunRays = nil end
+
+	if Storage.OldSky then Storage.OldSky.Parent = Lighting Storage.OldSky = nil end
+	if Storage.OldClouds then Storage.OldClouds.Parent = Terrain Storage.OldClouds = nil end
+	if Storage.OldSunRays then Storage.OldSunRays.Parent = Lighting Storage.OldSunRays = nil end
+end
+
+function Manager:SetSun(size, intensity, spread)
+	local sky = Storage.ActiveSky or CreateSky()
+	local rays = Storage.ActiveSunRays or CreateSunRays()
+
 	if size then sky.SunAngularSize = size end
 	
-	if rayIntensity or raySpread then
+	if intensity or spread then
 		rays.Enabled = true
-		if rayIntensity then rays.Intensity = rayIntensity end
-		if raySpread then rays.Spread = raySpread end
+		if intensity then rays.Intensity = intensity end
+		if spread then rays.Spread = spread end
 	end
 end
 
 function Manager:SetMoon(size)
-	local sky = GetSky()
+	local sky = Storage.ActiveSky or CreateSky()
 	if size then sky.MoonAngularSize = size end
 end
 
 function Manager:SetStars(count)
-	local sky = GetSky()
+	local sky = Storage.ActiveSky or CreateSky()
 	if count then sky.StarCount = count end
 end
 
 function Manager:SetClouds(cover, density, color)
-	local clouds = GetClouds()
+	local clouds = Storage.ActiveClouds or CreateClouds()
 	clouds.Enabled = true
 	if cover then clouds.Cover = cover end
 	if density then clouds.Density = density end
 	if color then clouds.Color = color end
 end
 
-function Manager:Disable()
-	if Cache.Sky then
-		if Cache.CreatedSky then
-			Cache.Sky:Destroy()
-		else
-			Cache.Sky.SunAngularSize = Cache.Defaults.SunAngularSize or 11
-			Cache.Sky.MoonAngularSize = Cache.Defaults.MoonAngularSize or 11
-			Cache.Sky.StarCount = Cache.Defaults.StarCount or 3000
-		end
-	end
+Manager:Enable()
 
-	if Cache.SunRays then
-		if Cache.CreatedSunRays then
-			Cache.SunRays:Destroy()
-		else
-			Cache.SunRays.Intensity = Cache.Defaults.SunRaysIntensity or 0
-			Cache.SunRays.Spread = Cache.Defaults.SunRaysSpread or 0.1
-			Cache.SunRays.Enabled = Cache.Defaults.SunRaysEnabled
-		end
-	end
-
-	if Cache.Clouds then
-		if Cache.CreatedClouds then
-			Cache.Clouds:Destroy()
-		else
-			Cache.Clouds.Cover = Cache.Defaults.CloudCover or 0.5
-			Cache.Clouds.Density = Cache.Defaults.CloudDensity or 0.7
-			Cache.Clouds.Color = Cache.Defaults.CloudColor or Color3.fromRGB(255, 255, 255)
-			Cache.Clouds.Enabled = Cache.Defaults.CloudEnabled
-		end
-	end
-
-	_G.SkyManager = nil
-end
-
-GetSky()
-GetSunRays()
-GetClouds()
-
-_G.SkyManager = Manager
+Env.SkyManager = Manager
