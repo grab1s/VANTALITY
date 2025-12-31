@@ -1,0 +1,82 @@
+local Lighting = game:GetService("Lighting")
+local ControllerKey = "LightingController"
+
+if _G[ControllerKey] then
+	_G[ControllerKey]:Destroy()
+end
+
+local Defaults = {
+	Ambient = Lighting.Ambient,
+	OutdoorAmbient = Lighting.OutdoorAmbient,
+	ShadowColor = Lighting.ShadowColor
+}
+
+local Bloom = Instance.new("BloomEffect")
+Bloom.Name = "ManagedBloom"
+
+local Controller = {}
+Controller.Enabled = false
+Controller.Settings = {
+	Bloom = {
+		Intensity = 1,
+		Size = 24,
+		Threshold = 2
+	},
+	Colors = {
+		Ambient = Color3.fromRGB(100, 100, 100),
+		OutdoorAmbient = Color3.fromRGB(80, 80, 80),
+		ShadowColor = Color3.fromRGB(0, 0, 0)
+	}
+}
+
+function Controller:Apply()
+	if not self.Enabled then return end
+	
+	Bloom.Intensity = self.Settings.Bloom.Intensity
+	Bloom.Size = self.Settings.Bloom.Size
+	Bloom.Threshold = self.Settings.Bloom.Threshold
+	Bloom.Parent = Lighting
+	
+	Lighting.Ambient = self.Settings.Colors.Ambient
+	Lighting.OutdoorAmbient = self.Settings.Colors.OutdoorAmbient
+	Lighting.ShadowColor = self.Settings.Colors.ShadowColor
+end
+
+function Controller:Reset()
+	Bloom.Parent = nil
+	Lighting.Ambient = Defaults.Ambient
+	Lighting.OutdoorAmbient = Defaults.OutdoorAmbient
+	Lighting.ShadowColor = Defaults.ShadowColor
+end
+
+function Controller:UpdateBloom(intensity, size, threshold)
+	if intensity then self.Settings.Bloom.Intensity = intensity end
+	if size then self.Settings.Bloom.Size = size end
+	if threshold then self.Settings.Bloom.Threshold = threshold end
+	self:Apply()
+end
+
+function Controller:UpdateColors(ambient, outdoorAmbient, shadowColor)
+	if ambient then self.Settings.Colors.Ambient = ambient end
+	if outdoorAmbient then self.Settings.Colors.OutdoorAmbient = outdoorAmbient end
+	if shadowColor then self.Settings.Colors.ShadowColor = shadowColor end
+	self:Apply()
+end
+
+function Controller:Toggle(state)
+	self.Enabled = state
+	if state then
+		self:Apply()
+	else
+		self:Reset()
+	end
+end
+
+function Controller:Destroy()
+	self:Toggle(false)
+	Bloom:Destroy()
+	_G[ControllerKey] = nil
+end
+
+_G[ControllerKey] = Controller
+Controller:Toggle(true)
