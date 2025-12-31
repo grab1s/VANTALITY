@@ -359,13 +359,26 @@ local function OnCharacterAdded(char)
     if not _G.VantalityState.Enabled then return end
     
     local root = char:WaitForChild("HumanoidRootPart", 10)
-    local live = Workspace:FindFirstChild("Live")
     
-    if live and not char:IsDescendantOf(live) then
-        local start = tick()
-        repeat task.wait(0.1) until char:IsDescendantOf(live) or (tick() - start > 3)
+    local attempts = 0
+    while attempts < 30 do
+        if Workspace:FindFirstChild("Live") and char:IsDescendantOf(Workspace.Live) then
+            break
+        end
+        attempts = attempts + 1
+        task.wait(0.1)
     end
     
+    attempts = 0
+    while attempts < 20 do
+        if char:FindFirstChild("FakeHead") or char:FindFirstChildWhichIsA("BodyColors") or char:FindFirstChildWhichIsA("Clothing") then
+            break
+        end
+        attempts = attempts + 1
+        task.wait(0.1)
+    end
+    task.wait(0.5)
+
     ApplySkin(char)
 end
 
