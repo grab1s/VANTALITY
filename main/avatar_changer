@@ -1,4 +1,7 @@
-if _G.VantalityLoaded then return end
+if _G.Vantality and _G.Vantality.Unload then
+    _G.Vantality.Unload()
+    task.wait(0.1)
+end
 _G.VantalityLoaded = true
 
 local Players = game:GetService("Players")
@@ -140,7 +143,7 @@ local function SnapshotCharacter(char)
     end
 
     for _, v in pairs(char:GetChildren()) do
-        if v:IsA("Accessory") or v:IsA("Clothing") or v:IsA("BodyColors") or v:IsA("ShirtGraphic") or v:IsA("CharacterMesh") then
+        if v:IsA("Accessory") or v:IsA("Clothing") or v:IsA("BodyColors") or v:IsA("ShirtGraphic") then
             stash(v, "Character")
         end
     end
@@ -404,3 +407,7 @@ local conn1 = LocalPlayer.CharacterAdded:Connect(OnCharacterAdded)
 table.insert(_G.VantalityState.Connections, conn1)
 
 if LocalPlayer.Character then OnCharacterAdded(LocalPlayer.Character) end
+
+if StarterGui then
+    pcall(function() StarterGui:SetCore("SendNotification", {Title="Vantality API", Text="Ready", Duration=3}) end)
+end
