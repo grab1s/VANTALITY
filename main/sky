@@ -22,13 +22,12 @@ local Manager = {
 }
 
 local Storage = {
-	Old = { Sky = nil, Clouds = nil, SunRays = nil },
+	Old = { Sky = nil, Clouds = nil, SunRays = nil, GlobalShadows = nil },
 	Custom = { Sky = nil, Clouds = nil, SunRays = nil }
 }
 
 local function ApplyProperties()
 	if not Manager.IsActive then return end
-
 	local S = Manager.Settings
 	local C = Storage.Custom
 
@@ -44,6 +43,7 @@ local function ApplyProperties()
 		C.SunRays.Enabled = true
 	end
 
+	-- Обновляем Облака
 	if C.Clouds then
 		C.Clouds.Cover = S.CloudCover
 		C.Clouds.Density = S.CloudDensity
@@ -55,6 +55,9 @@ end
 function Manager:Enable()
 	if self.IsActive then return end
 	self.IsActive = true
+	
+	Storage.Old.GlobalShadows = Lighting.GlobalShadows
+	Lighting.GlobalShadows = true
 
 	local oldSky = Lighting:FindFirstChildOfClass("Sky")
 	if oldSky and oldSky.Name ~= "VantalitySky" then
@@ -76,13 +79,14 @@ function Manager:Enable()
 
 	local newSky = Instance.new("Sky")
 	newSky.Name = "VantalitySky"
-	newSky.SkyboxBk = "rbxassetid://1"
+	newSky.SkyboxBk = "rbxassetid://1" -- Дефолтные ID (или пустые)
 	newSky.SkyboxDn = "rbxassetid://1"
 	newSky.SkyboxFt = "rbxassetid://1"
 	newSky.SkyboxLf = "rbxassetid://1"
 	newSky.SkyboxRt = "rbxassetid://1"
 	newSky.SkyboxUp = "rbxassetid://1"
-	if Storage.Old.Sky then -- Копируем текстуры старого неба, чтобы не было черноты
+	
+	if Storage.Old.Sky then
 		newSky.SkyboxBk = Storage.Old.Sky.SkyboxBk
 		newSky.SkyboxDn = Storage.Old.Sky.SkyboxDn
 		newSky.SkyboxFt = Storage.Old.Sky.SkyboxFt
@@ -109,6 +113,10 @@ end
 function Manager:Disable()
 	if not self.IsActive then return end
 	self.IsActive = false
+	
+	if Storage.Old.GlobalShadows ~= nil then
+		Lighting.GlobalShadows = Storage.Old.GlobalShadows
+	end
 
 	if Storage.Custom.Sky then Storage.Custom.Sky:Destroy() Storage.Custom.Sky = nil end
 	if Storage.Custom.Clouds then Storage.Custom.Clouds:Destroy() Storage.Custom.Clouds = nil end
