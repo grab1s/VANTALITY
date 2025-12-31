@@ -25,8 +25,8 @@ Controller.Settings = {
 		Threshold = 2
 	},
 	Lighting = {
-		ShadowColor = Color3.fromRGB(0, 0, 0), -- Управляет Lighting.Ambient
-		EnvironmentColor = Color3.fromRGB(100, 100, 100), -- Управляет Lighting.OutdoorAmbient
+		ShadowColor = Color3.fromRGB(0, 0, 0),
+		EnvironmentColor = Color3.fromRGB(100, 100, 100),
 		GlobalShadows = true
 	}
 }
