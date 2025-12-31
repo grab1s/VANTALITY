@@ -8,7 +8,9 @@ end
 local Defaults = {
 	Ambient = Lighting.Ambient,
 	OutdoorAmbient = Lighting.OutdoorAmbient,
-	ShadowColor = Lighting.ShadowColor
+	ColorShift_Top = Lighting.ColorShift_Top,
+	ColorShift_Bottom = Lighting.ColorShift_Bottom,
+	GlobalShadows = Lighting.GlobalShadows
 }
 
 local Bloom = Instance.new("BloomEffect")
@@ -22,31 +24,34 @@ Controller.Settings = {
 		Size = 24,
 		Threshold = 2
 	},
-	Colors = {
-		Ambient = Color3.fromRGB(100, 100, 100),
-		OutdoorAmbient = Color3.fromRGB(80, 80, 80),
-		ShadowColor = Color3.fromRGB(0, 0, 0)
+	Lighting = {
+		ShadowColor = Color3.fromRGB(0, 0, 0), -- Управляет Lighting.Ambient
+		EnvironmentColor = Color3.fromRGB(100, 100, 100), -- Управляет Lighting.OutdoorAmbient
+		GlobalShadows = true
 	}
 }
 
 function Controller:Apply()
 	if not self.Enabled then return end
-	
+
 	Bloom.Intensity = self.Settings.Bloom.Intensity
 	Bloom.Size = self.Settings.Bloom.Size
 	Bloom.Threshold = self.Settings.Bloom.Threshold
 	Bloom.Parent = Lighting
+
+	Lighting.Ambient = self.Settings.Lighting.ShadowColor
+	Lighting.OutdoorAmbient = self.Settings.Lighting.EnvironmentColor
 	
-	Lighting.Ambient = self.Settings.Colors.Ambient
-	Lighting.OutdoorAmbient = self.Settings.Colors.OutdoorAmbient
-	Lighting.ShadowColor = self.Settings.Colors.ShadowColor
+	Lighting.GlobalShadows = self.Settings.Lighting.GlobalShadows
 end
 
 function Controller:Reset()
 	Bloom.Parent = nil
 	Lighting.Ambient = Defaults.Ambient
 	Lighting.OutdoorAmbient = Defaults.OutdoorAmbient
-	Lighting.ShadowColor = Defaults.ShadowColor
+	Lighting.GlobalShadows = Defaults.GlobalShadows
+	Lighting.ColorShift_Top = Defaults.ColorShift_Top
+	Lighting.ColorShift_Bottom = Defaults.ColorShift_Bottom
 end
 
 function Controller:UpdateBloom(intensity, size, threshold)
@@ -56,10 +61,10 @@ function Controller:UpdateBloom(intensity, size, threshold)
 	self:Apply()
 end
 
-function Controller:UpdateColors(ambient, outdoorAmbient, shadowColor)
-	if ambient then self.Settings.Colors.Ambient = ambient end
-	if outdoorAmbient then self.Settings.Colors.OutdoorAmbient = outdoorAmbient end
-	if shadowColor then self.Settings.Colors.ShadowColor = shadowColor end
+function Controller:UpdateLighting(shadowColor, envColor, globalShadows)
+	if shadowColor then self.Settings.Lighting.ShadowColor = shadowColor end
+	if envColor then self.Settings.Lighting.EnvironmentColor = envColor end
+	if globalShadows ~= nil then self.Settings.Lighting.GlobalShadows = globalShadows end
 	self:Apply()
 end
 
