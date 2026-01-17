@@ -1,3 +1,5 @@
+local Env = getgenv and getgenv() or _G
+
 local ThemeManager = {}
 
 local Themes = {
