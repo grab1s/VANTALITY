@@ -19,8 +19,8 @@ if not isfolder(FileSystem.Folder) then makefolder(FileSystem.Folder) end
 local State = {
     LoadedScripts = {},
     ColumnIndex = 0,
-    Columns = {"center", "right"}, 
-    GUIColumns = {}, -- Сюда запишем реальные фреймы колонок
+    Columns = {"Center", "Right"}, -- Исправил на Capital case, как в UI либе
+    GUIColumns = {}, 
     Notifier = nil,
     TabRef = nil,
     ListBoxRef = nil
@@ -56,26 +56,21 @@ function LuauAPI:UnloadScript(name)
     local data = State.LoadedScripts[name]
     if not data then return end
 
-    -- 1. Отключаем коннекты
     if data.Connections then
         for _, conn in pairs(data.Connections) do
             if conn and conn.Connected then conn:Disconnect() end
         end
     end
 
-    -- 2. Удаляем GUI (Секцию) физически
     if data.SectionFrame and data.SectionFrame.Parent then
         data.SectionFrame:Destroy()
     end
 
-    -- 3. Вызываем OnUnload у скрипта
     if data.Env and data.Env.OnUnload and type(data.Env.OnUnload) == "function" then
         pcall(data.Env.OnUnload)
     end
 
     State.LoadedScripts[name] = nil
-    
-    -- Обновляем список, чтобы убрать статус [LOADED] если бы мы его отображали
     State.ListBoxRef:Refresh()
 end
 
@@ -86,7 +81,6 @@ function LuauAPI:UnloadAll()
 end
 
 function LuauAPI:Execute(name, code)
-    -- Проверка на повторный запуск
     if State.LoadedScripts[name] then
         if State.Notifier then State.Notifier:Notify({Title="Luau", Content="Script already running!", Icon="alert-circle"}) end
         return
@@ -94,8 +88,8 @@ function LuauAPI:Execute(name, code)
 
     local ScriptData = {
         Connections = {},
-        SectionFrame = nil, -- Тут будет сам GUI объект
-        SectionAPI = nil,   -- Тут функции добавления кнопок
+        SectionFrame = nil,
+        SectionAPI = nil,
         Env = nil
     }
 
@@ -110,12 +104,18 @@ function LuauAPI:Execute(name, code)
         local colName = State.Columns[State.ColumnIndex]
         local guiContainer = State.GUIColumns[colName]
         
-        -- Хак для получения GUI объекта: запоминаем кол-во детей до и после
+        if not guiContainer then
+            warn("[Luau API] Critical Error: GUI Container '"..tostring(colName).."' not found!")
+            if State.Notifier then State.Notifier:Notify({Title="Error", Content="UI Broken (Re-inject)", Icon="x"}) end
+            return nil
+        end
+        
+        -- Хак для получения GUI объекта
         local oldChildren = guiContainer:GetChildren()
         
         local NewSectionAPI = State.TabRef:AddSection({
             Name = tostring(title),
-            Position = colName
+            Position = colName:lower() -- Либа требует 'center'/'right' (lowercase) в конфиге
         })
         
         -- Ищем новый объект
@@ -126,7 +126,7 @@ function LuauAPI:Execute(name, code)
                 if old == child then isNew = false break end
             end
             if isNew then
-                ScriptData.SectionFrame = child -- Поймали фрейм!
+                ScriptData.SectionFrame = child
                 break
             end
         end
@@ -174,14 +174,17 @@ function LuauAPI:Init(Tab, IgnoredSection, NotifierObj)
     State.TabRef = Tab
     State.Notifier = NotifierObj
     
-    -- Получаем ссылки на реальные контейнеры колонок для правильного удаления
-    -- Структура Fatality: Tab.Root -> MenuLiber -> Center/Right (ScrollingFrames)
+    -- ИСПРАВЛЕНИЕ: Прямой доступ к детям Tab.Root
     if Tab.Root then
-        local MenuLiber = Tab.Root:FindFirstChildOfClass("Frame") -- Обычно это контейнер колонок
-        if MenuLiber then
-            State.GUIColumns["center"] = MenuLiber:FindFirstChild("Center")
-            State.GUIColumns["right"] = MenuLiber:FindFirstChild("Right")
+        -- В uiLIB.txt Tab.Root это уже контейнер MenuLiber
+        State.GUIColumns["Center"] = Tab.Root:FindFirstChild("Center")
+        State.GUIColumns["Right"]  = Tab.Root:FindFirstChild("Right")
+        
+        if not State.GUIColumns["Center"] then
+            warn("[Luau API] Warning: Failed to find 'Center' column in Tab root.")
         end
+    else
+        warn("[Luau API] Error: Tab.Root is nil.")
     end
     
     local SelectedFile = nil
