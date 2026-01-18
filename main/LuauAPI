@@ -1,0 +1,229 @@
+local Env = getgenv and getgenv() or _G
+
+if Env.LuauAPI then
+    Env.LuauAPI:UnloadAll()
+    Env.LuauAPI = nil
+end
+
+local LuauAPI = {}
+Env.LuauAPI = LuauAPI
+
+local FileSystem = {
+    Root = "Vantality",
+    Folder = "Vantality/scripts"
+}
+
+if not isfolder(FileSystem.Root) then makefolder(FileSystem.Root) end
+if not isfolder(FileSystem.Folder) then makefolder(FileSystem.Folder) end
+if #listfiles(FileSystem.Folder) == 0 then writefile(FileSystem.Folder.."/Readme.lua", 'local UI = Vantality.CreateSection("My Script")\nUI:AddButton({Name="Test", Callback=function() print("Hello") end})') end
+
+local State = {
+    LoadedScripts = {},
+    ColumnIndex = 0,
+    Columns = {"center", "right"}, 
+    Notifier = nil,
+    TabRef = nil,
+    ListBoxRef = nil
+}
+
+local function GetCleanName(path)
+    return path:match("([^\\/]+)$")
+end
+
+local function GetFiles()
+    local t = {}
+    for _, p in pairs(listfiles(FileSystem.Folder)) do
+        local n = GetCleanName(p)
+        if n then table.insert(t, n) end
+    end
+    return t
+end
+
+local function CreateSandboxedEnv(scriptName)
+    local UserEnv = setmetatable({}, {
+        __index = function(self, key)
+            if key == "Vantality" then return State.LoadedScripts[scriptName].API end
+            return Env[key] or getfenv()[key]
+        end,
+        __newindex = function(self, key, value)
+            getfenv()[key] = value
+        end
+    })
+    return UserEnv
+end
+
+function LuauAPI:UnloadScript(name)
+    local data = State.LoadedScripts[name]
+    if not data then return end
+
+    if data.Connections then
+        for _, conn in pairs(data.Connections) do
+            if conn and conn.Connected then conn:Disconnect() end
+        end
+    end
+
+    if data.UIElements then
+        for _, elem in pairs(data.UIElements) do
+            if elem and elem.SetVisible then 
+                elem:SetVisible(false) 
+            elseif elem and elem.Visible ~= nil then
+                elem.Visible = false
+            end
+        end
+    end
+    
+    if data.Section and data.Section.Root then
+        data.Section.Root.Visible = false
+        data.Section.Root.Parent = nil 
+    end
+
+    if data.Env and data.Env.OnUnload and type(data.Env.OnUnload) == "function" then
+        pcall(data.Env.OnUnload)
+    end
+
+    State.LoadedScripts[name] = nil
+end
+
+function LuauAPI:UnloadAll()
+    for name, _ in pairs(State.LoadedScripts) do
+        self:UnloadScript(name)
+    end
+end
+
+function LuauAPI:Execute(name, code)
+    self:UnloadScript(name)
+
+    local ScriptData = {
+        Connections = {},
+        UIElements = {},
+        Section = nil,
+        Env = nil
+    }
+
+    local API_Proxy = {}
+    
+    function API_Proxy.CreateSection(title)
+        if ScriptData.Section then return ScriptData.Section end
+        
+        State.ColumnIndex = State.ColumnIndex + 1
+        if State.ColumnIndex > #State.Columns then State.ColumnIndex = 1 end
+        local targetCol = State.Columns[State.ColumnIndex]
+
+        local NewSection = State.TabRef:AddSection({
+            Name = tostring(title),
+            Position = targetCol
+        })
+        
+        ScriptData.Section = NewSection
+        return NewSection
+    end
+
+    function API_Proxy.Bind(signal, callback)
+        local conn = signal:Connect(callback)
+        table.insert(ScriptData.Connections, conn)
+        return conn
+    end
+
+    function API_Proxy.Notify(cfg)
+        if State.Notifier then State.Notifier:Notify(cfg) end
+    end
+
+    ScriptData.API = API_Proxy
+    State.LoadedScripts[name] = ScriptData
+
+    local func, err = loadstring(code, name)
+    if not func then
+        warn("[Vantality Luau] Syntax Error:", err)
+        if State.Notifier then State.Notifier:Notify({Title="Error", Content="Syntax Error", Icon="alert-triangle"}) end
+        State.LoadedScripts[name] = nil
+        return
+    end
+
+    local Sandbox = CreateSandboxedEnv(name)
+    setfenv(func, Sandbox)
+    ScriptData.Env = Sandbox
+
+    local s, r = pcall(func)
+    if not s then
+        warn("[Vantality Luau] Runtime Error:", r)
+        if State.Notifier then State.Notifier:Notify({Title="Error", Content="Runtime Error (F9)", Icon="alert-circle"}) end
+        self:UnloadScript(name)
+    else
+        if State.Notifier then State.Notifier:Notify({Title="Luau", Content="Loaded: "..name, Icon="check"}) end
+    end
+end
+
+function LuauAPI:Init(Tab, ControlSection, NotifierObj)
+    State.TabRef = Tab
+    State.Notifier = NotifierObj
+    
+    local SelectedFile = nil
+
+    State.ListBoxRef = Tab:AddListBox({
+        Name = "FILES",
+        Position = "left",
+        Height = 350,
+        Values = GetFiles(),
+        Multi = false,
+        Callback = function(val) SelectedFile = val end
+    })
+
+    ControlSection:AddButton({
+        Name = "Load Script",
+        Callback = function()
+            if not SelectedFile then return end
+            local path = FileSystem.Folder .. "/" .. SelectedFile
+            if isfile(path) then
+                LuauAPI:Execute(SelectedFile, readfile(path))
+            else
+                if State.Notifier then State.Notifier:Notify({Title="Error", Content="File not found", Icon="x"}) end
+                State.ListBoxRef:SetValues(GetFiles())
+                State.ListBoxRef:Refresh()
+            end
+        end
+    })
+
+    ControlSection:AddButton({
+        Name = "Unload Script",
+        Callback = function()
+            if not SelectedFile then return end
+            if State.LoadedScripts[SelectedFile] then
+                LuauAPI:UnloadScript(SelectedFile)
+                if State.Notifier then State.Notifier:Notify({Title="Luau", Content="Unloaded: "..SelectedFile, Icon="trash"}) end
+            else
+                if State.Notifier then State.Notifier:Notify({Title="Luau", Content="Script is not loaded", Icon="info"}) end
+            end
+        end
+    })
+
+    ControlSection:AddButton({
+        Name = "Refresh List",
+        Callback = function()
+            State.ListBoxRef:SetValues(GetFiles())
+            State.ListBoxRef:Refresh()
+            SelectedFile = nil
+            if State.Notifier then State.Notifier:Notify({Title="Luau", Content="List Refreshed", Icon="refresh-cw"}) end
+        end
+    })
+
+    ControlSection:AddButton({
+        Name = "Delete File",
+        Risky = true,
+        Callback = function()
+            if SelectedFile then
+                local path = FileSystem.Folder .. "/" .. SelectedFile
+                if isfile(path) then
+                    delfile(path)
+                    State.ListBoxRef:SetValues(GetFiles())
+                    State.ListBoxRef:Refresh()
+                    local cachedName = SelectedFile
+                    SelectedFile = nil
+                    self:UnloadScript(cachedName)
+                    if State.Notifier then State.Notifier:Notify({Title="Luau", Content="Deleted: "..cachedName, Icon="trash-2"}) end
+                end
+            end
+        end
+    })
+end
+
+return LuauAPI
