@@ -15,12 +15,12 @@ local FileSystem = {
 
 if not isfolder(FileSystem.Root) then makefolder(FileSystem.Root) end
 if not isfolder(FileSystem.Folder) then makefolder(FileSystem.Folder) end
-if #listfiles(FileSystem.Folder) == 0 then writefile(FileSystem.Folder.."/Readme.lua", 'local UI = Vantality.CreateSection("My Script")\nUI:AddButton({Name="Test", Callback=function() print("Hello") end})') end
 
 local State = {
     LoadedScripts = {},
     ColumnIndex = 0,
     Columns = {"center", "right"}, 
+    GUIColumns = {}, -- Сюда запишем реальные фреймы колонок
     Notifier = nil,
     TabRef = nil,
     ListBoxRef = nil
@@ -56,32 +56,27 @@ function LuauAPI:UnloadScript(name)
     local data = State.LoadedScripts[name]
     if not data then return end
 
+    -- 1. Отключаем коннекты
     if data.Connections then
         for _, conn in pairs(data.Connections) do
             if conn and conn.Connected then conn:Disconnect() end
         end
     end
 
-    if data.UIElements then
-        for _, elem in pairs(data.UIElements) do
-            if elem and elem.SetVisible then 
-                elem:SetVisible(false) 
-            elseif elem and elem.Visible ~= nil then
-                elem.Visible = false
-            end
-        end
-    end
-    
-    if data.Section and data.Section.Root then
-        data.Section.Root.Visible = false
-        data.Section.Root.Parent = nil 
+    -- 2. Удаляем GUI (Секцию) физически
+    if data.SectionFrame and data.SectionFrame.Parent then
+        data.SectionFrame:Destroy()
     end
 
+    -- 3. Вызываем OnUnload у скрипта
     if data.Env and data.Env.OnUnload and type(data.Env.OnUnload) == "function" then
         pcall(data.Env.OnUnload)
     end
 
     State.LoadedScripts[name] = nil
+    
+    -- Обновляем список, чтобы убрать статус [LOADED] если бы мы его отображали
+    State.ListBoxRef:Refresh()
 end
 
 function LuauAPI:UnloadAll()
@@ -91,31 +86,53 @@ function LuauAPI:UnloadAll()
 end
 
 function LuauAPI:Execute(name, code)
-    self:UnloadScript(name)
+    -- Проверка на повторный запуск
+    if State.LoadedScripts[name] then
+        if State.Notifier then State.Notifier:Notify({Title="Luau", Content="Script already running!", Icon="alert-circle"}) end
+        return
+    end
 
     local ScriptData = {
         Connections = {},
-        UIElements = {},
-        Section = nil,
+        SectionFrame = nil, -- Тут будет сам GUI объект
+        SectionAPI = nil,   -- Тут функции добавления кнопок
         Env = nil
     }
 
     local API_Proxy = {}
     
     function API_Proxy.CreateSection(title)
-        if ScriptData.Section then return ScriptData.Section end
+        if ScriptData.SectionAPI then return ScriptData.SectionAPI end
         
         State.ColumnIndex = State.ColumnIndex + 1
         if State.ColumnIndex > #State.Columns then State.ColumnIndex = 1 end
-        local targetCol = State.Columns[State.ColumnIndex]
-
-        local NewSection = State.TabRef:AddSection({
+        
+        local colName = State.Columns[State.ColumnIndex]
+        local guiContainer = State.GUIColumns[colName]
+        
+        -- Хак для получения GUI объекта: запоминаем кол-во детей до и после
+        local oldChildren = guiContainer:GetChildren()
+        
+        local NewSectionAPI = State.TabRef:AddSection({
             Name = tostring(title),
-            Position = targetCol
+            Position = colName
         })
         
-        ScriptData.Section = NewSection
-        return NewSection
+        -- Ищем новый объект
+        local newChildren = guiContainer:GetChildren()
+        for _, child in pairs(newChildren) do
+            local isNew = true
+            for _, old in pairs(oldChildren) do
+                if old == child then isNew = false break end
+            end
+            if isNew then
+                ScriptData.SectionFrame = child -- Поймали фрейм!
+                break
+            end
+        end
+        
+        ScriptData.SectionAPI = NewSectionAPI
+        return NewSectionAPI
     end
 
     function API_Proxy.Bind(signal, callback)
@@ -156,6 +173,16 @@ end
 function LuauAPI:Init(Tab, IgnoredSection, NotifierObj)
     State.TabRef = Tab
     State.Notifier = NotifierObj
+    
+    -- Получаем ссылки на реальные контейнеры колонок для правильного удаления
+    -- Структура Fatality: Tab.Root -> MenuLiber -> Center/Right (ScrollingFrames)
+    if Tab.Root then
+        local MenuLiber = Tab.Root:FindFirstChildOfClass("Frame") -- Обычно это контейнер колонок
+        if MenuLiber then
+            State.GUIColumns["center"] = MenuLiber:FindFirstChild("Center")
+            State.GUIColumns["right"] = MenuLiber:FindFirstChild("Right")
+        end
+    end
     
     local SelectedFile = nil
 
