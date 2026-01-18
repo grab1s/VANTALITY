@@ -1,5 +1,6 @@
 local Env = getgenv and getgenv() or _G
 
+-- Полная очистка перед загрузкой (для хот-релоада)
 if Env.LuauAPI then
     Env.LuauAPI:UnloadAll()
     Env.LuauAPI = nil
@@ -8,6 +9,7 @@ end
 local LuauAPI = {}
 Env.LuauAPI = LuauAPI
 
+-- Настройка файловой системы
 local FileSystem = {
     Root = "Vantality",
     Folder = "Vantality/scripts"
@@ -16,16 +18,18 @@ local FileSystem = {
 if not isfolder(FileSystem.Root) then makefolder(FileSystem.Root) end
 if not isfolder(FileSystem.Folder) then makefolder(FileSystem.Folder) end
 
+-- Состояние модуля
 local State = {
     LoadedScripts = {},
     ColumnIndex = 0,
-    Columns = {"Center", "Right"}, -- Исправил на Capital case, как в UI либе
-    GUIColumns = {}, 
+    Columns = {"Center", "Right"}, -- Используем для внутренней логики
+    GUIColumns = {}, -- Сюда запишем реальные ScrollingFrame'ы
     Notifier = nil,
     TabRef = nil,
     ListBoxRef = nil
 }
 
+-- Утилиты
 local function GetCleanName(path)
     return path:match("([^\\/]+)$")
 end
@@ -39,10 +43,13 @@ local function GetFiles()
     return t
 end
 
+-- Песочница для скриптов
 local function CreateSandboxedEnv(scriptName)
     local UserEnv = setmetatable({}, {
         __index = function(self, key)
+            -- Перехватываем обращение к Vantality
             if key == "Vantality" then return State.LoadedScripts[scriptName].API end
+            -- Остальное берем из глобального окружения
             return Env[key] or getfenv()[key]
         end,
         __newindex = function(self, key, value)
@@ -52,20 +59,66 @@ local function CreateSandboxedEnv(scriptName)
     return UserEnv
 end
 
+-- Система поиска контейнеров (Fix для ошибки Tab.Root is nil)
+local function ResolveContainers()
+    -- Мы ищем контейнеры, отталкиваясь от нашего ListBox "SCRIPTS"
+    -- Путь: TextLabel("SCRIPTS") -> ListBox -> Column(Left) -> MenuContainer -> [Left, Center, Right]
+    
+    local MainGui = Env.ahkgbs_instance and Env.ahkgbs_instance.Main
+    if not MainGui then return false end
+
+    for _, obj in pairs(MainGui:GetDescendants()) do
+        if obj:IsA("TextLabel") and obj.Text == "SCRIPTS" and obj.Visible then
+            local ListBoxFrame = obj.Parent
+            if not ListBoxFrame then continue end
+            
+            local CurrentColumn = ListBoxFrame.Parent -- Это колонка "Left"
+            if not CurrentColumn then continue end
+            
+            local MenuContainer = CurrentColumn.Parent
+            if not MenuContainer then continue end
+            
+            -- Теперь ищем Center и Right среди детей MenuContainer
+            -- В uiLIB колонки позиционируются по Scale X:
+            -- Left ~ 0.175, Center ~ 0.5, Right ~ 0.825
+            
+            for _, col in pairs(MenuContainer:GetChildren()) do
+                if col:IsA("ScrollingFrame") then
+                    local x = col.Position.X.Scale
+                    if math.abs(x - 0.5) < 0.05 then
+                        State.GUIColumns["Center"] = col
+                    elseif math.abs(x - 0.825) < 0.05 then
+                        State.GUIColumns["Right"] = col
+                    end
+                end
+            end
+            
+            if State.GUIColumns["Center"] and State.GUIColumns["Right"] then
+                return true
+            end
+        end
+    end
+    return false
+end
+
+-- Основные методы
 function LuauAPI:UnloadScript(name)
     local data = State.LoadedScripts[name]
     if not data then return end
 
+    -- 1. Отключаем соединения
     if data.Connections then
         for _, conn in pairs(data.Connections) do
             if conn and conn.Connected then conn:Disconnect() end
         end
     end
 
+    -- 2. Удаляем UI
     if data.SectionFrame and data.SectionFrame.Parent then
         data.SectionFrame:Destroy()
     end
 
+    -- 3. Хук выгрузки
     if data.Env and data.Env.OnUnload and type(data.Env.OnUnload) == "function" then
         pcall(data.Env.OnUnload)
     end
@@ -98,27 +151,34 @@ function LuauAPI:Execute(name, code)
     function API_Proxy.CreateSection(title)
         if ScriptData.SectionAPI then return ScriptData.SectionAPI end
         
+        -- Выбираем колонку (Center -> Right -> Center...)
         State.ColumnIndex = State.ColumnIndex + 1
         if State.ColumnIndex > #State.Columns then State.ColumnIndex = 1 end
         
-        local colName = State.Columns[State.ColumnIndex]
-        local guiContainer = State.GUIColumns[colName]
+        local colKey = State.Columns[State.ColumnIndex]
+        local guiContainer = State.GUIColumns[colKey]
         
         if not guiContainer then
-            warn("[Luau API] Critical Error: GUI Container '"..tostring(colName).."' not found!")
-            if State.Notifier then State.Notifier:Notify({Title="Error", Content="UI Broken (Re-inject)", Icon="x"}) end
-            return nil
+            -- Если контейнеры не найдены, пробуем найти их еще раз
+            ResolveContainers()
+            guiContainer = State.GUIColumns[colKey]
+            
+            if not guiContainer then
+                warn("[Luau API] Critical: UI Container not found. Cannot create section.")
+                return nil
+            end
         end
         
-        -- Хак для получения GUI объекта
+        -- Хак для захвата GUI объекта: смотрим детей до и после создания
         local oldChildren = guiContainer:GetChildren()
         
+        -- Создаем секцию через либу (она требует lowercase: 'center', 'right')
         local NewSectionAPI = State.TabRef:AddSection({
             Name = tostring(title),
-            Position = colName:lower() -- Либа требует 'center'/'right' (lowercase) в конфиге
+            Position = colKey:lower()
         })
         
-        -- Ищем новый объект
+        -- Находим новый объект
         local newChildren = guiContainer:GetChildren()
         for _, child in pairs(newChildren) do
             local isNew = true
@@ -174,21 +234,9 @@ function LuauAPI:Init(Tab, IgnoredSection, NotifierObj)
     State.TabRef = Tab
     State.Notifier = NotifierObj
     
-    -- ИСПРАВЛЕНИЕ: Прямой доступ к детям Tab.Root
-    if Tab.Root then
-        -- В uiLIB.txt Tab.Root это уже контейнер MenuLiber
-        State.GUIColumns["Center"] = Tab.Root:FindFirstChild("Center")
-        State.GUIColumns["Right"]  = Tab.Root:FindFirstChild("Right")
-        
-        if not State.GUIColumns["Center"] then
-            warn("[Luau API] Warning: Failed to find 'Center' column in Tab root.")
-        end
-    else
-        warn("[Luau API] Error: Tab.Root is nil.")
-    end
-    
     local SelectedFile = nil
 
+    -- 1. Создаем ListBox (Якорь для поиска)
     State.ListBoxRef = Tab:AddListBox({
         Name = "SCRIPTS",
         Position = "left",
@@ -198,6 +246,14 @@ function LuauAPI:Init(Tab, IgnoredSection, NotifierObj)
         Callback = function(val) SelectedFile = val end
     })
 
+    -- 2. Пытаемся найти контейнеры (с задержкой, чтобы UI успел отрисоваться)
+    task.delay(0.5, function()
+        if not ResolveContainers() then
+            warn("[Luau API] Warning: UI Containers not immediately found. Will retry on Execute.")
+        end
+    end)
+
+    -- 3. Создаем кнопки управления
     local ControlSection = Tab:AddSection({
         Name = " ",
         Position = "left"
