@@ -153,19 +153,24 @@ function LuauAPI:Execute(name, code)
     end
 end
 
-function LuauAPI:Init(Tab, ControlSection, NotifierObj)
+function LuauAPI:Init(Tab, IgnoredSection, NotifierObj)
     State.TabRef = Tab
     State.Notifier = NotifierObj
     
     local SelectedFile = nil
 
     State.ListBoxRef = Tab:AddListBox({
-        Name = "FILES",
+        Name = "SCRIPTS",
         Position = "left",
         Height = 350,
         Values = GetFiles(),
         Multi = false,
         Callback = function(val) SelectedFile = val end
+    })
+
+    local ControlSection = Tab:AddSection({
+        Name = " ",
+        Position = "left"
     })
 
     ControlSection:AddButton({
