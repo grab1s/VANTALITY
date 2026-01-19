@@ -22,8 +22,6 @@ if not isfolder(FileSystem.Configs) then makefolder(FileSystem.Configs) end
 
 local State = {
     LoadedScripts = {},
-    ColumnIndex = 0,
-    Columns = {"Center", "Right"},
     GUIColumns = {}, 
     Notifier = nil,
     TabRef = nil,
@@ -75,6 +73,32 @@ local function ResolveContainers()
         end
     end
     return false
+end
+
+local function GetOptimalColumn()
+    local cCol = State.GUIColumns["Center"]
+    local rCol = State.GUIColumns["Right"]
+    
+    if not cCol or not rCol then return "Center" end
+
+    local function count(container)
+        local c = 0
+        for _, child in pairs(container:GetChildren()) do
+            if child:IsA("Frame") and child.Visible then
+                c = c + 1
+            end
+        end
+        return c
+    end
+
+    local cCount = count(cCol)
+    local rCount = count(rCol)
+
+    if cCount <= rCount then
+        return "Center"
+    else
+        return "Right"
+    end
 end
 
 local function CreateSandboxedEnv(apiObject)
@@ -171,19 +195,13 @@ function LuauAPI:Execute(name, code)
     local API_Proxy = {}
     
     function API_Proxy.CreateSection(title)
-        State.ColumnIndex = State.ColumnIndex + 1
-        if State.ColumnIndex > #State.Columns then State.ColumnIndex = 1 end
-        
-        local colKey = State.Columns[State.ColumnIndex]
+        local colKey = GetOptimalColumn()
         local guiContainer = State.GUIColumns[colKey]
         
         if not guiContainer then
             ResolveContainers()
             guiContainer = State.GUIColumns[colKey]
-            if not guiContainer then 
-                warn("[Luau API] Containers not found!")
-                return nil 
-            end
+            if not guiContainer then return nil end
         end
         
         local oldChildren = guiContainer:GetChildren()
