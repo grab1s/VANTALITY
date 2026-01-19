@@ -6,7 +6,6 @@
     Github: https://github.com/4lpaca-pin/Fatality
 --]]
 
--- Export Types --
 export type Window = {
 	Name: string,
 	Keybind: string | Enum.KeyCode,
@@ -136,7 +135,6 @@ export type Notifier = {
 	Notify: (self, Config: Notify) -> nil
 }
 
--- Exploit Environments --
 cloneref = cloneref or function(i) return i; end;
 clonefunction = clonefunction or function(...) return ...; end;
 hookfunction = hookfunction or function(a,b) return a; end;
@@ -264,7 +262,6 @@ if game:GetService('RunService'):IsStudio() then
 	end;
 end;
 
--- Services --
 local TextService = cloneref(game:GetService('TextService'));
 local TweenService = cloneref(game:GetService('TweenService'));
 local RunService = cloneref(game:GetService('RunService'));
