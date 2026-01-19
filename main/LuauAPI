@@ -1,5 +1,3 @@
--- 111
-
 local Env = getgenv and getgenv() or _G
 
 if Env.LuauAPI then
@@ -79,11 +77,10 @@ local function ResolveContainers()
     return false
 end
 
--- ИСПРАВЛЕНИЕ: Прямая передача API
 local function CreateSandboxedEnv(apiObject)
     local envTable = {
         Vantality = apiObject,
-        script = { Name = "VantalityScript" } -- Фейковый script объект
+        script = { Name = "VantalityScript" }
     }
     
     local UserEnv = setmetatable(envTable, {
@@ -212,9 +209,23 @@ function LuauAPI:Execute(name, code)
         
         local function WrapElement(funcName, config)
             local key = config.Flag or config.Name
+            local savedVal = LoadedConfig[key]
             
-            if LoadedConfig[key] ~= nil then
-                config.Default = LoadedConfig[key]
+            if savedVal ~= nil then
+                if funcName == "AddColorPicker" and type(savedVal) == "table" then
+                    if savedVal.Color and type(savedVal.Color) == "table" then
+                        config.Default = Color3.new(savedVal.Color.R, savedVal.Color.G, savedVal.Color.B)
+                        if savedVal.Transparency then
+                            config.Transparency = savedVal.Transparency
+                        end
+                    elseif savedVal.R and savedVal.G and savedVal.B then
+                        config.Default = Color3.new(savedVal.R, savedVal.G, savedVal.B)
+                    end
+                elseif funcName == "AddKeybind" and type(savedVal) == "table" then
+                    config.Default = savedVal
+                else
+                    config.Default = savedVal
+                end
             end
             
             local Element = RealSection[funcName](RealSection, config)
@@ -259,7 +270,6 @@ function LuauAPI:Execute(name, code)
         return
     end
 
-    -- Передаем API_Proxy напрямую в создание окружения
     local Sandbox = CreateSandboxedEnv(API_Proxy)
     setfenv(func, Sandbox)
     ScriptData.Env = Sandbox
