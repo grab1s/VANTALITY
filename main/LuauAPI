@@ -1,3 +1,5 @@
+-- 111
+
 local Env = getgenv and getgenv() or _G
 
 if Env.LuauAPI then
@@ -77,10 +79,15 @@ local function ResolveContainers()
     return false
 end
 
-local function CreateSandboxedEnv(scriptName)
-    local UserEnv = setmetatable({}, {
+-- ИСПРАВЛЕНИЕ: Прямая передача API
+local function CreateSandboxedEnv(apiObject)
+    local envTable = {
+        Vantality = apiObject,
+        script = { Name = "VantalityScript" } -- Фейковый script объект
+    }
+    
+    local UserEnv = setmetatable(envTable, {
         __index = function(self, key)
-            if key == "Vantality" then return State.LoadedScripts[scriptName].API end
             return Env[key] or getfenv()[key]
         end,
         __newindex = function(self, key, value)
@@ -176,7 +183,10 @@ function LuauAPI:Execute(name, code)
         if not guiContainer then
             ResolveContainers()
             guiContainer = State.GUIColumns[colKey]
-            if not guiContainer then return nil end
+            if not guiContainer then 
+                warn("[Luau API] Containers not found!")
+                return nil 
+            end
         end
         
         local oldChildren = guiContainer:GetChildren()
@@ -249,7 +259,8 @@ function LuauAPI:Execute(name, code)
         return
     end
 
-    local Sandbox = CreateSandboxedEnv(name)
+    -- Передаем API_Proxy напрямую в создание окружения
+    local Sandbox = CreateSandboxedEnv(API_Proxy)
     setfenv(func, Sandbox)
     ScriptData.Env = Sandbox
 
