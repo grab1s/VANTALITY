@@ -1,6 +1,6 @@
 local Env = getgenv and getgenv() or _G
 
--- >> Cleanup22222
+-- >> Очистка
 if Env.SL_SCRIPT_INSTANCE and typeof(Env.SL_SCRIPT_INSTANCE.Cleanup) == "function" then
     Env.SL_SCRIPT_INSTANCE:Cleanup()
 end
@@ -17,60 +17,37 @@ local State = {
     isSystemEnabled = false,
     isActive = false,
     bindKey = Enum.KeyCode.RightShift,
-    inputConn = nil,
-    defaultCache = {} 
+    inputConn = nil
 }
 
 local Settings = {
     OffsetX = 2.5,
     OffsetY = 0.5,
-    Smoothness = 0.2, 
+    Smoothness = 0.2, -- Это только для камеры (Offset), поворот персонажа будет моментальным
     CursorId = "rbxassetid://2452296680",
 }
 
--- >> Утилиты
-local function getGyro(rootPart)
-    if not rootPart then return nil end
-    local gyro = rootPart:FindFirstChild("ShiftLockGyro_Vantality")
-    if not gyro then
-        gyro = Instance.new("BodyGyro")
-        gyro.Name = "ShiftLockGyro_Vantality"
-        gyro.P = 30000 
-        gyro.D = 500   
-        gyro.MaxTorque = Vector3.new(0, 400000, 0) 
-        gyro.Parent = rootPart
-    end
-    return gyro
-end
-
+-- >> Утилита для скрытия/показа дефолтного шифтлока
 local function toggleDefaultShiftLock(enable)
-    -- enable = true -> Показать дефолт
-    -- enable = false -> Скрыть дефолт
+    pcall(function() LocalPlayer.DevEnableMouseLock = enable end)
     
-    local guiPaths = {
+    local paths = {
         LocalPlayer:FindFirstChild("PlayerGui") and LocalPlayer.PlayerGui:FindFirstChild("ScreenGui") and LocalPlayer.PlayerGui.ScreenGui:FindFirstChild("ShiftLock"),
-        LocalPlayer:FindFirstChild("PlayerGui") and LocalPlayer.PlayerGui:FindFirstChild("ShiftLock"), -- Часто здесь
+        LocalPlayer:FindFirstChild("PlayerGui") and LocalPlayer.PlayerGui:FindFirstChild("ShiftLock"),
         game:GetService("StarterGui"):FindFirstChild("ShiftLock")
     }
 
-    -- Обработка настройки движка
-    pcall(function() LocalPlayer.DevEnableMouseLock = enable end)
-
-    -- Обработка GUI (FIX ОШИБКИ Visible)
-    for _, gui in pairs(guiPaths) do
+    for _, gui in pairs(paths) do
         if gui then
             pcall(function()
-                if gui:IsA("ScreenGui") or gui:IsA("LayerCollector") then
-                    gui.Enabled = enable
-                elseif gui:IsA("GuiObject") then -- Frame, ImageLabel, etc.
-                    gui.Visible = enable
-                end
+                if gui:IsA("ScreenGui") or gui:IsA("LayerCollector") then gui.Enabled = enable
+                elseif gui:IsA("GuiObject") then gui.Visible = enable end
             end)
         end
     end
 end
 
--- >> Render Loop
+-- >> Основной цикл
 local currentCamOffset = Vector3.new(0,0,0)
 
 local function onRenderStep(deltaTime)
@@ -83,30 +60,34 @@ local function onRenderStep(deltaTime)
     if not hrp or not hum then return end
 
     if State.isActive then
-        -- Лок и Курсор
+        -- 1. Лок курсора и иконка
         if UserInputService.MouseBehavior ~= Enum.MouseBehavior.LockCenter then
             UserInputService.MouseBehavior = Enum.MouseBehavior.LockCenter
         end
-        
         if Mouse.Icon ~= Settings.CursorId then
             Mouse.Icon = Settings.CursorId
         end
 
-        -- Камера
+        -- 2. Смещение камеры (Offset) - оставляем плавным для красоты
         local targetOff = Vector3.new(Settings.OffsetX, Settings.OffsetY, 0)
         currentCamOffset = currentCamOffset:Lerp(targetOff, math.clamp(Settings.Smoothness * 60 * deltaTime, 0, 1))
         hum.CameraOffset = currentCamOffset
 
-        -- Вращение (FIX ТРЯСКИ)
-        hum.AutoRotate = false
-        local gyro = getGyro(hrp)
-        if gyro then
-            gyro.MaxTorque = Vector3.new(0, 400000, 0)
-            local _, camY, _ = Camera.CFrame:ToOrientation()
-            gyro.CFrame = CFrame.new(hrp.Position) * CFrame.Angles(0, camY, 0)
-        end
+        -- 3. Вращение персонажа (ЖЕСТКОЕ и МОМЕНТАЛЬНОЕ)
+        hum.AutoRotate = false -- Принудительно отключаем каждый кадр (если полет включил обратно)
+        
+        -- Вычисляем угол поворота камеры ТОЛЬКО по горизонту (Y)
+        local lookVec = Camera.CFrame.LookVector
+        -- Используем atan2 для получения чистого угла поворота из вектора взгляда
+        local targetAngle = math.atan2(-lookVec.X, -lookVec.Z) 
+        
+        -- Создаем новый CFrame:
+        -- Берем ТЕКУЩУЮ позицию персонажа (hrp.Position) - это важно для совместимости с полетом/ходьбой
+        -- И применяем ТОЛЬКО вращение.
+        hrp.CFrame = CFrame.new(hrp.Position) * CFrame.Angles(0, targetAngle, 0)
+        
     else
-        -- Возврат
+        -- Возвращение в норму
         if currentCamOffset.Magnitude > 0.05 then
              currentCamOffset = currentCamOffset:Lerp(Vector3.new(0,0,0), math.clamp(Settings.Smoothness * 60 * deltaTime, 0, 1))
              hum.CameraOffset = currentCamOffset
@@ -114,10 +95,12 @@ local function onRenderStep(deltaTime)
              hum.CameraOffset = Vector3.new(0,0,0)
         end
         
-        hum.AutoRotate = true
-        Mouse.Icon = ""
-        local gyro = hrp:FindFirstChild("ShiftLockGyro_Vantality")
-        if gyro then gyro.MaxTorque = Vector3.new(0, 0, 0) end
+        -- Возвращаем управление игрой, только если мы полностью отключили режим
+        if not State.isActive then
+            hum.AutoRotate = true
+            Mouse.Icon = ""
+            -- MouseBehavior сбрасываем в DisableSystem или Input, здесь не трогаем чтобы не мигало
+        end
     end
 end
 
@@ -142,7 +125,11 @@ function Controller:EnableSystem()
     State.isSystemEnabled = true
     
     toggleDefaultShiftLock(false)
-    RunService:BindToRenderStep("SL_Render_Vantality", Enum.RenderPriority.Camera.Value + 1, onRenderStep)
+    
+    -- Приоритет Camera.Value + 1 гарантирует, что камера уже обновилась, 
+    -- и мы поворачиваем персонажа ровно туда, куда она смотрит.
+    RunService:BindToRenderStep("SL_Hard_Lock", Enum.RenderPriority.Camera.Value + 1, onRenderStep)
+    
     State.inputConn = UserInputService.InputBegan:Connect(onInput)
 end
 
@@ -151,7 +138,7 @@ function Controller:DisableSystem()
     State.isSystemEnabled = false
     State.isActive = false
     
-    pcall(function() RunService:UnbindFromRenderStep("SL_Render_Vantality") end)
+    pcall(function() RunService:UnbindFromRenderStep("SL_Hard_Lock") end)
     if State.inputConn then State.inputConn:Disconnect() end
     
     toggleDefaultShiftLock(true)
@@ -161,10 +148,9 @@ function Controller:DisableSystem()
     
     if LocalPlayer.Character then
         local hum = LocalPlayer.Character:FindFirstChild("Humanoid")
-        local hrp = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-        if hum then hum.CameraOffset = Vector3.new(0,0,0); hum.AutoRotate = true end
-        if hrp and hrp:FindFirstChild("ShiftLockGyro_Vantality") then
-            hrp.ShiftLockGyro_Vantality:Destroy()
+        if hum then 
+            hum.CameraOffset = Vector3.new(0,0,0)
+            hum.AutoRotate = true 
         end
     end
 end
@@ -185,7 +171,6 @@ function Controller:SetOffset(axis, val)
     end
 end
 
--- FIX ОШИБКИ: Добавлена функция SetSmoothness
 function Controller:SetSmoothness(val)
     local n = tonumber(val)
     if n then Settings.Smoothness = n / 20 end
@@ -196,7 +181,7 @@ function Controller:SetCursor(val)
     if tonumber(val) then Settings.CursorId = "rbxassetid://"..val else Settings.CursorId = val end
 end
 
--- >> Export
+-- >> Cleanup
 local function cleanup()
     Controller:DisableSystem()
     Env.ShiftLock = nil
