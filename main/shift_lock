@@ -1,192 +1,197 @@
+-- >> ShiftLock.luau << --
 local Env = getgenv and getgenv() or _G
 
--- >> Очистка
-if Env.SL_SCRIPT_INSTANCE and typeof(Env.SL_SCRIPT_INSTANCE.Cleanup) == "function" then
-    Env.SL_SCRIPT_INSTANCE:Cleanup()
+if Env.SHIFTLOCK_SCRIPT_INSTANCE and typeof(Env.SHIFTLOCK_SCRIPT_INSTANCE.Cleanup) == "function" then
+    Env.SHIFTLOCK_SCRIPT_INSTANCE:Cleanup()
+    task.wait(0.1)
 end
 
 local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
-local UserInputService = game:GetService("UserInputService")
 local LocalPlayer = Players.LocalPlayer
-local Mouse = LocalPlayer:GetMouse()
-local Camera = workspace.CurrentCamera
+local UserInputService = game:GetService("UserInputService")
 
--- >> Состояние
-local State = {
-    isSystemEnabled = false,
-    isActive = false,
-    bindKey = Enum.KeyCode.RightShift,
-    inputConn = nil
-}
+-- Пытаемся найти PlayerModule для хука
+local PlayerScripts = LocalPlayer:WaitForChild("PlayerScripts")
+local PlayerModule = require(PlayerScripts:WaitForChild("PlayerModule"))
+local CameraModule = PlayerModule:GetCameras()
+local MouseLockController = CameraModule.activeMouseLockController
+local MouseLockControllerMeta = getmetatable(MouseLockController) or MouseLockController
 
-local Settings = {
-    OffsetX = 2.5,
+local isEnabled = false
+local updateConnection = nil
+local cursorSearchConnection = nil
+
+-- Настройки по умолчанию
+local settings = {
+    Smoothness = 0.15, -- Чем меньше, тем плавнее (0.05 - очень плавно, 0.3 - быстро)
+    OffsetX = 1.75,
     OffsetY = 0.5,
-    Smoothness = 0.2, -- Это только для камеры (Offset), поворот персонажа будет моментальным
-    CursorId = "rbxassetid://2452296680",
+    CustomCursorId = "", -- Пусто = дефолт
+    IsCustomCursorEnabled = false
 }
 
--- >> Утилита для скрытия/показа дефолтного шифтлока
-local function toggleDefaultShiftLock(enable)
-    pcall(function() LocalPlayer.DevEnableMouseLock = enable end)
-    
-    local paths = {
-        LocalPlayer:FindFirstChild("PlayerGui") and LocalPlayer.PlayerGui:FindFirstChild("ScreenGui") and LocalPlayer.PlayerGui.ScreenGui:FindFirstChild("ShiftLock"),
-        LocalPlayer:FindFirstChild("PlayerGui") and LocalPlayer.PlayerGui:FindFirstChild("ShiftLock"),
-        game:GetService("StarterGui"):FindFirstChild("ShiftLock")
-    }
+local currentOffset = Vector3.new(0, 0, 0)
+local originalGetCameraOffset = nil
+local currentCursorImage = nil
 
-    for _, gui in pairs(paths) do
-        if gui then
-            pcall(function()
-                if gui:IsA("ScreenGui") or gui:IsA("LayerCollector") then gui.Enabled = enable
-                elseif gui:IsA("GuiObject") then gui.Visible = enable end
-            end)
+local ShiftLockController = {}
+
+-- Функция плавности (Lerp)
+local function lerp(a, b, t)
+    return a + (b - a) * t
+end
+
+-- Хук для отключения нативного смещения камеры (чтобы не было конфликта с нашей плавностью)
+local function setupHook()
+    if not MouseLockController then return end
+    
+    -- Сохраняем оригинал, если еще не сохранили
+    if not originalGetCameraOffset then
+        originalGetCameraOffset = MouseLockController.GetCameraOffset
+    end
+
+    -- Перезаписываем функцию GetCameraOffset
+    -- Мы заставляем игру думать, что нативный оффсет шифтлока равен 0,
+    -- а сами будем двигать камеру через Humanoid.CameraOffset
+    hookfunction(MouseLockController.GetCameraOffset, function(self)
+        return Vector3.new(0, 0, 0) 
+    end)
+end
+
+local function removeHook()
+    if originalGetCameraOffset and MouseLockController then
+        hookfunction(MouseLockController.GetCameraOffset, originalGetCameraOffset)
+        originalGetCameraOffset = nil
+    end
+end
+
+-- Поиск и замена курсора
+local function updateCursorTexture()
+    if not settings.IsCustomCursorEnabled or settings.CustomCursorId == "" then
+        -- Возвращаем дефолт, если найдем курсор
+        if currentCursorImage then currentCursorImage.Image = "rbxasset://textures/MouseLockedCursor.png" end
+        return 
+    end
+
+    local targetImage = settings.CustomCursorId
+    
+    -- Поддержка файлов через getcustomasset (если файл лежит в папке workspace эксплойта)
+    if not targetImage:find("rbxasset") and not targetImage:find("http") then
+        if isfile and isfile(targetImage) and getcustomasset then
+            targetImage = getcustomasset(targetImage)
+        elseif tonumber(targetImage) then
+            targetImage = "rbxassetid://" .. targetImage
+        end
+    end
+
+    -- Ищем GUI курсора. Обычно он создается PlayerModule внутри PlayerGui
+    local pGui = LocalPlayer:WaitForChild("PlayerGui")
+    -- Часто это ScreenGui с именем "ScreenGui" или "ShiftLock"
+    for _, gui in pairs(pGui:GetChildren()) do
+        if gui:IsA("ScreenGui") and gui.Name == "ScreenGui" or gui.Name == "ShiftLock" then
+            local imageLabel = gui:FindFirstChild("MouseLockLabel", true) -- Рекурсивный поиск
+            if imageLabel and imageLabel:IsA("ImageLabel") then
+                currentCursorImage = imageLabel
+                currentCursorImage.Image = targetImage
+                break
+            end
         end
     end
 end
 
--- >> Основной цикл
-local currentCamOffset = Vector3.new(0,0,0)
+-- Основной цикл обновления
+local function onRenderStepped(deltaTime)
+    if not LocalPlayer.Character then return end
+    local humanoid = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+    if not humanoid then return end
 
-local function onRenderStep(deltaTime)
-    if not State.isSystemEnabled then return end
+    -- Проверяем, активен ли шифтлок через контроллер
+    local isLocked = MouseLockController:GetIsMouseLocked()
+    
+    local targetVector = Vector3.new(0, 0, 0)
 
-    local char = LocalPlayer.Character
-    local hrp = char and char:FindFirstChild("HumanoidRootPart")
-    local hum = char and char:FindFirstChild("Humanoid")
-
-    if not hrp or not hum then return end
-
-    if State.isActive then
-        -- 1. Лок курсора и иконка
-        if UserInputService.MouseBehavior ~= Enum.MouseBehavior.LockCenter then
-            UserInputService.MouseBehavior = Enum.MouseBehavior.LockCenter
+    if isLocked and isEnabled then
+        targetVector = Vector3.new(settings.OffsetX, settings.OffsetY, 0)
+        -- Постоянно обновляем курсор, так как игра может его сбрасывать
+        if settings.IsCustomCursorEnabled then
+             -- Простая оптимизация, чтобы не искать каждый кадр, если объект жив
+             if not currentCursorImage or not currentCursorImage.Parent then
+                 updateCursorTexture()
+             elseif currentCursorImage.Image ~= settings.CustomCursorId and settings.CustomCursorId ~= "" then
+                 -- Если ID изменился или сбросился игрой
+                 updateCursorTexture() 
+             end
         end
-        if Mouse.Icon ~= Settings.CursorId then
-            Mouse.Icon = Settings.CursorId
-        end
-
-        -- 2. Смещение камеры (Offset) - оставляем плавным для красоты
-        local targetOff = Vector3.new(Settings.OffsetX, Settings.OffsetY, 0)
-        currentCamOffset = currentCamOffset:Lerp(targetOff, math.clamp(Settings.Smoothness * 60 * deltaTime, 0, 1))
-        hum.CameraOffset = currentCamOffset
-
-        -- 3. Вращение персонажа (ЖЕСТКОЕ и МОМЕНТАЛЬНОЕ)
-        hum.AutoRotate = false -- Принудительно отключаем каждый кадр (если полет включил обратно)
-        
-        -- Вычисляем угол поворота камеры ТОЛЬКО по горизонту (Y)
-        local lookVec = Camera.CFrame.LookVector
-        -- Используем atan2 для получения чистого угла поворота из вектора взгляда
-        local targetAngle = math.atan2(-lookVec.X, -lookVec.Z) 
-        
-        -- Создаем новый CFrame:
-        -- Берем ТЕКУЩУЮ позицию персонажа (hrp.Position) - это важно для совместимости с полетом/ходьбой
-        -- И применяем ТОЛЬКО вращение.
-        hrp.CFrame = CFrame.new(hrp.Position) * CFrame.Angles(0, targetAngle, 0)
-        
     else
-        -- Возвращение в норму
-        if currentCamOffset.Magnitude > 0.05 then
-             currentCamOffset = currentCamOffset:Lerp(Vector3.new(0,0,0), math.clamp(Settings.Smoothness * 60 * deltaTime, 0, 1))
-             hum.CameraOffset = currentCamOffset
-        else
-             hum.CameraOffset = Vector3.new(0,0,0)
-        end
-        
-        -- Возвращаем управление игрой, только если мы полностью отключили режим
-        if not State.isActive then
-            hum.AutoRotate = true
-            Mouse.Icon = ""
-            -- MouseBehavior сбрасываем в DisableSystem или Input, здесь не трогаем чтобы не мигало
-        end
+        -- Если выключен шифтлок, возвращаемся в 0
+        targetVector = Vector3.new(0, 0, 0)
+    end
+
+    -- Плавное смещение (Lerp)
+    -- Используем формулу плавности, зависящую от DeltaTime
+    local lerpFactor = math.clamp(deltaTime * (60 * settings.Smoothness), 0, 1) -- Нормализация под 60 FPS
+    
+    currentOffset = currentOffset:Lerp(targetVector, settings.Smoothness) -- Используем простой lerp для "тягучести"
+    
+    -- Применяем оффсет к гуманоиду
+    humanoid.CameraOffset = currentOffset
+end
+
+function ShiftLockController:enable()
+    if isEnabled then return end
+    isEnabled = true
+    setupHook() -- Отключаем нативный рывок
+    if not updateConnection then 
+        updateConnection = RunService.RenderStepped:Connect(onRenderStepped) 
     end
 end
 
--- >> Input
-local function onInput(input, gameProcessed)
-    if not State.isSystemEnabled then return end
-    if gameProcessed then return end
+function ShiftLockController:disable()
+    if not isEnabled then return end
+    isEnabled = false
+    removeHook() -- Возвращаем нативное поведение
     
-    if input.KeyCode == State.bindKey then
-        State.isActive = not State.isActive
-        if not State.isActive then
-            UserInputService.MouseBehavior = Enum.MouseBehavior.Default
-        end
+    -- Сброс оффсета
+    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+        LocalPlayer.Character.Humanoid.CameraOffset = Vector3.new(0,0,0)
+    end
+    currentOffset = Vector3.new(0,0,0)
+    
+    if updateConnection then 
+        updateConnection:Disconnect()
+        updateConnection = nil
     end
 end
 
--- >> Controller
-local Controller = {}
-
-function Controller:EnableSystem()
-    if State.isSystemEnabled then return end
-    State.isSystemEnabled = true
+function ShiftLockController:updateSetting(settingName, value)
+    if settings[settingName] == nil then return end
     
-    toggleDefaultShiftLock(false)
-    
-    -- Приоритет Camera.Value + 1 гарантирует, что камера уже обновилась, 
-    -- и мы поворачиваем персонажа ровно туда, куда она смотрит.
-    RunService:BindToRenderStep("SL_Hard_Lock", Enum.RenderPriority.Camera.Value + 1, onRenderStep)
-    
-    State.inputConn = UserInputService.InputBegan:Connect(onInput)
-end
-
-function Controller:DisableSystem()
-    if not State.isSystemEnabled then return end
-    State.isSystemEnabled = false
-    State.isActive = false
-    
-    pcall(function() RunService:UnbindFromRenderStep("SL_Hard_Lock") end)
-    if State.inputConn then State.inputConn:Disconnect() end
-    
-    toggleDefaultShiftLock(true)
-    
-    UserInputService.MouseBehavior = Enum.MouseBehavior.Default
-    Mouse.Icon = ""
-    
-    if LocalPlayer.Character then
-        local hum = LocalPlayer.Character:FindFirstChild("Humanoid")
-        if hum then 
-            hum.CameraOffset = Vector3.new(0,0,0)
-            hum.AutoRotate = true 
-        end
+    if settingName == "Smoothness" then
+        -- Инвертируем или адаптируем значение из слайдера (1-20) в (0.01 - 0.5)
+        local num = tonumber(value)
+        if num then settings.Smoothness = num / 100 end -- Пример: слайдер 10 -> 0.1
+    elseif settingName == "CustomCursorId" then
+        settings.CustomCursorId = tostring(value)
+        updateCursorTexture() -- Сразу пробуем применить
+    else
+        settings[settingName] = value
     end
 end
 
-function Controller:SetKeybind(val)
-    if typeof(val) == "EnumItem" then State.bindKey = val
-    elseif typeof(val) == "string" then
-        local keyName = val:match("Enum%.KeyCode%.(.+)") or val
-        if Enum.KeyCode[keyName] then State.bindKey = Enum.KeyCode[keyName] end
+local cleanupFunction = function()
+    isEnabled = false
+    removeHook()
+    if updateConnection then updateConnection:Disconnect() end
+    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+        LocalPlayer.Character.Humanoid.CameraOffset = Vector3.new(0,0,0)
     end
+    Env.SHIFTLOCK = nil
+    Env.SHIFTLOCK_SCRIPT_INSTANCE = nil
 end
 
-function Controller:SetOffset(axis, val)
-    local n = tonumber(val)
-    if n then
-        if axis == "X" then Settings.OffsetX = n end
-        if axis == "Y" then Settings.OffsetY = n end
-    end
-end
+Env.SHIFTLOCK = ShiftLockController
+Env.SHIFTLOCK_SCRIPT_INSTANCE = { Cleanup = cleanupFunction }
 
-function Controller:SetSmoothness(val)
-    local n = tonumber(val)
-    if n then Settings.Smoothness = n / 20 end
-end
-
-function Controller:SetCursor(val)
-    if not val then return end
-    if tonumber(val) then Settings.CursorId = "rbxassetid://"..val else Settings.CursorId = val end
-end
-
--- >> Cleanup
-local function cleanup()
-    Controller:DisableSystem()
-    Env.ShiftLock = nil
-    Env.SL_SCRIPT_INSTANCE = nil
-end
-
-Env.ShiftLock = Controller
-Env.SL_SCRIPT_INSTANCE = { Cleanup = cleanup }
+-- Автозапуск хука при загрузке скрипта не обязателен, 
+-- но если пользователь включит функцию, вызовется enable()
