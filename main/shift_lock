@@ -1,6 +1,6 @@
 local Env = getgenv and getgenv() or _G
 
--- >> Очистка старой версии перед запуском новой
+-- >> Cleanup
 if Env.SL_SCRIPT_INSTANCE and typeof(Env.SL_SCRIPT_INSTANCE.Cleanup) == "function" then
     Env.SL_SCRIPT_INSTANCE:Cleanup()
 end
@@ -12,215 +12,196 @@ local LocalPlayer = Players.LocalPlayer
 local Mouse = LocalPlayer:GetMouse()
 local Camera = workspace.CurrentCamera
 
--- >> Настройки и Состояние
+-- >> Состояние
 local State = {
-    isScriptEnabled = false, -- Главный рубильник (через GUI)
-    isLocked = false,        -- Текущее состояние шифт-лока (по кнопке)
-    connections = {},
-    defaultGuiCache = {},    -- Сюда сохраняем стандартные GUI, чтобы восстановить их
-    bindKey = Enum.KeyCode.RightShift, -- Клавиша по умолчанию
+    isSystemEnabled = false, -- Включена ли сама система (через GUI)
+    isActive = false,        -- Активен ли ShiftLock (нажата клавиша)
+    bindKey = Enum.KeyCode.RightShift,
+    gyro = nil,              -- Ссылка на наш BodyGyro
+    defaultCache = {}        -- Для восстановления
 }
 
 local Settings = {
     OffsetX = 2.5,
     OffsetY = 0.5,
-    Smoothness = 0.2,
+    Smoothness = 0.2, 
     CursorId = "rbxassetid://2452296680",
-    UseCustomCursor = true
 }
 
--- >> Вспомогательные функции
-local function getDefaultGuiObjects()
-    -- Список путей к стандартному шифт-локу
-    local targets = {}
-    
-    -- 1. PlayerGui
-    local pg = LocalPlayer:FindFirstChild("PlayerGui")
-    if pg then 
-        local sl = pg:FindFirstChild("ScreenGui") or pg:FindFirstChild("ShiftLock") -- Иногда называется по-разному
-        if sl and sl:IsA("ScreenGui") and sl:FindFirstChild("ImageLabel") then table.insert(targets, sl) end
+-- >> Утилиты
+local function getGyro(rootPart)
+    if not rootPart then return nil end
+    local gyro = rootPart:FindFirstChild("ShiftLockGyro_Vantality")
+    if not gyro then
+        gyro = Instance.new("BodyGyro")
+        gyro.Name = "ShiftLockGyro_Vantality"
+        gyro.P = 30000 -- Сила поворота (чем больше, тем резче)
+        gyro.D = 500   -- Гашение колебаний (чтобы не трясло)
+        -- Блокируем ТОЛЬКО ось Y (вращение влево-вправо). 
+        -- X и Z ставим в 0, чтобы другие скрипты (полет) могли наклонять перса.
+        gyro.MaxTorque = Vector3.new(0, 400000, 0) 
+        gyro.Parent = rootPart
     end
-
-    -- 2. StarterGui (на всякий случай)
-    local sg = game:GetService("StarterGui")
-    if sg then
-        local sl = sg:FindFirstChild("ShiftLock")
-        if sl then table.insert(targets, sl) end
-    end
-    
-    return targets
+    return gyro
 end
 
-local function toggleDefaultShiftLock(enable)
-    -- Если enable = true, мы ВОССТАНАВЛИВАЕМ дефолт. Если false - СКРЫВАЕМ.
-    
-    -- Обработка GUI
-    if not enable then
-        -- Скрываем и запоминаем
-        State.defaultGuiCache = getDefaultGuiObjects()
-        for _, gui in pairs(State.defaultGuiCache) do
-            if gui and gui.Parent then
-                gui.Enabled = false
-            end
+local function toggleDefaultShiftLock(visible)
+    -- Прячем/Показываем стандартную иконку и отключаем встроенный лок
+    local guiPaths = {
+        LocalPlayer:FindFirstChild("PlayerGui") and LocalPlayer.PlayerGui:FindFirstChild("ScreenGui") and LocalPlayer.PlayerGui.ScreenGui:FindFirstChild("ShiftLock"), -- Стандартный путь
+        LocalPlayer:FindFirstChild("PlayerGui") and LocalPlayer.PlayerGui:FindFirstChild("ShiftLock"), -- Альтернативный
+    }
+
+    if not visible then
+        pcall(function() LocalPlayer.DevEnableMouseLock = false end)
+        for _, gui in pairs(guiPaths) do
+            if gui then gui.Visible = false end
         end
     else
-        -- Восстанавливаем
-        for _, gui in pairs(State.defaultGuiCache) do
-            if gui and gui.Parent then
-                gui.Enabled = true
-            end
+        pcall(function() LocalPlayer.DevEnableMouseLock = true end)
+        for _, gui in pairs(guiPaths) do
+            if gui then gui.Visible = true end
         end
-        State.defaultGuiCache = {}
     end
-    
-    -- Обработка настройки игрока
-    pcall(function()
-        LocalPlayer.DevEnableMouseLock = enable -- Вкл/Выкл стандартную возможность
-    end)
 end
 
--- >> Основная логика обновления (RenderStepped)
-local currentOffset = Vector3.new(0,0,0)
+-- >> Основной цикл (RenderStepped)
+local currentCamOffset = Vector3.new(0,0,0)
 
 local function onRenderStep(deltaTime)
-    if not State.isScriptEnabled then return end
-    
+    if not State.isSystemEnabled then return end
+
     local char = LocalPlayer.Character
     local hrp = char and char:FindFirstChild("HumanoidRootPart")
-    local humanoid = char and char:FindFirstChild("Humanoid")
-    
-    if not hrp or not humanoid then return end
+    local hum = char and char:FindFirstChild("Humanoid")
 
-    -- Если режим активирован кнопкой
-    if State.isLocked then
-        -- 1. Лок мыши
+    if not hrp or not hum then return end
+
+    if State.isActive then
+        -- 1. Лок мыши и курсор
         UserInputService.MouseBehavior = Enum.MouseBehavior.LockCenter
+        Mouse.Icon = Settings.CursorId
+
+        -- 2. Плавный оффсет камеры
+        local targetOff = Vector3.new(Settings.OffsetX, Settings.OffsetY, 0)
+        currentCamOffset = currentCamOffset:Lerp(targetOff, math.clamp(Settings.Smoothness * 60 * deltaTime, 0, 1))
+        hum.CameraOffset = currentCamOffset
+
+        -- 3. Вращение персонажа (Через BodyGyro - FIX ТРЯСКИ и ПОЛЕТА)
+        hum.AutoRotate = false -- Отключаем нативное вращение
         
-        -- 2. Кастомный курсор
-        if Settings.UseCustomCursor then
-            Mouse.Icon = Settings.CursorId
+        local gyro = getGyro(hrp)
+        if gyro then
+            gyro.MaxTorque = Vector3.new(0, 400000, 0) -- Включаем силу
+            -- Поворачиваем Gyro туда, куда смотрит камера (только Y)
+            local _, camY, _ = Camera.CFrame:ToOrientation()
+            gyro.CFrame = CFrame.new(hrp.Position) * CFrame.Angles(0, camY, 0)
         end
 
-        -- 3. Плавный оффсет камеры
-        local targetVec = Vector3.new(Settings.OffsetX, Settings.OffsetY, 0)
-        currentOffset = currentOffset:Lerp(targetVec, math.clamp(Settings.Smoothness * 60 * deltaTime, 0, 1))
-        humanoid.CameraOffset = currentOffset
-
-        -- 4. Вращение персонажа (Исправленное, без дерганья)
-        -- Отключаем авто-поворот, чтобы скрипт сам управлял
-        humanoid.AutoRotate = false 
-        
-        local camCFrame = Camera.CFrame
-        local x, y, z = camCFrame:ToOrientation()
-        
-        -- Создаем новый CFrame: позиция персонажа + угол поворота камеры по Y
-        -- Используем Lerp для мягкости, но достаточно быстрый (0.5), чтобы не было "желейности" при стрельбе
-        local newCFrame = CFrame.new(hrp.Position) * CFrame.Angles(0, y, 0)
-        hrp.CFrame = hrp.CFrame:Lerp(newCFrame, 0.6) 
-        
     else
-        -- Если режим выключен (но скрипт активен), плавно возвращаем камеру в 0
-        if currentOffset.Magnitude > 0.01 then
-            currentOffset = currentOffset:Lerp(Vector3.new(0,0,0), math.clamp(Settings.Smoothness * 60 * deltaTime, 0, 1))
-            humanoid.CameraOffset = currentOffset
+        -- Если выключено (возврат в норму)
+        if currentCamOffset.Magnitude > 0.05 then
+             currentCamOffset = currentCamOffset:Lerp(Vector3.new(0,0,0), math.clamp(Settings.Smoothness * 60 * deltaTime, 0, 1))
+             hum.CameraOffset = currentCamOffset
         else
-            humanoid.CameraOffset = Vector3.new(0,0,0)
+             hum.CameraOffset = Vector3.new(0,0,0)
         end
         
-        -- Возвращаем дефолтные настройки персонажа
-        humanoid.AutoRotate = true
+        hum.AutoRotate = true
         Mouse.Icon = ""
-        -- MouseBehavior сбрасывать не обязательно каждый кадр, но можно для надежности,
-        -- если мышь не зажата (ПКМ).
+        
+        -- Отключаем Gyro
+        local gyro = hrp:FindFirstChild("ShiftLockGyro_Vantality")
+        if gyro then gyro.MaxTorque = Vector3.new(0, 0, 0) end
     end
 end
 
--- >> Обработка ввода (Клавиша)
+-- >> Обработка ввода
 local function onInput(input, gameProcessed)
-    if not State.isScriptEnabled then return end
+    if not State.isSystemEnabled then return end
     if gameProcessed then return end
     
+    -- Проверка клавиши (учитываем разные типы ввода)
     if input.KeyCode == State.bindKey then
-        State.isLocked = not State.isLocked
+        State.isActive = not State.isActive
         
-        -- При выключении сразу сбрасываем курсор
-        if not State.isLocked then
+        if not State.isActive then
             UserInputService.MouseBehavior = Enum.MouseBehavior.Default
         end
     end
 end
 
--- >> Контроллер (Интерфейс для GUI)
-local ShiftLockController = {}
+-- >> API Контроллер
+local Controller = {}
 
-function ShiftLockController:EnableSystem()
-    if State.isScriptEnabled then return end
-    State.isScriptEnabled = true
+function Controller:EnableSystem()
+    if State.isSystemEnabled then return end
+    State.isSystemEnabled = true
+    toggleDefaultShiftLock(false) -- Скрываем дефолт
     
-    -- Скрываем дефолтный
-    toggleDefaultShiftLock(false)
-    
-    -- Подключаем события
-    -- Используем BindToRenderStep с высоким приоритетом для плавности камеры
-    RunService:BindToRenderStep("CustomShiftLock_Update", Enum.RenderPriority.Character.Value + 1, onRenderStep)
-    
-    local inputConn = UserInputService.InputBegan:Connect(onInput)
-    table.insert(State.connections, inputConn)
+    RunService:BindToRenderStep("SL_Render", Enum.RenderPriority.Camera.Value + 1, onRenderStep)
+    State.inputConn = UserInputService.InputBegan:Connect(onInput)
 end
 
-function ShiftLockController:DisableSystem()
-    if not State.isScriptEnabled then return end
-    State.isScriptEnabled = false
-    State.isLocked = false -- Сбрасываем лок
+function Controller:DisableSystem()
+    if not State.isSystemEnabled then return end
+    State.isSystemEnabled = false
+    State.isActive = false
     
-    -- Очищаем события
-    RunService:UnbindFromRenderStep("CustomShiftLock_Update")
-    for _, conn in pairs(State.connections) do conn:Disconnect() end
-    State.connections = {}
+    RunService:UnbindFromRenderStep("SL_Render")
+    if State.inputConn then State.inputConn:Disconnect() end
     
-    -- Восстанавливаем персонажа
-    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
-        LocalPlayer.Character.Humanoid.CameraOffset = Vector3.new(0,0,0)
-        LocalPlayer.Character.Humanoid.AutoRotate = true
-    end
+    toggleDefaultShiftLock(true) -- Восстанавливаем дефолт
+    
+    -- Чистка
     UserInputService.MouseBehavior = Enum.MouseBehavior.Default
     Mouse.Icon = ""
-    
-    -- Восстанавливаем дефолтный шифт-лок игры
-    toggleDefaultShiftLock(true)
-end
-
-function ShiftLockController:SetOffset(axis, val)
-    if axis == "X" then Settings.OffsetX = tonumber(val) or Settings.OffsetX end
-    if axis == "Y" then Settings.OffsetY = tonumber(val) or Settings.OffsetY end
-end
-
-function ShiftLockController:SetKeybind(key)
-    if typeof(key) == "EnumItem" then
-        State.bindKey = key
+    if LocalPlayer.Character then
+        local hum = LocalPlayer.Character:FindFirstChild("Humanoid")
+        local hrp = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+        if hum then 
+            hum.CameraOffset = Vector3.new(0,0,0) 
+            hum.AutoRotate = true
+        end
+        if hrp then
+            local g = hrp:FindFirstChild("ShiftLockGyro_Vantality")
+            if g then g:Destroy() end
+        end
     end
 end
 
-function ShiftLockController:SetSmoothness(val)
-    local n = tonumber(val)
-    if n then Settings.Smoothness = n / 20 end
-end
-
-function ShiftLockController:SetCursor(id)
-    if not id then return end
-    if not tostring(id):find("rbxassetid") and tonumber(id) then
-        Settings.CursorId = "rbxassetid://"..id
-    else
-        Settings.CursorId = id
+function Controller:SetKeybind(val)
+    -- Универсальная обработка бинда
+    if typeof(val) == "EnumItem" then
+        State.bindKey = val
+    elseif typeof(val) == "string" then
+        -- Если библиотека вернула "Enum.KeyCode.LeftAlt" или просто "LeftAlt"
+        local keyName = val:match("Enum%.KeyCode%.(.+)") or val
+        if Enum.KeyCode[keyName] then
+            State.bindKey = Enum.KeyCode[keyName]
+        end
+    elseif typeof(val) == "table" and val.Name then
+         -- Некоторые либы (Solaris) возвращают таблицу
+         State.bindKey = val
     end
 end
 
--- >> Cleanup / Export
+function Controller:SetOffset(axis, val)
+    if axis == "X" then Settings.OffsetX = tonumber(val) end
+    if axis == "Y" then Settings.OffsetY = tonumber(val) end
+end
+
+function Controller:SetCursor(val)
+    if not val then return end
+    if tonumber(val) then Settings.CursorId = "rbxassetid://"..val else Settings.CursorId = val end
+end
+
+-- >> Экспорт
 local function cleanup()
-    ShiftLockController:DisableSystem()
+    Controller:DisableSystem()
     Env.ShiftLock = nil
     Env.SL_SCRIPT_INSTANCE = nil
 end
 
-Env.ShiftLock = ShiftLockController
+Env.ShiftLock = Controller
 Env.SL_SCRIPT_INSTANCE = { Cleanup = cleanup }
