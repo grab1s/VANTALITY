@@ -1,1 +1,202 @@
 
+local Env = getgenv and getgenv() or _G
+
+-- Очистка предыдущей версии скрипта при перезапуске
+if Env.SL_SCRIPT_INSTANCE and typeof(Env.SL_SCRIPT_INSTANCE.Cleanup) == "function" then
+    Env.SL_SCRIPT_INSTANCE:Cleanup()
+    task.wait(0.1)
+end
+
+local RunService = game:GetService("RunService")
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local GuiService = game:GetService("GuiService")
+local LocalPlayer = Players.LocalPlayer
+local Mouse = LocalPlayer:GetMouse()
+local Camera = workspace.CurrentCamera
+
+if not Camera then return end
+
+-- Настройки по умолчанию
+local isEnabled = false
+local settings = {
+    OffsetX = 2.5,
+    OffsetY = 0.5,
+    Smoothness = 0.2, -- Чем меньше, тем резче (0.05 - резко, 0.3 - плавно)
+    CursorId = "rbxassetid://2452296680", -- Точка по умолчанию
+    UseCustomCursor = true
+}
+
+-- Переменные состояния
+local connection = nil
+local originalMouseIcon = ""
+local currentOffset = Vector3.new(0, 0, 0)
+local originalAutoRotate = true
+local isDefaultDisabled = false
+
+local ShiftLockController = {}
+
+-- Функция линейной интерполяции
+local function lerp(a, b, t)
+    return a + (b - a) * t
+end
+
+-- Удаление стандартного шифт-лока (как ты просил)
+local function disableDefaultShiftLock()
+    if isDefaultDisabled then return end
+    
+    local paths = {
+        function() return game:GetService("Players").LocalPlayer.PlayerGui:FindFirstChild("ShiftLock") end,
+        function() return game:GetService("StarterGui"):FindFirstChild("ShiftLock") end,
+        function() return game:GetService("CoreGui").RobloxGui.Modules.Settings.Integrations.SettingFields:FindFirstChild("ShiftLock") end
+    }
+
+    for _, getter in pairs(paths) do
+        pcall(function()
+            local instance = getter()
+            if instance then 
+                instance:Destroy() 
+            end
+        end)
+    end
+    
+    -- Дополнительно отключаем через настройки, если возможно
+    pcall(function()
+        LocalPlayer.DevEnableMouseLock = false
+    end)
+    
+    isDefaultDisabled = true
+end
+
+local function update(deltaTime)
+    if not isEnabled or not LocalPlayer.Character then return end
+    
+    local humanoid = LocalPlayer.Character:FindFirstChild("Humanoid")
+    local hrp = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+    
+    if not humanoid or not hrp then return end
+
+    -- 1. Блокировка курсора
+    if UserInputService.MouseBehavior ~= Enum.MouseBehavior.LockCenter then
+        UserInputService.MouseBehavior = Enum.MouseBehavior.LockCenter
+    end
+    
+    -- 2. Кастомный курсор
+    if settings.UseCustomCursor and Mouse.Icon ~= settings.CursorId then
+        Mouse.Icon = settings.CursorId
+    end
+
+    -- 3. Плавный оффсет камеры
+    -- Целевой оффсет
+    local targetOffset = Vector3.new(settings.OffsetX, settings.OffsetY, 0)
+    
+    -- Плавное изменение (Lerp)
+    -- Мы используем Vector3:Lerp для плавности
+    currentOffset = currentOffset:Lerp(targetOffset, math.clamp(settings.Smoothness * 60 * deltaTime, 0, 1))
+    
+    -- Применяем к гуманоиду
+    humanoid.CameraOffset = currentOffset
+
+    -- 4. Вращение персонажа (Фикс поворота при большом оффсете)
+    -- Отключаем стандартное вращение, чтобы оффсет не ломал его
+    if humanoid.AutoRotate then
+        humanoid.AutoRotate = false
+    end
+
+    -- Вычисляем вращение камеры по Y (горизонталь)
+    local camCFrame = Camera.CFrame
+    local _, yRot, _ = camCFrame:ToOrientation()
+    
+    -- Создаем новый CFrame для персонажа: позиция та же, поворот берем от камеры
+    -- Это гарантирует, что персонаж смотрит туда, куда смотрит камера, независимо от OffsetX
+    local newCFrame = CFrame.new(hrp.Position) * CFrame.Angles(0, yRot, 0)
+    
+    -- Плавно поворачиваем персонажа (можно сделать мгновенно, но с Lerp приятнее)
+    hrp.CFrame = hrp.CFrame:Lerp(newCFrame, 0.5)
+end
+
+function ShiftLockController:enable()
+    if isEnabled then return end
+    
+    -- Сохраняем и отключаем дефолт
+    disableDefaultShiftLock()
+    originalMouseIcon = Mouse.Icon
+    
+    local char = LocalPlayer.Character
+    if char and char:FindFirstChild("Humanoid") then
+        originalAutoRotate = char.Humanoid.AutoRotate
+    end
+    
+    isEnabled = true
+    
+    if not connection then
+        -- Используем RenderStepped для максимальной плавности камеры
+        connection = RunService.RenderStepped:Connect(update)
+    end
+end
+
+function ShiftLockController:disable()
+    if not isEnabled then return end
+    isEnabled = false
+    
+    -- Восстанавливаем настройки
+    UserInputService.MouseBehavior = Enum.MouseBehavior.Default
+    Mouse.Icon = originalMouseIcon
+    
+    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+        LocalPlayer.Character.Humanoid.CameraOffset = Vector3.new(0,0,0)
+        LocalPlayer.Character.Humanoid.AutoRotate = originalAutoRotate
+    end
+    
+    currentOffset = Vector3.new(0,0,0)
+    
+    if connection then
+        connection:Disconnect()
+        connection = nil
+    end
+end
+
+-- Функции настройки из GUI
+function ShiftLockController:setOffset(axis, value)
+    local num = tonumber(value)
+    if not num then return end
+    
+    if axis == "X" then
+        settings.OffsetX = num
+    elseif axis == "Y" then
+        settings.OffsetY = num
+    end
+end
+
+function ShiftLockController:setSmoothness(val)
+    local num = tonumber(val)
+    if num then
+        -- Инвертируем логику для слайдера: 
+        -- Если в слайдере 1 (медленно) -> код 0.05
+        -- Если в слайдере 10 (быстро) -> код 0.5
+        settings.Smoothness = num / 20 -- Примерная калибровка
+    end
+end
+
+function ShiftLockController:setCursor(id)
+    if type(id) == "string" and #id > 0 then
+        -- Поддержка как ID, так и полного URL
+        if not id:find("rbxassetid://") and tonumber(id) then
+            settings.CursorId = "rbxassetid://" .. id
+        else
+            settings.CursorId = id
+        end
+    end
+end
+
+local cleanupFunction = function()
+    ShiftLockController:disable()
+    if connection then connection:Disconnect() end
+    if Env.ShiftLock == ShiftLockController then Env.ShiftLock = nil end
+    Env.SL_SCRIPT_INSTANCE = nil
+end
+
+Env.ShiftLock = ShiftLockController
+Env.SL_SCRIPT_INSTANCE = { Cleanup = cleanupFunction }
+
+-- Авто-запуск не нужен, так как управление через GUI
