@@ -4959,12 +4959,13 @@ function Fatality.new(Window: Window)
 		return ConfigElement;
 	end;
 
-    function Fatal:AddMenu(Menu : Menu)
+function Fatal:AddMenu(Menu : Menu) -- ezezez
 		Menu = Menu or {};
         if not Fatality:CanShow(Menu) then return { AddSection = function() return Fatality.Dummy end, AddPreview = function() return Fatality.Dummy end } end
 		Menu.Name = Menu.Name or "EXAMPLE";
 		Menu.Icon = Menu.Icon or "eye";
-		Menu.AutoFill = (Menu.AutoFill == nil and true) or false;
+		-- FIX: Отключаем AutoFill принудительно, чтобы работал скролл
+		Menu.AutoFill = false; 
 
 		local MenuLib = {};
 		local MenuButton = Instance.new("Frame")
@@ -5038,7 +5039,9 @@ function Fatality.new(Window: Window)
 		MenuLiber.ClipsDescendants = true
 		MenuLiber.Size = UDim2.new(1, 0, 1, 0)
 		MenuLiber.ZIndex = 7
-		Left.Name = Fatality:RandomString()
+		
+        -- LEFT COLUMN
+		Left.Name = "Left" -- Было рандомное имя, для LuauAPI лучше дать точное
 		Left.Parent = MenuLiber
 		Left.Active = true
 		Left.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -5054,8 +5057,11 @@ function Fatality.new(Window: Window)
 		UIListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 		UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
 		UIListLayout.Padding = UDim.new(0, 5)
-		UIListLayout.VerticalFlex = (Menu.AutoFill and Enum.UIFlexAlignment.Fill) or Enum.UIFlexAlignment.None;
-		Center.Name = Fatality:RandomString()
+        -- FIX: Убираем VerticalFlex
+		UIListLayout.VerticalFlex = Enum.UIFlexAlignment.None; 
+
+        -- CENTER COLUMN
+		Center.Name = "Center"
 		Center.Parent = MenuLiber
 		Center.Active = true
 		Center.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -5071,8 +5077,11 @@ function Fatality.new(Window: Window)
 		UIListLayout_2.HorizontalAlignment = Enum.HorizontalAlignment.Center
 		UIListLayout_2.SortOrder = Enum.SortOrder.LayoutOrder
 		UIListLayout_2.Padding = UDim.new(0, 5)
-		UIListLayout_2.VerticalFlex = (Menu.AutoFill and Enum.UIFlexAlignment.Fill) or Enum.UIFlexAlignment.None;
-		Right.Name = Fatality:RandomString()
+        -- FIX: Убираем VerticalFlex
+		UIListLayout_2.VerticalFlex = Enum.UIFlexAlignment.None;
+
+        -- RIGHT COLUMN
+		Right.Name = "Right"
 		Right.Parent = MenuLiber
 		Right.Active = true
 		Right.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -5088,11 +5097,17 @@ function Fatality.new(Window: Window)
 		UIListLayout_3.HorizontalAlignment = Enum.HorizontalAlignment.Center
 		UIListLayout_3.SortOrder = Enum.SortOrder.LayoutOrder
 		UIListLayout_3.Padding = UDim.new(0, 5)
-		UIListLayout_3.VerticalFlex = (Menu.AutoFill and Enum.UIFlexAlignment.Fill) or Enum.UIFlexAlignment.None;
+        -- FIX: Убираем VerticalFlex
+		UIListLayout_3.VerticalFlex = Enum.UIFlexAlignment.None;
 
 		local BindEvent = Instance.new('BindableEvent',MenuLiber);
 		BindEvent.Name = Fatality:RandomString();
-		if not Menu.AutoFill then Fatality:ScrollSignal(Right,UIListLayout_3,'Y'); Fatality:ScrollSignal(Center,UIListLayout_2,'Y'); Fatality:ScrollSignal(Left,UIListLayout,'Y'); else Right.CanvasSize = UDim2.new(0,0,0,0); Left.CanvasSize = UDim2.new(0,0,0,0); Center.CanvasSize = UDim2.new(0,0,0,0); end;
+		
+        -- FIX: Всегда включаем обновление скролла
+        Fatality:ScrollSignal(Right,UIListLayout_3,'Y'); 
+        Fatality:ScrollSignal(Center,UIListLayout_2,'Y'); 
+        Fatality:ScrollSignal(Left,UIListLayout,'Y'); 
+
 		Fatal.Signal.Event:Connect(function(Bool)
 			if Bool then
 				Fatality:CreateAnimation(MenuButton,0.5,{ BackgroundTransparency = (MenuLiber.Visible and 0) or 1 })
@@ -5139,6 +5154,10 @@ function Fatality.new(Window: Window)
 			end;
 		end)
 		Fatality:NewInput(MenuButton,function() for i,v in next , Fatal.Menus do if v.Root == MenuLiber then Fatal.MenuSelected = v; v.ValueSelect(true) else v.ValueSelect(false) end; end; end);
+		
+		-- Дальше идут AddPreview, AddListBox и AddSection (оставь их как в оригинале, они вложены в AddMenu)
+        -- Но так как я даю только функцию AddMenu, убедись, что закрывающие 'end' совпадают.
+        -- Ниже я просто копирую остаток функции AddMenu из твоего файла, чтобы ты мог заменить целиком блок.
 		
 		function MenuLib:AddPreview(Config: Preview)
 			Config = Config or {}; Config.Name = Config.Name or "PREVIEW"; Config.Position = Config.Position or "left"; Config.Height = Config.Height or 0;
@@ -5477,7 +5496,7 @@ function Fatality.new(Window: Window)
 			});
 		end;
 
-		return MenuLib;
+		return MenuLib; --lolez
 	end;
 
 	do
