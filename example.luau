@@ -1,0 +1,174 @@
+-- VANTALITY LUAU API EXAMPLE
+-- тут показаны все элементы и правильная логика работы.
+
+
+-- 1. просто создаёшь секцию, дав ей название
+local UI = Vantality.CreateSection("LUAU API  EXAMPLE")
+
+
+-- 2. обычный тоггл.
+UI:AddToggle({
+    Name = "Simple Toggle",
+    Default = false,
+    Callback = function(state)
+        print("Toggle state:", state)
+    end
+})
+
+-- тоггл с доп.элементами внутри шестерёнки (Option). полезно, чтобы не засорять секцию.
+local MasterSwitch = UI:AddToggle({
+    Name = "Master Switch (+Settings)",
+    Default = true,
+    Option = true, -- включает доп. меню справа
+    Risky = true,  -- красит текст в оранжевый (типа "особенная" или "опасная" функция, юзай как хочешь
+    Callback = function(state)
+        print("Master:", state)
+    end
+})
+
+-- добавляем элементы во ВНУТРЬ Master Switch. (добавлять необязательно, но удобно при разработке)
+local SubMenu = MasterSwitch.Option
+
+-- обращаемся к .Option, который вернул прошлый метод. 
+SubMenu:AddToggle({
+    Name = "Nested Toggle",
+    Default = false,
+    Callback = function(v) print("Inside master:", v) end
+})
+
+SubMenu:AddSlider({
+    Name = "Nested Slider",
+    Range = {0, 100},
+    Default = 50,
+    Callback = function(v) print("Slider inside toggle:", v) end
+})
+
+
+-- 3. обычный интовый слайдер.
+UI:AddSlider({
+    Name = "Integer Slider",
+    Range = {1, 100}, -- Мин, Макс
+    Default = 50,
+    Step = 1,         -- Шаг
+    Type = "%",       -- Просто текст после цифры
+    Callback = function(val)
+        -- val приходит как целое число
+    end
+})
+
+-- слайдер для float значений.
+local PreciseSlider = UI:AddSlider({
+    Name = "Precise Slider",
+    Range = {0, 1},
+    Default = 0.5,
+    Precise = 2,   -- Сколько знаков после запятой (0.50)
+    Option = true, -- У слайдеров тоже может быть подменю, если нужно
+    Callback = function(val)
+        print("Float val:", val)
+    end
+})
+
+-- кнопка внутри настроек слайдера (почему бы и нет?)
+PreciseSlider.Option:AddButton({
+    Name = "Reset to 0.5",
+    Callback = function()
+        print("тут должна быть логика сброса") 
+        -- P.S. сеттеры значений добавятся позже, пока просто коллбек
+    end
+})
+
+
+-- 4. dropdowns (списки): одиночный выбор.
+UI:AddDropdown({
+    Name = "Weapon Selector",
+    Values = {"AK-47", "M4A1", "AWP", "Deagle"},
+    Default = "AK-47",
+    Multi = false,
+    Option = true, 
+    Callback = function(val)
+        print("Selected:", val) -- возвращает строку
+    end
+})
+
+-- мульти-выбор (несколько параметров).
+UI:AddDropdown({
+    Name = "ESP Filters",
+    Values = {"Players", "Items", "Vehicles"},
+    Default = {["Players"] = true, ["Items"] = false}, -- Формат для мульти
+    Multi = true,
+    Callback = function(val)
+        -- тут val — это таблица: {Players = true, Items = false ...}
+        for name, enabled in pairs(val) do
+            if enabled then print("Filter active:", name) end
+        end
+    end
+})
+
+
+-- 5. цвета и бинды: колорпикер. поддерживает прозрачность.
+local ColorSettings = UI:AddColorPicker({
+    Name = "Chams Color",
+    Default = Color3.fromRGB(170, 0, 255),
+    Transparency = 0.5, -- от 0 до 1
+    Option = true,
+    Callback = function(color, alpha)
+        -- color: Color3, alpha: number
+        print("Color updated:", color, "Alpha:", alpha)
+    end
+})
+
+-- бинды клавиш.
+UI:AddKeybind({
+    Name = "Aimbot Key",
+    Default = Enum.KeyCode.E, -- можно и строкой "E", но Enum надежнее
+    Option = true, -- у бинда тоже есть меню (обычно туда ставят режим Hold/Toggle)
+    Callback = function(key)
+        print("New key bound:", key)
+    end
+})
+
+
+-- 6. кнопки и уведомления
+UI:AddButton({
+    Name = "Send Notification",
+    Callback = function()
+        -- встроенная система уведов. иконки берутся из Lucide в библиотеке.
+        Vantality.Notify({
+            Title = "Success",
+            Content = "Config saved to clipboard!",
+            Icon = "save", 
+            Duration = 3
+        })
+    end
+})
+
+
+-- 7. ЛОГИКА (ГЛАВНЫЙ ЦИКЛ)
+---------------------------
+-- ВАЖНО: никогда не используй game:GetService("RunService").RenderStepped:Connect(...) напрямую
+-- если ты перезагрузишь скрипт, старый коннект останется висеть и будет дублироваться.
+-- Vantality.Bind сам всё почистит при выгрузке.
+
+local Counter = 0
+Vantality.Bind(game:GetService("RunService").RenderStepped, function(dt)
+    Counter = Counter + 1
+    -- пример логики, которая выполняется каждый кадр
+    if Counter % 600 == 0 then
+        -- print("Script is alive. Frames:", Counter)
+    end
+end)
+
+
+-- 8. ВЫГРУЗКА (CLEANUP)
+------------------------
+-- эта функция вызывается автоматически, когда ты нажимаешь "Unload Script" 
+-- или удаляешь файл через меню.
+-- обязательно сбрасывай тут все изменения в игре (FOV, визуалы и т.д.).
+
+function OnUnload()
+    print(">> Script unloaded via API.")
+    print(">> UI removed automatically, connections cleared.")
+    
+    -- пример: вернули гравитацию как была
+    -- workspace.Gravity = 196.2
+end
