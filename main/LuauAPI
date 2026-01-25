@@ -1,1 +1,389 @@
-local v0=(getgenv and getgenv()) or _G ;if v0.LuauAPI then local v66=0;while true do if (v66==0) then v0.LuauAPI:UnloadAll();v0.LuauAPI=nil;break;end end end local v1={};v0.LuauAPI=v1;local v3=game:GetService("HttpService");local v4={Root="Vantality",Scripts="Vantality/scripts",Configs="Vantality/scripts/configs"};if  not isfolder(v4.Root) then makefolder(v4.Root);end if  not isfolder(v4.Scripts) then makefolder(v4.Scripts);end if  not isfolder(v4.Configs) then makefolder(v4.Configs);end local v5={LoadedScripts={},GUIColumns={},Notifier=nil,TabRef=nil,ListBoxRef=nil};local function v6(v17) return v17:match("([^\\/]+)$");end local function v7() local v18={};for v67,v68 in pairs(listfiles(v4.Scripts)) do local v69=0 + 0 ;local v70;while true do if (v69==(0 -0)) then v70=v6(v68);if (v70 and (v70~="configs")) then table.insert(v18,v70);end break;end end end return v18;end local function v8() local v19=0 -0 ;local v20;while true do if (v19==(3 -2)) then for v143,v144 in pairs(v20:GetDescendants()) do if (v144:IsA("TextLabel") and (v144.Text=="SCRIPTS") and v144.Visible) then local v159=0 + 0 ;local v160;local v161;local v162;while true do if (v159==(4 -2)) then v162=v161.Parent;if  not v162 then continue;end v159=3 -0 ;end if ((870 -(550 + 317))==v159) then for v175,v176 in pairs(v162:GetChildren()) do if v176:IsA("ScrollingFrame") then local v180=0 + 0 ;local v181;while true do if (v180==(0 -0)) then v181=v176.Position.X.Scale;if (math.abs(v181-(0.5 -0) )<(0.05 + 0)) then v5.GUIColumns['Center']=v176;elseif (math.abs(v181-(0.825 -0) )<(1413.05 -(447 + 966))) then v5.GUIColumns['Right']=v176;end break;end end end end if (v5.GUIColumns['Center'] and v5.GUIColumns['Right']) then return true;end break;end if (v159==0) then v160=v144.Parent;if  not v160 then continue;end v159=1;end if (v159==(2 -1)) then v161=v160.Parent;if  not v161 then continue;end v159=1819 -(1703 + 114) ;end end end end return false;end if (v19==(701 -(376 + 325))) then v20=v0.ahkgbs_instance and v0.ahkgbs_instance.Main ;if  not v20 then return false;end v19=1 -0 ;end end end local function v9() local v21=0 -0 ;local v22;local v23;local v24;local v25;local v26;while true do if (v21==(1 + 0)) then if ( not v22 or  not v23) then return "Center";end v24=nil;v21=4 -2 ;end if (v21==(14 -(9 + 5))) then v22=v5.GUIColumns['Center'];v23=v5.GUIColumns['Right'];v21=377 -(85 + 291) ;end if (v21==(1268 -(243 + 1022))) then v26=v24(v23);if (v25<=v26) then return "Center";else return "Right";end break;end if (v21==(1826 -(1195 + 629))) then function v24(v145) local v146=0 -0 ;for v154,v155 in pairs(v145:GetChildren()) do if (v155:IsA("Frame") and v155.Visible) then v146=v146 + 1 ;end end return v146;end v25=v24(v22);v21=244 -(187 + 54) ;end end end local function v10(v27) local v28={Vantality=v27,script={Name="VantalityScript"}};local v29=setmetatable(v28,{__index=function(v71,v72) return v0[v72] or getfenv()[v72] ;end,__newindex=function(v73,v74,v75) getfenv()[v74]=v75;end});return v29;end local function v11(v30) local v31=0 + 0 ;local v32;local v33;local v34;local v35;while true do if (v31==(782 -(162 + 618))) then v34,v35=pcall(v3.JSONEncode,v3,v33);if v34 then writefile(v4.Configs   .. "/"   .. v30 ,v35);end break;end if (v31==(1181 -(1123 + 57))) then v33={};for v147,v148 in pairs(v32.ConfigRegistry) do if v148.GetValue then v33[v147]=v148:GetValue();end end v31=2 + 0 ;end if (v31==0) then v32=v5.LoadedScripts[v30];if ( not v32 or  not v32.ConfigRegistry) then return;end v31=1 + 0 ;end end end local function v12(v36) local v37=v4.Configs   .. "/"   .. v36 ;if isfile(v37) then local v100=254 -(163 + 91) ;local v101;local v102;local v103;while true do if (v100==(1931 -(1869 + 61))) then if (v102 and (type(v103)=="table")) then return v103;end break;end if ((0 + 0)==v100) then v101=readfile(v37);v102,v103=pcall(v3.JSONDecode,v3,v101);v100=3 -2 ;end end end return {};end v1.UnloadScript=function(v38,v39) local v40=0 -0 ;local v41;while true do if ((1 + 0)==v40) then pcall(v11,v39);if v41.Connections then for v164,v165 in pairs(v41.Connections) do if (v165 and v165.Connected) then v165:Disconnect();end end end v40=2 -0 ;end if (v40==(2 + 0)) then if (v41.SectionFrame and v41.SectionFrame.Parent) then v41.SectionFrame:Destroy();end if (v41.Env and v41.Env.OnUnload and (type(v41.Env.OnUnload)=="function")) then pcall(v41.Env.OnUnload);end v40=1477 -(1329 + 145) ;end if (v40==(971 -(140 + 831))) then v41=v5.LoadedScripts[v39];if  not v41 then return;end v40=1 -0 ;end if (v40==(1853 -(1409 + 441))) then v5.LoadedScripts[v39]=nil;v5.ListBoxRef:Refresh();break;end end end;v1.UnloadAll=function(v42) for v77,v78 in pairs(v5.LoadedScripts) do v42:UnloadScript(v77);end end;v1.Execute=function(v43,v44,v45) if v5.LoadedScripts[v44] then if v5.Notifier then v5.Notifier:Notify({Title="Luau",Content="Script already running!",Icon="alert-circle"});end return;end local v46=v12(v44);local v47={Connections={},SectionFrame=nil,ConfigRegistry={},Env=nil};local v48={};v48.CreateSection=function(v79) local v80=v9();local v81=v5.GUIColumns[v80];if  not v81 then v8();v81=v5.GUIColumns[v80];if  not v81 then return nil;end end local v82=v81:GetChildren();local v83=v5.TabRef:AddSection({Name=tostring(v79),Position=v80:lower()});local v84=v81:GetChildren();for v104,v105 in pairs(v84) do local v106=true;for v137,v138 in pairs(v82) do if (v138==v105) then v106=false;break;end end if v106 then v47.SectionFrame=v105;break;end end local v85={};local function v86(v107,v108) local v109=718 -(15 + 703) ;local v110;local v111;local v112;while true do if (v109==(1 + 1)) then if (v112 and v110) then v47.ConfigRegistry[v110]=v112;end return v112;end if (v109==(439 -(262 + 176))) then if (v111~=nil) then if ((v107=="AddColorPicker") and (type(v111)=="table")) then if (v111.Color and (type(v111.Color)=="table")) then local v177=1721 -(345 + 1376) ;while true do if (v177==(341 -(218 + 123))) then v108.Default=Color3.new(v111.Color.R,v111.Color.G,v111.Color.B);if v111.Transparency then v108.Transparency=v111.Transparency;end break;end end elseif (v111.R and v111.G and v111.B) then v108.Default=Color3.new(v111.R,v111.G,v111.B);end elseif ((v107=="AddKeybind") and (type(v111)=="table")) then v108.Default=v111;else v108.Default=v111;end end v112=v83[v107](v83,v108);v109=690 -(198 + 490) ;end if (v109==(0 -0)) then v110=v108.Flag or v108.Name ;v111=v46[v110];v109=2 -1 ;end end end v85.AddToggle=function(v113,v114) return v86("AddToggle",v114);end;v85.AddSlider=function(v115,v116) return v86("AddSlider",v116);end;v85.AddDropdown=function(v117,v118) return v86("AddDropdown",v118);end;v85.AddColorPicker=function(v119,v120) return v86("AddColorPicker",v120);end;v85.AddKeybind=function(v121,v122) return v86("AddKeybind",v122);end;v85.AddInput=function(v123,v124) return v86("AddInput",v124);end;v85.AddButton=function(v125,v126) return v83:AddButton(v126);end;v85.AddParagraph=function(v127,v128) return v83:AddParagraph(v128);end;return v85;end;v48.Bind=function(v95,v96) local v97=1206 -(696 + 510) ;local v98;while true do if (v97==(1 -0)) then return v98;end if ((1262 -(1091 + 171))==v97) then v98=v95:Connect(v96);table.insert(v47.Connections,v98);v97=1;end end end;v48.Notify=function(v99) if v5.Notifier then v5.Notifier:Notify(v99);end end;v5.LoadedScripts[v44]=v47;local v53,v54=loadstring(v45,v44);if  not v53 then local v129=0 + 0 ;while true do if (v129==(3 -2)) then v5.LoadedScripts[v44]=nil;return;end if (v129==0) then warn("[Vantality Luau] Syntax Error:",v54);if v5.Notifier then v5.Notifier:Notify({Title="Error",Content="Syntax Error",Icon="alert-triangle"});end v129=1;end end end local v55=v10(v48);setfenv(v53,v55);v47.Env=v55;local v57,v58=pcall(v53);if  not v57 then local v130=0 -0 ;while true do if (v130==(375 -(123 + 251))) then v43:UnloadScript(v44);break;end if (v130==(0 -0)) then warn("[Vantality Luau] Runtime Error:",v58);if v5.Notifier then v5.Notifier:Notify({Title="Error",Content="Runtime Error (F9)",Icon="alert-circle"});end v130=1;end end elseif v5.Notifier then v5.Notifier:Notify({Title="Luau",Content="Loaded: "   .. v44 ,Icon="check"});end end;v1.Init=function(v59,v60,v61,v62) local v63=0 -0 ;local v64;local v65;while true do if ((700 -(208 + 490))==v63) then v65:AddButton({Name="Unload",Callback=function() local v150=0;while true do if (v150==(290 -(60 + 230))) then if  not v64 then return;end if v5.LoadedScripts[v64] then v1:UnloadScript(v64);if v5.Notifier then v5.Notifier:Notify({Title="Luau",Content="Unloaded: "   .. v64 ,Icon="trash"});end elseif v5.Notifier then v5.Notifier:Notify({Title="Luau",Content="Script is not loaded",Icon="info"});end break;end end end});v65:AddButton({Name="Refresh List",Callback=function() v5.ListBoxRef:SetValues(v7());v5.ListBoxRef:Refresh();v64=nil;if v5.Notifier then v5.Notifier:Notify({Title="Luau",Content="List Refreshed",Icon="refresh-cw"});end end});v65:AddButton({Name="Delete File",Risky=true,Callback=function() if v64 then local v166=v4.Scripts   .. "/"   .. v64 ;if isfile(v166) then local v168=572 -(426 + 146) ;local v169;while true do if (v168==(1 + 1)) then v64=nil;v59:UnloadScript(v169);v168=1459 -(282 + 1174) ;end if (v168==(811 -(569 + 242))) then delfile(v166);v5.ListBoxRef:SetValues(v7());v168=1;end if ((1 + 0)==v168) then v5.ListBoxRef:Refresh();v169=v64;v168=838 -(660 + 176) ;end if (v168==(1 + 2)) then if v5.Notifier then v5.Notifier:Notify({Title="Luau",Content="Deleted: "   .. v169 ,Icon="trash-2"});end break;end end end end end});break;end if (v63==(203 -(14 + 188))) then v5.ListBoxRef=v60:AddListBox({Name="SCRIPTS",Position="left",Height=1025 -(534 + 141) ,Values=v7(),Multi=false,Callback=function(v151) v64=v151;end});task.delay(0.5 + 0 ,function() v8();end);v65=v60:AddSection({Name=" ",Position="left"});v65:AddButton({Name="Load",Callback=function() local v152=0 + 0 ;local v153;while true do if (v152==(1025 -(706 + 318))) then if isfile(v153) then v1:Execute(v64,readfile(v153));else if v5.Notifier then v5.Notifier:Notify({Title="Error",Content="File not found",Icon="x"});end v5.ListBoxRef:SetValues(v7());v5.ListBoxRef:Refresh();end break;end if (v152==(0 + 0)) then if  not v64 then return;end v153=v4.Scripts   .. "/"   .. v64 ;v152=1 -0 ;end end end});v63=2 -0 ;end if (v63==(0 + 0)) then v5.TabRef=v60;v5.Notifier=v62;if v60.Root then local v158=700 -(271 + 429) ;while true do if (v158==(0 -0)) then v5.GUIColumns['Center']=v60.Root:FindFirstChild("Center");v5.GUIColumns['Right']=v60.Root:FindFirstChild("Right");break;end end end v64=nil;v63=1 + 0 ;end end end;return v1;
+local Env = getgenv and getgenv() or _G
+
+if Env.LuauAPI then
+    Env.LuauAPI:UnloadAll()
+    Env.LuauAPI = nil
+end
+
+local LuauAPI = {}
+Env.LuauAPI = LuauAPI
+
+local HttpService = game:GetService("HttpService")
+
+local FileSystem = {
+    Root = "Vantality",
+    Scripts = "Vantality/scripts",
+    Configs = "Vantality/scripts/configs"
+}
+
+if not isfolder(FileSystem.Root) then makefolder(FileSystem.Root) end
+if not isfolder(FileSystem.Scripts) then makefolder(FileSystem.Scripts) end
+if not isfolder(FileSystem.Configs) then makefolder(FileSystem.Configs) end
+
+local State = {
+    LoadedScripts = {},
+    GUIColumns = {}, 
+    Notifier = nil,
+    TabRef = nil,
+    ListBoxRef = nil
+}
+
+local function GetCleanName(path)
+    return path:match("([^\\/]+)$")
+end
+
+local function GetFiles()
+    local t = {}
+    for _, p in pairs(listfiles(FileSystem.Scripts)) do
+        local n = GetCleanName(p)
+        if n and n ~= "configs" then table.insert(t, n) end
+    end
+    return t
+end
+
+local function ResolveContainers()
+    local MainGui = Env.ahkgbs_instance and Env.ahkgbs_instance.Main
+    if not MainGui then return false end
+
+    for _, obj in pairs(MainGui:GetDescendants()) do
+        if obj:IsA("TextLabel") and obj.Text == "SCRIPTS" and obj.Visible then
+            local ListBoxFrame = obj.Parent
+            if not ListBoxFrame then continue end
+            
+            local CurrentColumn = ListBoxFrame.Parent
+            if not CurrentColumn then continue end
+            
+            local MenuContainer = CurrentColumn.Parent
+            if not MenuContainer then continue end
+            
+            for _, col in pairs(MenuContainer:GetChildren()) do
+                if col:IsA("ScrollingFrame") then
+                    local x = col.Position.X.Scale
+                    if math.abs(x - 0.5) < 0.05 then
+                        State.GUIColumns["Center"] = col
+                    elseif math.abs(x - 0.825) < 0.05 then
+                        State.GUIColumns["Right"] = col
+                    end
+                end
+            end
+            
+            if State.GUIColumns["Center"] and State.GUIColumns["Right"] then
+                return true
+            end
+        end
+    end
+    return false
+end
+
+local function GetOptimalColumn()
+    local cCol = State.GUIColumns["Center"]
+    local rCol = State.GUIColumns["Right"]
+    
+    if not cCol or not rCol then return "Center" end
+
+    local function count(container)
+        local c = 0
+        for _, child in pairs(container:GetChildren()) do
+            if child:IsA("Frame") and child.Visible then
+                c = c + 1
+            end
+        end
+        return c
+    end
+
+    local cCount = count(cCol)
+    local rCount = count(rCol)
+
+    if cCount <= rCount then
+        return "Center"
+    else
+        return "Right"
+    end
+end
+
+local function CreateSandboxedEnv(apiObject)
+    local envTable = {
+        Vantality = apiObject,
+        script = { Name = "VantalityScript" }
+    }
+    
+    local UserEnv = setmetatable(envTable, {
+        __index = function(self, key)
+            return Env[key] or getfenv()[key]
+        end,
+        __newindex = function(self, key, value)
+            getfenv()[key] = value
+        end
+    })
+    return UserEnv
+end
+
+local function SaveScriptConfig(name)
+    local data = State.LoadedScripts[name]
+    if not data or not data.ConfigRegistry then return end
+
+    local cfgToSave = {}
+    for key, element in pairs(data.ConfigRegistry) do
+        if element.GetValue then
+            cfgToSave[key] = element:GetValue()
+        end
+    end
+
+    local success, json = pcall(HttpService.JSONEncode, HttpService, cfgToSave)
+    if success then
+        writefile(FileSystem.Configs .. "/" .. name, json)
+    end
+end
+
+local function LoadScriptConfig(name)
+    local path = FileSystem.Configs .. "/" .. name
+    if isfile(path) then
+        local content = readfile(path)
+        local success, decoded = pcall(HttpService.JSONDecode, HttpService, content)
+        if success and type(decoded) == "table" then
+            return decoded
+        end
+    end
+    return {}
+end
+
+function LuauAPI:UnloadScript(name)
+    local data = State.LoadedScripts[name]
+    if not data then return end
+
+    pcall(SaveScriptConfig, name)
+
+    if data.Connections then
+        for _, conn in pairs(data.Connections) do
+            if conn and conn.Connected then conn:Disconnect() end
+        end
+    end
+
+    if data.SectionFrame and data.SectionFrame.Parent then
+        data.SectionFrame:Destroy()
+    end
+
+    if data.Env and data.Env.OnUnload and type(data.Env.OnUnload) == "function" then
+        pcall(data.Env.OnUnload)
+    end
+
+    State.LoadedScripts[name] = nil
+    State.ListBoxRef:Refresh()
+end
+
+function LuauAPI:UnloadAll()
+    for name, _ in pairs(State.LoadedScripts) do
+        self:UnloadScript(name)
+    end
+end
+
+function LuauAPI:Execute(name, code)
+    if State.LoadedScripts[name] then
+        if State.Notifier then State.Notifier:Notify({Title="Luau", Content="Script already running!", Icon="alert-circle"}) end
+        return
+    end
+
+    local LoadedConfig = LoadScriptConfig(name)
+
+    local ScriptData = {
+        Connections = {},
+        SectionFrame = nil,
+        ConfigRegistry = {}, 
+        Env = nil
+    }
+
+    local API_Proxy = {}
+    
+    function API_Proxy.CreateSection(title)
+        local colKey = GetOptimalColumn()
+        local guiContainer = State.GUIColumns[colKey]
+        
+        if not guiContainer then
+            ResolveContainers()
+            guiContainer = State.GUIColumns[colKey]
+            if not guiContainer then return nil end
+        end
+        
+        local oldChildren = guiContainer:GetChildren()
+        
+        local RealSection = State.TabRef:AddSection({
+            Name = tostring(title),
+            Position = colKey:lower()
+        })
+        
+        local newChildren = guiContainer:GetChildren()
+        for _, child in pairs(newChildren) do
+            local isNew = true
+            for _, old in pairs(oldChildren) do
+                if old == child then isNew = false break end
+            end
+            if isNew then
+                ScriptData.SectionFrame = child
+                break
+            end
+        end
+        
+        local SectionProxy = {}
+        
+        local function WrapElement(funcName, config)
+            local key = config.Flag or config.Name
+            local savedVal = LoadedConfig[key]
+            
+            if savedVal ~= nil then
+                if funcName == "AddColorPicker" and type(savedVal) == "table" then
+                    if savedVal.Color and type(savedVal.Color) == "table" then
+                        config.Default = Color3.new(savedVal.Color.R, savedVal.Color.G, savedVal.Color.B)
+                        if savedVal.Transparency then
+                            config.Transparency = savedVal.Transparency
+                        end
+                    elseif savedVal.R and savedVal.G and savedVal.B then
+                        config.Default = Color3.new(savedVal.R, savedVal.G, savedVal.B)
+                    end
+                elseif funcName == "AddKeybind" and type(savedVal) == "table" then
+                    config.Default = savedVal
+                else
+                    config.Default = savedVal
+                end
+            end
+            
+            local Element = RealSection[funcName](RealSection, config)
+            
+            if Element and key then
+                ScriptData.ConfigRegistry[key] = Element
+            end
+            
+            return Element
+        end
+
+        function SectionProxy:AddToggle(cfg) return WrapElement("AddToggle", cfg) end
+        function SectionProxy:AddSlider(cfg) return WrapElement("AddSlider", cfg) end
+        function SectionProxy:AddDropdown(cfg) return WrapElement("AddDropdown", cfg) end
+        function SectionProxy:AddColorPicker(cfg) return WrapElement("AddColorPicker", cfg) end
+        function SectionProxy:AddKeybind(cfg) return WrapElement("AddKeybind", cfg) end
+        function SectionProxy:AddInput(cfg) return WrapElement("AddInput", cfg) end
+        
+        function SectionProxy:AddButton(cfg) return RealSection:AddButton(cfg) end
+        function SectionProxy:AddParagraph(cfg) return RealSection:AddParagraph(cfg) end
+
+        return SectionProxy
+    end
+
+    function API_Proxy.Bind(signal, callback)
+        local conn = signal:Connect(callback)
+        table.insert(ScriptData.Connections, conn)
+        return conn
+    end
+
+    function API_Proxy.Notify(cfg)
+        if State.Notifier then State.Notifier:Notify(cfg) end
+    end
+
+    State.LoadedScripts[name] = ScriptData
+
+    local func, err = loadstring(code, name)
+    if not func then
+        warn("[Vantality Luau] Syntax Error:", err)
+        if State.Notifier then State.Notifier:Notify({Title="Error", Content="Syntax Error", Icon="alert-triangle"}) end
+        State.LoadedScripts[name] = nil
+        return
+    end
+
+    local Sandbox = CreateSandboxedEnv(API_Proxy)
+    setfenv(func, Sandbox)
+    ScriptData.Env = Sandbox
+
+    local s, r = pcall(func)
+    if not s then
+        warn("[Vantality Luau] Runtime Error:", r)
+        if State.Notifier then State.Notifier:Notify({Title="Error", Content="Runtime Error (F9)", Icon="alert-circle"}) end
+        self:UnloadScript(name)
+    else
+        if State.Notifier then State.Notifier:Notify({Title="Luau", Content="Loaded: "..name, Icon="check"}) end
+    end
+end
+
+function LuauAPI:Init(Tab, IgnoredSection, NotifierObj)
+    State.TabRef = Tab
+    State.Notifier = NotifierObj
+    
+    if Tab.Root then
+        State.GUIColumns["Center"] = Tab.Root:FindFirstChild("Center")
+        State.GUIColumns["Right"]  = Tab.Root:FindFirstChild("Right")
+    end
+    
+    local SelectedFile = nil
+
+    State.ListBoxRef = Tab:AddListBox({
+        Name = "SCRIPTS",
+        Position = "left",
+        Values = GetFiles(),
+        Multi = false,
+        Callback = function(val) SelectedFile = val end
+    })
+
+    task.delay(0.5, function() ResolveContainers() end)
+
+    local ControlSection = Tab:AddSection({
+        Name = " ",
+        Position = "left"
+    })
+
+    ControlSection:AddButton({
+        Name = "Load",
+        Callback = function()
+            if not SelectedFile then return end
+            local path = FileSystem.Scripts .. "/" .. SelectedFile
+            if isfile(path) then
+                LuauAPI:Execute(SelectedFile, readfile(path))
+            else
+                if State.Notifier then State.Notifier:Notify({Title="Error", Content="File not found", Icon="x"}) end
+                State.ListBoxRef:SetValues(GetFiles())
+                State.ListBoxRef:Refresh()
+            end
+        end
+    })
+
+    ControlSection:AddButton({
+        Name = "Unload",
+        Callback = function()
+            if not SelectedFile then return end
+            if State.LoadedScripts[SelectedFile] then
+                LuauAPI:UnloadScript(SelectedFile)
+                if State.Notifier then State.Notifier:Notify({Title="Luau", Content="Unloaded: "..SelectedFile, Icon="trash"}) end
+            else
+                if State.Notifier then State.Notifier:Notify({Title="Luau", Content="Script is not loaded", Icon="info"}) end
+            end
+        end
+    })
+
+    ControlSection:AddButton({
+        Name = "Refresh List",
+        Callback = function()
+            State.ListBoxRef:SetValues(GetFiles())
+            State.ListBoxRef:Refresh()
+            SelectedFile = nil
+            if State.Notifier then State.Notifier:Notify({Title="Luau", Content="List Refreshed", Icon="refresh-cw"}) end
+        end
+    })
+
+    ControlSection:AddButton({
+        Name = "Delete File",
+        Risky = true,
+        Callback = function()
+            if SelectedFile then
+                local path = FileSystem.Scripts .. "/" .. SelectedFile
+                if isfile(path) then
+                    delfile(path)
+                    State.ListBoxRef:SetValues(GetFiles())
+                    State.ListBoxRef:Refresh()
+                    local cachedName = SelectedFile
+                    SelectedFile = nil
+                    self:UnloadScript(cachedName)
+                    if State.Notifier then State.Notifier:Notify({Title="Luau", Content="Deleted: "..cachedName, Icon="trash-2"}) end
+                end
+            end
+        end
+    })
+end
+
+return LuauAPI
