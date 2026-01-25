@@ -4959,12 +4959,11 @@ function Fatality.new(Window: Window)
 		return ConfigElement;
 	end;
 
-function Fatal:AddMenu(Menu : Menu) -- ezezez
+function Fatal:AddMenu(Menu : Menu)
 		Menu = Menu or {};
         if not Fatality:CanShow(Menu) then return { AddSection = function() return Fatality.Dummy end, AddPreview = function() return Fatality.Dummy end } end
 		Menu.Name = Menu.Name or "EXAMPLE";
 		Menu.Icon = Menu.Icon or "eye";
-		-- FIX: Отключаем AutoFill принудительно, чтобы работал скролл
 		Menu.AutoFill = false; 
 
 		local MenuLib = {};
@@ -5040,8 +5039,7 @@ function Fatal:AddMenu(Menu : Menu) -- ezezez
 		MenuLiber.Size = UDim2.new(1, 0, 1, 0)
 		MenuLiber.ZIndex = 7
 		
-        -- LEFT COLUMN
-		Left.Name = "Left" -- Было рандомное имя, для LuauAPI лучше дать точное
+		Left.Name = "Left"
 		Left.Parent = MenuLiber
 		Left.Active = true
 		Left.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -5057,10 +5055,8 @@ function Fatal:AddMenu(Menu : Menu) -- ezezez
 		UIListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 		UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
 		UIListLayout.Padding = UDim.new(0, 5)
-        -- FIX: Убираем VerticalFlex
 		UIListLayout.VerticalFlex = Enum.UIFlexAlignment.None; 
 
-        -- CENTER COLUMN
 		Center.Name = "Center"
 		Center.Parent = MenuLiber
 		Center.Active = true
@@ -5077,10 +5073,8 @@ function Fatal:AddMenu(Menu : Menu) -- ezezez
 		UIListLayout_2.HorizontalAlignment = Enum.HorizontalAlignment.Center
 		UIListLayout_2.SortOrder = Enum.SortOrder.LayoutOrder
 		UIListLayout_2.Padding = UDim.new(0, 5)
-        -- FIX: Убираем VerticalFlex
 		UIListLayout_2.VerticalFlex = Enum.UIFlexAlignment.None;
 
-        -- RIGHT COLUMN
 		Right.Name = "Right"
 		Right.Parent = MenuLiber
 		Right.Active = true
@@ -5097,13 +5091,11 @@ function Fatal:AddMenu(Menu : Menu) -- ezezez
 		UIListLayout_3.HorizontalAlignment = Enum.HorizontalAlignment.Center
 		UIListLayout_3.SortOrder = Enum.SortOrder.LayoutOrder
 		UIListLayout_3.Padding = UDim.new(0, 5)
-        -- FIX: Убираем VerticalFlex
 		UIListLayout_3.VerticalFlex = Enum.UIFlexAlignment.None;
 
 		local BindEvent = Instance.new('BindableEvent',MenuLiber);
 		BindEvent.Name = Fatality:RandomString();
 		
-        -- FIX: Всегда включаем обновление скролла
         Fatality:ScrollSignal(Right,UIListLayout_3,'Y'); 
         Fatality:ScrollSignal(Center,UIListLayout_2,'Y'); 
         Fatality:ScrollSignal(Left,UIListLayout,'Y'); 
@@ -5154,10 +5146,6 @@ function Fatal:AddMenu(Menu : Menu) -- ezezez
 			end;
 		end)
 		Fatality:NewInput(MenuButton,function() for i,v in next , Fatal.Menus do if v.Root == MenuLiber then Fatal.MenuSelected = v; v.ValueSelect(true) else v.ValueSelect(false) end; end; end);
-		
-		-- Дальше идут AddPreview, AddListBox и AddSection (оставь их как в оригинале, они вложены в AddMenu)
-        -- Но так как я даю только функцию AddMenu, убедись, что закрывающие 'end' совпадают.
-        -- Ниже я просто копирую остаток функции AddMenu из твоего файла, чтобы ты мог заменить целиком блок.
 		
 		function MenuLib:AddPreview(Config: Preview)
 			Config = Config or {}; Config.Name = Config.Name or "PREVIEW"; Config.Position = Config.Position or "left"; Config.Height = Config.Height or 0;
@@ -5496,7 +5484,7 @@ function Fatal:AddMenu(Menu : Menu) -- ezezez
 			});
 		end;
 
-		return MenuLib; --lolez
+		return MenuLib; 
 	end;
 
 	do
