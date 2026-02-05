@@ -1,71 +1,71 @@
 
 local AuraController = {}
 local Players = game:GetService("Players")
+local CollectionService = game:GetService("CollectionService")
 local LocalPlayer = Players.LocalPlayer
 
 local AuraRepository = {} 
-local ActiveAuras = {} -- { ["Blackflash"] = true }
+local ActiveAuras = {} 
 
-local function RemoveSpecificAura(auraName, character)
-    if not character then return end
-    
-    for _, desc in pairs(character:GetDescendants()) do
-        if desc:GetAttribute("VantalityAuraID") == auraName then
-            desc:Destroy()
+local TAG_ID = "Vantality_VFX_Object"
+
+local function RemoveAura(auraName, character)
+    local allTags = CollectionService:GetTagged(TAG_ID)
+    for _, obj in pairs(allTags) do
+        if obj:IsDescendantOf(character) and obj:GetAttribute("AuraName") == auraName then
+            obj:Destroy()
         end
     end
 end
 
-local function ApplySpecificAura(auraName, character)
-    if not character then return end
-    
+local function ApplyAura(auraName, character)
     local constructor = AuraRepository[auraName]
     if not constructor then return end
 
-    RemoveSpecificAura(auraName, character)
+    RemoveAura(auraName, character)
+
+    local function Tagger(instance)
+        if instance then
+            CollectionService:AddTag(instance, TAG_ID)
+            instance:SetAttribute("AuraName", auraName) -- Чтобы знать, чья это аура
+        end
+        return instance
+    end
 
     task.spawn(function()
         pcall(function()
-            constructor(character)
+            constructor(character, Tagger)
         end)
     end)
 end
 
-local function RefreshAll(character)
-    if not character then return end
+local function Refresh(character)
     local root = character:WaitForChild("HumanoidRootPart", 10)
-    local ra = character:WaitForChild("Right Arm", 10)
+    if not root then return end
     
-    if not root or not ra then return end
+    task.wait(0.5)
 
-    for auraName, isEnabled in pairs(ActiveAuras) do
-        if isEnabled then
-            ApplySpecificAura(auraName, character)
+    for name, enabled in pairs(ActiveAuras) do
+        if enabled then
+            ApplyAura(name, character)
         end
     end
 end
 
 function AuraController:Init(repo)
     AuraRepository = repo
-    
-    if LocalPlayer.Character then
-        task.spawn(function() RefreshAll(LocalPlayer.Character) end)
-    end
-    
-    LocalPlayer.CharacterAdded:Connect(function(char)
-        task.wait(0.6)
-        RefreshAll(char)
-    end)
+    if LocalPlayer.Character then Refresh(LocalPlayer.Character) end
+    LocalPlayer.CharacterAdded:Connect(Refresh)
 end
 
-function AuraController:ToggleAura(auraName, state)
-    ActiveAuras[auraName] = state
+function AuraController:ToggleAura(name, state)
+    ActiveAuras[name] = state
     local char = LocalPlayer.Character
     if char then
         if state then
-            ApplySpecificAura(auraName, char)
+            ApplyAura(name, char)
         else
-            RemoveSpecificAura(auraName, char)
+            RemoveAura(name, char)
         end
     end
 end
