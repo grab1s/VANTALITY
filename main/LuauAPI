@@ -36,13 +36,11 @@ end
 
 local function GetFiles()
     local t = {}
-    local success, files = pcall(listfiles, FileSystem.Scripts)
-    if success and files then
+    local s, files = pcall(listfiles, FileSystem.Scripts)
+    if s and files then
         for _, p in pairs(files) do
             local n = GetCleanName(p)
-            if n and n ~= "configs" then 
-                table.insert(t, n) 
-            end
+            if n and n ~= "configs" then table.insert(t, n) end
         end
     end
     return t
@@ -85,27 +83,17 @@ end
 local function GetOptimalColumn()
     local cCol = State.GUIColumns["Center"]
     local rCol = State.GUIColumns["Right"]
-    
     if not cCol or not rCol then return "Center" end
 
     local function count(container)
         local c = 0
         for _, child in pairs(container:GetChildren()) do
-            if child:IsA("Frame") and child.Visible then
-                c = c + 1
-            end
+            if child:IsA("Frame") and child.Visible then c = c + 1 end
         end
         return c
     end
 
-    local cCount = count(cCol)
-    local rCount = count(rCol)
-
-    if cCount <= rCount then
-        return "Center"
-    else
-        return "Right"
-    end
+    return count(cCol) <= count(rCol) and "Center" or "Right"
 end
 
 local function CreateSandboxedEnv(apiObject)
@@ -113,7 +101,6 @@ local function CreateSandboxedEnv(apiObject)
         Vantality = apiObject,
         script = { Name = "VantalityScript" }
     }
-    
     local UserEnv = setmetatable(envTable, {
         __index = function(self, key)
             return Env[key] or getfenv()[key]
@@ -175,7 +162,6 @@ function LuauAPI:UnloadScript(name)
     end
 
     State.LoadedScripts[name] = nil
-    
     if State.ListBoxRef and State.ListBoxRef.Refresh then
         State.ListBoxRef:Refresh()
     end
@@ -240,13 +226,13 @@ function LuauAPI:Execute(name, code)
             local savedVal = LoadedConfig[key]
             
             if savedVal ~= nil then
+                -- Упрощенная логика загрузки цветов
                 if funcName == "AddColorPicker" and type(savedVal) == "table" then
-                    if savedVal.Color and type(savedVal.Color) == "table" then
-                        config.Default = Color3.new(savedVal.Color.R, savedVal.Color.G, savedVal.Color.B)
-                        if savedVal.Transparency then
-                            config.Transparency = savedVal.Transparency
-                        end
-                    elseif savedVal.R and savedVal.G and savedVal.B then
+                    if savedVal.Color then -- Формат библиотеки {Color={}, Trans=...}
+                        local c = savedVal.Color
+                        config.Default = Color3.new(c.R, c.G, c.B)
+                        if savedVal.Transparency then config.Transparency = savedVal.Transparency end
+                    elseif savedVal.R then -- Простой Color3
                         config.Default = Color3.new(savedVal.R, savedVal.G, savedVal.B)
                     end
                 elseif funcName == "AddKeybind" and type(savedVal) == "table" then
@@ -292,8 +278,8 @@ function LuauAPI:Execute(name, code)
 
     local func, err = loadstring(code, name)
     if not func then
-        warn("[Vantality Luau] Syntax Error:", err)
-        if State.Notifier then State.Notifier:Notify({Title="Error", Content="Syntax Error", Icon="alert-triangle"}) end
+        warn("[Vantality Luau] Syntax Error in " .. name .. ": " .. tostring(err))
+        if State.Notifier then State.Notifier:Notify({Title="Error", Content="Syntax Error (Check F9)", Icon="alert-triangle"}) end
         State.LoadedScripts[name] = nil
         return
     end
@@ -304,8 +290,8 @@ function LuauAPI:Execute(name, code)
 
     local s, r = pcall(func)
     if not s then
-        warn("[Vantality Luau] Runtime Error:", r)
-        if State.Notifier then State.Notifier:Notify({Title="Error", Content="Runtime Error (F9)", Icon="alert-circle"}) end
+        warn("[Vantality Luau] Runtime Error in " .. name .. ": " .. tostring(r))
+        if State.Notifier then State.Notifier:Notify({Title="Error", Content="Runtime Error (Check F9)", Icon="alert-circle"}) end
         self:UnloadScript(name)
     else
         if State.Notifier then State.Notifier:Notify({Title="Luau", Content="Loaded: "..name, Icon="check"}) end
@@ -316,17 +302,12 @@ function LuauAPI:Init(Tab, IgnoredSection, NotifierObj)
     State.TabRef = Tab
     State.Notifier = NotifierObj
     
-    if Tab.Root then
-        State.GUIColumns["Center"] = Tab.Root:FindFirstChild("Center")
-        State.GUIColumns["Right"]  = Tab.Root:FindFirstChild("Right")
-    end
-    
     local SelectedFile = nil
 
     State.ListBoxRef = Tab:AddListBox({
         Name = "SCRIPTS",
         Position = "left",
-        Height = 185,
+        Height = 350,
         Values = GetFiles(),
         Multi = false,
         Callback = function(val) SelectedFile = val end
@@ -417,3 +398,5 @@ function LuauAPI:Init(Tab, IgnoredSection, NotifierObj)
 end
 
 return LuauAPI
+
+-- 2
