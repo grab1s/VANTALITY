@@ -330,7 +330,7 @@ function LuauAPI:Init(Tab, IgnoredSection, NotifierObj)
     })
 
     ControlSection:AddButton({
-        Name = "Load Script",
+        Name = "Load",
         Callback = function()
             if not SelectedFile then return end
             local path = FileSystem.Scripts .. "/" .. SelectedFile
@@ -345,7 +345,7 @@ function LuauAPI:Init(Tab, IgnoredSection, NotifierObj)
     })
 
     ControlSection:AddButton({
-        Name = "Unload Script",
+        Name = "Unload",
         Callback = function()
             if not SelectedFile then return end
             if State.LoadedScripts[SelectedFile] then
