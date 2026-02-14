@@ -1,3 +1,4 @@
+-- 1
 local Env = getgenv and getgenv() or _G
 
 if Env.LuauAPI then
@@ -22,6 +23,8 @@ if not isfolder(FileSystem.Configs) then makefolder(FileSystem.Configs) end
 
 local State = {
     LoadedScripts = {},
+    ColumnIndex = 0,
+    Columns = {"Center", "Right"},
     GUIColumns = {}, 
     Notifier = nil,
     TabRef = nil,
@@ -34,9 +37,14 @@ end
 
 local function GetFiles()
     local t = {}
-    for _, p in pairs(listfiles(FileSystem.Scripts)) do
-        local n = GetCleanName(p)
-        if n and n ~= "configs" then table.insert(t, n) end
+    local success, files = pcall(listfiles, FileSystem.Scripts)
+    if success and files then
+        for _, p in pairs(files) do
+            local n = GetCleanName(p)
+            if n and n ~= "configs" then 
+                table.insert(t, n) 
+            end
+        end
     end
     return t
 end
@@ -168,7 +176,10 @@ function LuauAPI:UnloadScript(name)
     end
 
     State.LoadedScripts[name] = nil
-    State.ListBoxRef:Refresh()
+    
+    if State.ListBoxRef and State.ListBoxRef.Refresh then
+        State.ListBoxRef:Refresh()
+    end
 end
 
 function LuauAPI:UnloadAll()
@@ -333,6 +344,7 @@ function LuauAPI:Init(Tab, IgnoredSection, NotifierObj)
         Name = "Load",
         Callback = function()
             if not SelectedFile then return end
+            
             local path = FileSystem.Scripts .. "/" .. SelectedFile
             if isfile(path) then
                 LuauAPI:Execute(SelectedFile, readfile(path))
@@ -340,6 +352,7 @@ function LuauAPI:Init(Tab, IgnoredSection, NotifierObj)
                 if State.Notifier then State.Notifier:Notify({Title="Error", Content="File not found", Icon="x"}) end
                 State.ListBoxRef:SetValues(GetFiles())
                 State.ListBoxRef:Refresh()
+                SelectedFile = nil
             end
         end
     })
@@ -373,14 +386,31 @@ function LuauAPI:Init(Tab, IgnoredSection, NotifierObj)
         Callback = function()
             if SelectedFile then
                 local path = FileSystem.Scripts .. "/" .. SelectedFile
+                
                 if isfile(path) then
                     delfile(path)
+                    
+                    local startTime = os.clock()
+                    while isfile(path) and (os.clock() - startTime < 1) do
+                        task.wait(0.05)
+                    end
+                    
+                    if not isfile(path) then
+                        local cachedName = SelectedFile
+                        self:UnloadScript(cachedName)
+                        
+                        State.ListBoxRef:SetValues(GetFiles())
+                        State.ListBoxRef:Refresh()
+                        SelectedFile = nil
+                        
+                        if State.Notifier then State.Notifier:Notify({Title="Luau", Content="Deleted: "..cachedName, Icon="trash-2"}) end
+                    else
+                        if State.Notifier then State.Notifier:Notify({Title="Error", Content="Delete failed (File locked?)", Icon="alert-circle"}) end
+                    end
+                else
                     State.ListBoxRef:SetValues(GetFiles())
                     State.ListBoxRef:Refresh()
-                    local cachedName = SelectedFile
                     SelectedFile = nil
-                    self:UnloadScript(cachedName)
-                    if State.Notifier then State.Notifier:Notify({Title="Luau", Content="Deleted: "..cachedName, Icon="trash-2"}) end
                 end
             end
         end
