@@ -316,7 +316,7 @@ function LuauAPI:Init(Tab, IgnoredSection, NotifierObj)
     State.ListBoxRef = Tab:AddListBox({
         Name = "SCRIPTS",
         Position = "left",
-        Height = 350,
+        Height = 185,
         Values = GetFiles(),
         Multi = false,
         Callback = function(val) SelectedFile = val end
