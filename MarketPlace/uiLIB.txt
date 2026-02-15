@@ -5495,11 +5495,12 @@ function Fatal:AddMenu(Menu : Menu) -- ezezez
 			});
 		end;
 
--- >> AddProduct (UPDATED: STYLED TAGS)
+-- >> AddProduct (UPDATED: RELATIVE TIME + STYLED TAGS)
 		function MenuLib:AddProduct(Config)
 			Config = Config or {};
 			if not Fatality:CanShow(Config) then return Fatality.Dummy end
 			
+			-- Конфигурация по умолчанию
 			Config.Name = Config.Name or "SCRIPT NAME";
 			Config.Version = Config.Version or "v1.0.0";
 			Config.Author = Config.Author or "Unknown";
@@ -5511,6 +5512,30 @@ function Fatal:AddMenu(Menu : Menu) -- ezezez
 			Config.ButtonText = Config.ButtonText or "Download";
 			Config.Callback = Config.Callback or function() end;
 			Config.Position = Config.Position or "center";
+
+			-- >> HELPER: RELATIVE TIME CALCULATOR
+			local function GetTimeAgo(dateStr)
+				if not dateStr or dateStr == "N/A" or dateStr == "-" then return dateStr end
+				
+				-- Парсим DD.MM.YYYY
+				local d, m, y = string.match(dateStr, "(%d+)%.(%d+)%.(%d+)")
+				if not d or not m or not y then return dateStr end -- Если формат не тот, возвращаем как есть
+				
+				-- Получаем текущее время и время даты
+				local now = os.time()
+				local target = os.time({year = y, month = m, day = d, hour = 0, min = 0, sec = 0})
+				local diff = now - target
+				
+				-- Логика перевода
+				if diff < 60 then return "just now" end
+				if diff < 3600 then return math.floor(diff / 60) .. " min ago" end
+				if diff < 86400 then return math.floor(diff / 3600) .. " hours ago" end
+				if diff < 604800 then return math.floor(diff / 86400) .. " days ago" end
+				if diff < 2592000 then return math.floor(diff / 604800) .. " weeks ago" end
+				if diff < 31536000 then return math.floor(diff / 2592000) .. " months ago" end
+				
+				return math.floor(diff / 31536000) .. " years ago"
+			end
 
 			local StatusColors = {
 				Working = Color3.fromRGB(100, 255, 100),
@@ -5636,13 +5661,13 @@ function Fatal:AddMenu(Menu : Menu) -- ezezez
 			SubHeader.LayoutOrder = 2
 			DescLabel.LayoutOrder = 3
 
-			-- >> TAGS (UPDATED: CHIPS STYLE)
+			-- TAGS (CHIPS STYLE)
 			local TagsContainer = Instance.new("Frame")
 			TagsContainer.Name = "TagsContainer"
 			TagsContainer.Parent = Product
 			TagsContainer.LayoutOrder = 4
 			TagsContainer.BackgroundTransparency = 1
-			TagsContainer.Size = UDim2.new(1, 0, 0, 10) -- Высота под теги
+			TagsContainer.Size = UDim2.new(1, 0, 0, 20)
 			TagsContainer.AutomaticSize = Enum.AutomaticSize.Y
 			TagsContainer.ZIndex = 20
 
@@ -5651,7 +5676,7 @@ function Fatal:AddMenu(Menu : Menu) -- ezezez
 			TagsLayout.FillDirection = Enum.FillDirection.Horizontal
 			TagsLayout.SortOrder = Enum.SortOrder.LayoutOrder
 			TagsLayout.Padding = UDim.new(0, 4)
-			TagsLayout.Wraps = true -- Чтобы переносились, если много тегов
+			TagsLayout.Wraps = true
 
 			if Config.Tags and #Config.Tags > 0 then
 				for _, tagText in ipairs(Config.Tags) do
@@ -5663,10 +5688,10 @@ function Fatal:AddMenu(Menu : Menu) -- ezezez
 
 					TagFrame.Name = "Tag_" .. tagText
 					TagFrame.Parent = TagsContainer
-					TagFrame.BackgroundColor3 = Color3.fromRGB(35, 35, 35) -- Темный фон для тега
+					TagFrame.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
 					TagFrame.BorderSizePixel = 0
-					TagFrame.Size = UDim2.new(0, 0, 0, 16) -- Высота тега
-					TagFrame.AutomaticSize = Enum.AutomaticSize.X -- Ширина по тексту
+					TagFrame.Size = UDim2.new(0, 0, 0, 16)
+					TagFrame.AutomaticSize = Enum.AutomaticSize.X
 					TagFrame.ZIndex = 21
 
 					TagCorner.CornerRadius = UDim.new(0, 4)
@@ -5690,12 +5715,11 @@ function Fatal:AddMenu(Menu : Menu) -- ezezez
 					TagLabel.ZIndex = 22
 				end
 			else
-				-- Если тегов нет, скрываем контейнер чтобы не занимал место
 				TagsContainer.Visible = false
 				TagsContainer.Size = UDim2.new(0,0,0,0)
 			end
 
-			-- DATES
+			-- DATES (RELATIVE TIME APPLIED)
 			local DateRow = Instance.new("Frame")
 			DateRow.Parent = Product
 			DateRow.LayoutOrder = 5
@@ -5711,7 +5735,8 @@ function Fatal:AddMenu(Menu : Menu) -- ezezez
 			DateAdd.TextColor3 = Color3.fromRGB(150, 150, 150)
 			DateAdd.TextSize = 10
 			DateAdd.TextXAlignment = Enum.TextXAlignment.Left
-			DateAdd.Text = "add: " .. Config.DateCreate
+			-- Используем хелпер GetTimeAgo
+			DateAdd.Text = "add: " .. GetTimeAgo(Config.DateCreate)
 			DateAdd.ZIndex = 20
 
 			local DateUpd = Instance.new("TextLabel")
@@ -5723,7 +5748,8 @@ function Fatal:AddMenu(Menu : Menu) -- ezezez
 			DateUpd.TextColor3 = Color3.fromRGB(150, 150, 150)
 			DateUpd.TextSize = 10
 			DateUpd.TextXAlignment = Enum.TextXAlignment.Right
-			DateUpd.Text = "upd: " .. Config.DateUpdate
+			-- Используем хелпер GetTimeAgo
+			DateUpd.Text = "upd: " .. GetTimeAgo(Config.DateUpdate)
 			DateUpd.ZIndex = 20
 
 			-- ACTION BUTTON
@@ -6605,6 +6631,7 @@ Fatality.FATALITY_PID = Fatality:RandomString();
 
 
 return Fatality;
+
 
 
 
