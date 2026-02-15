@@ -1,7 +1,6 @@
 local Marketplace = {}
 local HttpService = game:GetService("HttpService")
 
--- Настройки путей (должны совпадать с Luau_API.txt)
 local Paths = {
     Root = "Vantality",
     Scripts = "Vantality/scripts",
@@ -9,7 +8,6 @@ local Paths = {
     ScriptConfigs = "Vantality/scripts/configs" -- Путь к конфигам скриптов
 }
 
--- Тема Fatality (взята из твоего uiLIB)
 local Theme = {
     Main = Color3.fromRGB(255, 106, 133),
     Background = Color3.fromRGB(19, 19, 19),
@@ -18,9 +16,7 @@ local Theme = {
     Stroke = Color3.fromRGB(29, 29, 29)
 }
 
--- Ссылка на твой манифест (JSON файл)
--- ЗАМЕНИ ЭТУ ССЫЛКУ НА СВОЮ RAW ССЫЛКУ С GITHUB
-local MANIFEST_URL = "https://raw.githubusercontent.com/grab1s/VANTALITY/refs/heads/main/marketplace.json" 
+local MANIFEST_URL = "https://raw.githubusercontent.com/grab1s/VANTALITY/refs/heads/main/MarketPlace/marketplace.json" 
 
 function Marketplace:CreateGUI()
     if _G.VantalityMarketGUI then _G.VantalityMarketGUI:Destroy() end
@@ -233,5 +229,6 @@ function Marketplace:CreateGUI()
     -- Load default
     DrawItems("scripts")
 end
+
 
 return Marketplace
