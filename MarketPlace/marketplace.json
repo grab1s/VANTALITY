@@ -1,0 +1,26 @@
+{
+  "scripts": [
+    {
+      "name": "Silent Aim v2",
+      "author": "Darkness",
+      "description": "Legit silent aim with FOV circle.",
+      "url": "https://raw.githubusercontent.com/.../silent_aim.luau",
+      "image": "rbxassetid://12345678" 
+    },
+    {
+      "name": "Esp Framework",
+      "author": "Grab1s",
+      "description": "Fast ESP library optimized for Vantality.",
+      "url": "https://raw.githubusercontent.com/.../esp.luau"
+    }
+  ],
+  "configs": [
+    {
+      "name": "HvH Config",
+      "author": "User1337",
+      "description": "Best config for RvR.",
+      "url": "https://raw.githubusercontent.com/.../hvh.cfg",
+      "type": "Main" 
+    }
+  ]
+}
