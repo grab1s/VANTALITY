@@ -5513,20 +5513,31 @@ function Fatal:AddMenu(Menu : Menu) -- ezezez
 			Config.Callback = Config.Callback or function() end;
 			Config.Position = Config.Position or "center";
 
-			-- >> HELPER: RELATIVE TIME CALCULATOR
+-- >> HELPER: RELATIVE TIME CALCULATOR (UPDATED WITH TIME SUPPORT)
 			local function GetTimeAgo(dateStr)
 				if not dateStr or dateStr == "N/A" or dateStr == "-" then return dateStr end
 				
-				-- Парсим DD.MM.YYYY
-				local d, m, y = string.match(dateStr, "(%d+)%.(%d+)%.(%d+)")
-				if not d or not m or not y then return dateStr end -- Если формат не тот, возвращаем как есть
+				-- 1. Пробуем найти дату со временем (DD.MM.YYYY HH:MM)
+				local d, m, y, h, min = string.match(dateStr, "(%d+)%.(%d+)%.(%d+)%s+(%d+):(%d+)")
 				
-				-- Получаем текущее время и время даты
+				-- 2. Если времени нет, ищем просто дату (DD.MM.YYYY)
+				if not d then
+					d, m, y = string.match(dateStr, "(%d+)%.(%d+)%.(%d+)")
+					h, min = 0, 0 -- По дефолту полночь
+				end
+
+				if not d or not m or not y then return dateStr end -- Если формат кривой, отдаем как есть
+				
+				-- Получаем текущее время
 				local now = os.time()
-				local target = os.time({year = y, month = m, day = d, hour = 0, min = 0, sec = 0})
+				-- Создаем метку времени из строки
+				local target = os.time({year = y, month = m, day = d, hour = h, min = min, sec = 0})
+				
+				-- Разница в секундах
 				local diff = now - target
 				
 				-- Логика перевода
+				if diff < 0 then return "just now" end -- Защита от дат из будущего
 				if diff < 60 then return "just now" end
 				if diff < 3600 then return math.floor(diff / 60) .. " min ago" end
 				if diff < 86400 then return math.floor(diff / 3600) .. " hours ago" end
@@ -6631,6 +6642,7 @@ Fatality.FATALITY_PID = Fatality:RandomString();
 
 
 return Fatality;
+
 
 
 
