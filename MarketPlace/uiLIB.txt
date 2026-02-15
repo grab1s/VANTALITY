@@ -5495,7 +5495,7 @@ function Fatal:AddMenu(Menu : Menu) -- ezezez
 			});
 		end;
 
-		-- >> AddProduct (FIXED Z-INDEX)
+-- >> AddProduct (UPDATED: STYLED TAGS)
 		function MenuLib:AddProduct(Config)
 			Config = Config or {};
 			if not Fatality:CanShow(Config) then return Fatality.Dummy end
@@ -5530,7 +5530,7 @@ function Fatal:AddMenu(Menu : Menu) -- ezezez
 			Product.BorderSizePixel = 0
 			Product.Size = UDim2.new(1, 0, 0, 0)
 			Product.AutomaticSize = Enum.AutomaticSize.Y
-			Product.ZIndex = 15 -- Higher than standard Background
+			Product.ZIndex = 15
 
 			UICorner.CornerRadius = UDim.new(0, 4)
 			UICorner.Parent = Product
@@ -5636,19 +5636,64 @@ function Fatal:AddMenu(Menu : Menu) -- ezezez
 			SubHeader.LayoutOrder = 2
 			DescLabel.LayoutOrder = 3
 
-			-- TAGS
-			local TagsLabel = Instance.new("TextLabel")
-			TagsLabel.Parent = Product
-			TagsLabel.LayoutOrder = 4
-			TagsLabel.BackgroundTransparency = 1
-			TagsLabel.Size = UDim2.new(1, 0, 0, 14)
-			TagsLabel.Font = Enum.Font.Code
-			TagsLabel.TextColor3 = Fatality.CurrentTheme.TextDark
-			Fatality:Register(TagsLabel, "TextDark", "TextColor3")
-			TagsLabel.TextSize = 10
-			TagsLabel.TextXAlignment = Enum.TextXAlignment.Left
-			TagsLabel.Text = "tags: " .. (table.concat(Config.Tags, ", ") or "none")
-			TagsLabel.ZIndex = 20
+			-- >> TAGS (UPDATED: CHIPS STYLE)
+			local TagsContainer = Instance.new("Frame")
+			TagsContainer.Name = "TagsContainer"
+			TagsContainer.Parent = Product
+			TagsContainer.LayoutOrder = 4
+			TagsContainer.BackgroundTransparency = 1
+			TagsContainer.Size = UDim2.new(1, 0, 0, 20) -- Высота под теги
+			TagsContainer.AutomaticSize = Enum.AutomaticSize.Y
+			TagsContainer.ZIndex = 20
+
+			local TagsLayout = Instance.new("UIListLayout")
+			TagsLayout.Parent = TagsContainer
+			TagsLayout.FillDirection = Enum.FillDirection.Horizontal
+			TagsLayout.SortOrder = Enum.SortOrder.LayoutOrder
+			TagsLayout.Padding = UDim.new(0, 4)
+			TagsLayout.Wraps = true -- Чтобы переносились, если много тегов
+
+			if Config.Tags and #Config.Tags > 0 then
+				for _, tagText in ipairs(Config.Tags) do
+					local TagFrame = Instance.new("Frame")
+					local TagCorner = Instance.new("UICorner")
+					local TagStroke = Instance.new("UIStroke")
+					local TagLabel = Instance.new("TextLabel")
+					local TagPad = Instance.new("UIPadding")
+
+					TagFrame.Name = "Tag_" .. tagText
+					TagFrame.Parent = TagsContainer
+					TagFrame.BackgroundColor3 = Color3.fromRGB(35, 35, 35) -- Темный фон для тега
+					TagFrame.BorderSizePixel = 0
+					TagFrame.Size = UDim2.new(0, 0, 0, 16) -- Высота тега
+					TagFrame.AutomaticSize = Enum.AutomaticSize.X -- Ширина по тексту
+					TagFrame.ZIndex = 21
+
+					TagCorner.CornerRadius = UDim.new(0, 4)
+					TagCorner.Parent = TagFrame
+
+					TagStroke.Color = Color3.fromRGB(60, 60, 60)
+					TagStroke.Thickness = 1
+					TagStroke.Parent = TagFrame
+
+					TagPad.Parent = TagFrame
+					TagPad.PaddingLeft = UDim.new(0, 5)
+					TagPad.PaddingRight = UDim.new(0, 5)
+
+					TagLabel.Parent = TagFrame
+					TagLabel.BackgroundTransparency = 1
+					TagLabel.Size = UDim2.new(1, 0, 1, 0)
+					TagLabel.Font = Enum.Font.GothamBold
+					TagLabel.Text = string.lower(tagText)
+					TagLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+					TagLabel.TextSize = 9
+					TagLabel.ZIndex = 22
+				end
+			else
+				-- Если тегов нет, скрываем контейнер чтобы не занимал место
+				TagsContainer.Visible = false
+				TagsContainer.Size = UDim2.new(0,0,0,0)
+			end
 
 			-- DATES
 			local DateRow = Instance.new("Frame")
@@ -5734,7 +5779,14 @@ function Fatal:AddMenu(Menu : Menu) -- ezezez
 					Fatality:CreateAnimation(VersionLabel, 0.5, { TextTransparency = 0 })
 					Fatality:CreateAnimation(AuthorLabel, 0.5, { TextTransparency = 0.2 })
 					Fatality:CreateAnimation(DescLabel, 0.5, { TextTransparency = 0 })
-					Fatality:CreateAnimation(TagsLabel, 0.5, { TextTransparency = 0 })
+					-- Tags fade in
+					for _, t in pairs(TagsContainer:GetChildren()) do
+						if t:IsA("Frame") then
+							Fatality:CreateAnimation(t, 0.5, { BackgroundTransparency = 0 })
+							if t:FindFirstChild("UIStroke") then Fatality:CreateAnimation(t.UIStroke, 0.5, { Transparency = 0 }) end
+							if t:FindFirstChild("TextLabel") then Fatality:CreateAnimation(t.TextLabel, 0.5, { TextTransparency = 0 }) end
+						end
+					end
 					Fatality:CreateAnimation(DateAdd, 0.5, { TextTransparency = 0 })
 					Fatality:CreateAnimation(DateUpd, 0.5, { TextTransparency = 0 })
 					Fatality:CreateAnimation(ActionButton, 0.5, { BackgroundTransparency = 0, TextTransparency = 0 })
@@ -5747,7 +5799,14 @@ function Fatal:AddMenu(Menu : Menu) -- ezezez
 					Fatality:CreateAnimation(VersionLabel, 0.5, { TextTransparency = 1 })
 					Fatality:CreateAnimation(AuthorLabel, 0.5, { TextTransparency = 1 })
 					Fatality:CreateAnimation(DescLabel, 0.5, { TextTransparency = 1 })
-					Fatality:CreateAnimation(TagsLabel, 0.5, { TextTransparency = 1 })
+					-- Tags fade out
+					for _, t in pairs(TagsContainer:GetChildren()) do
+						if t:IsA("Frame") then
+							Fatality:CreateAnimation(t, 0.5, { BackgroundTransparency = 1 })
+							if t:FindFirstChild("UIStroke") then Fatality:CreateAnimation(t.UIStroke, 0.5, { Transparency = 1 }) end
+							if t:FindFirstChild("TextLabel") then Fatality:CreateAnimation(t.TextLabel, 0.5, { TextTransparency = 1 }) end
+						end
+					end
 					Fatality:CreateAnimation(DateAdd, 0.5, { TextTransparency = 1 })
 					Fatality:CreateAnimation(DateUpd, 0.5, { TextTransparency = 1 })
 					Fatality:CreateAnimation(ActionButton, 0.5, { BackgroundTransparency = 1, TextTransparency = 1 })
@@ -6546,5 +6605,6 @@ Fatality.FATALITY_PID = Fatality:RandomString();
 
 
 return Fatality;
+
 
 
