@@ -5495,12 +5495,11 @@ function Fatal:AddMenu(Menu : Menu) -- ezezez
 			});
 		end;
 
--- >> AddProduct (UPDATED: RELATIVE TIME + STYLED TAGS)
+-- >> AddProduct (UPDATED FOR SMART BUTTONS)
 		function MenuLib:AddProduct(Config)
 			Config = Config or {};
 			if not Fatality:CanShow(Config) then return Fatality.Dummy end
 			
-			-- Конфигурация по умолчанию
 			Config.Name = Config.Name or "SCRIPT NAME";
 			Config.Version = Config.Version or "v1.0.0";
 			Config.Author = Config.Author or "Unknown";
@@ -5513,38 +5512,25 @@ function Fatal:AddMenu(Menu : Menu) -- ezezez
 			Config.Callback = Config.Callback or function() end;
 			Config.Position = Config.Position or "center";
 
--- >> HELPER: RELATIVE TIME CALCULATOR (UPDATED WITH TIME SUPPORT)
+			-- >> HELPER: RELATIVE TIME
 			local function GetTimeAgo(dateStr)
 				if not dateStr or dateStr == "N/A" or dateStr == "-" then return dateStr end
-				
-				-- 1. Пробуем найти дату со временем (DD.MM.YYYY HH:MM)
 				local d, m, y, h, min = string.match(dateStr, "(%d+)%.(%d+)%.(%d+)%s+(%d+):(%d+)")
-				
-				-- 2. Если времени нет, ищем просто дату (DD.MM.YYYY)
 				if not d then
 					d, m, y = string.match(dateStr, "(%d+)%.(%d+)%.(%d+)")
-					h, min = 0, 0 -- По дефолту полночь
+					h, min = 0, 0
 				end
-
-				if not d or not m or not y then return dateStr end -- Если формат кривой, отдаем как есть
-				
-				-- Получаем текущее время
+				if not d or not m or not y then return dateStr end
 				local now = os.time()
-				-- Создаем метку времени из строки
 				local target = os.time({year = y, month = m, day = d, hour = h, min = min, sec = 0})
-				
-				-- Разница в секундах
 				local diff = now - target
-				
-				-- Логика перевода
-				if diff < 0 then return "just now" end -- Защита от дат из будущего
+				if diff < 0 then return "just now" end
 				if diff < 60 then return "just now" end
 				if diff < 3600 then return math.floor(diff / 60) .. " min ago" end
 				if diff < 86400 then return math.floor(diff / 3600) .. " hours ago" end
 				if diff < 604800 then return math.floor(diff / 86400) .. " days ago" end
 				if diff < 2592000 then return math.floor(diff / 604800) .. " weeks ago" end
 				if diff < 31536000 then return math.floor(diff / 2592000) .. " months ago" end
-				
 				return math.floor(diff / 31536000) .. " years ago"
 			end
 
@@ -5581,7 +5567,7 @@ function Fatal:AddMenu(Menu : Menu) -- ezezez
 			Padding.PaddingLeft = UDim.new(0, 8)
 			Padding.PaddingRight = UDim.new(0, 8)
 
-			-- HEADER ROW
+			-- HEADER
 			local HeaderFrame = Instance.new("Frame")
 			HeaderFrame.Parent = Product
 			HeaderFrame.BackgroundTransparency = 1
@@ -5648,7 +5634,7 @@ function Fatal:AddMenu(Menu : Menu) -- ezezez
 			StatusCorner.CornerRadius = UDim.new(1, 0)
 			StatusCorner.Parent = StatusDot
 			
-			-- DESCRIPTION
+			-- DESC
 			local DescLabel = Instance.new("TextLabel")
 			DescLabel.Parent = Product
 			DescLabel.BackgroundTransparency = 1
@@ -5672,7 +5658,7 @@ function Fatal:AddMenu(Menu : Menu) -- ezezez
 			SubHeader.LayoutOrder = 2
 			DescLabel.LayoutOrder = 3
 
-			-- TAGS (CHIPS STYLE)
+			-- TAGS
 			local TagsContainer = Instance.new("Frame")
 			TagsContainer.Name = "TagsContainer"
 			TagsContainer.Parent = Product
@@ -5730,7 +5716,7 @@ function Fatal:AddMenu(Menu : Menu) -- ezezez
 				TagsContainer.Size = UDim2.new(0,0,0,0)
 			end
 
-			-- DATES (RELATIVE TIME APPLIED)
+			-- DATES
 			local DateRow = Instance.new("Frame")
 			DateRow.Parent = Product
 			DateRow.LayoutOrder = 5
@@ -5746,7 +5732,6 @@ function Fatal:AddMenu(Menu : Menu) -- ezezez
 			DateAdd.TextColor3 = Color3.fromRGB(150, 150, 150)
 			DateAdd.TextSize = 10
 			DateAdd.TextXAlignment = Enum.TextXAlignment.Left
-			-- Используем хелпер GetTimeAgo
 			DateAdd.Text = "add: " .. GetTimeAgo(Config.DateCreate)
 			DateAdd.ZIndex = 20
 
@@ -5759,11 +5744,10 @@ function Fatal:AddMenu(Menu : Menu) -- ezezez
 			DateUpd.TextColor3 = Color3.fromRGB(150, 150, 150)
 			DateUpd.TextSize = 10
 			DateUpd.TextXAlignment = Enum.TextXAlignment.Right
-			-- Используем хелпер GetTimeAgo
 			DateUpd.Text = "upd: " .. GetTimeAgo(Config.DateUpdate)
 			DateUpd.ZIndex = 20
 
-			-- ACTION BUTTON
+			-- BUTTON
 			local ActionButton = Instance.new("TextButton")
 			local BtnCorner = Instance.new("UICorner")
 			local BtnStroke = Instance.new("UIStroke")
@@ -5789,11 +5773,32 @@ function Fatal:AddMenu(Menu : Menu) -- ezezez
 			Fatality:Register(BtnStroke, "Stroke", "Color")
 			BtnStroke.Parent = ActionButton
 
+			-- Button Logic Store
+			local ButtonLogic = {
+				DefaultColor = Fatality.CurrentTheme.Element,
+				DefaultText = Fatality.CurrentTheme.Text,
+				OverrideColor = nil -- Если установлен, Hover возвращается к этому цвету, а не к теме
+			}
+
 			Fatality:CreateHover(ActionButton, function(hover)
+				local targetColor = ButtonLogic.OverrideColor or Fatality.CurrentTheme.Element
+				
 				if hover then
-					Fatality:CreateAnimation(ActionButton, 0.2, {BackgroundColor3 = Fatality.CurrentTheme.Main, TextColor3 = Color3.new(1,1,1)})
+					-- При наведении делаем немного светлее или акцентнее
+					if ButtonLogic.OverrideColor then
+						-- Если цвет задан (например, красный для удаления), при наведении делаем его ярче
+						local h, s, v = ButtonLogic.OverrideColor:ToHSV()
+						Fatality:CreateAnimation(ActionButton, 0.2, { BackgroundColor3 = Color3.fromHSV(h, s, math.clamp(v + 0.1, 0, 1)) })
+					else
+						Fatality:CreateAnimation(ActionButton, 0.2, { BackgroundColor3 = Fatality.CurrentTheme.Main, TextColor3 = Color3.new(1,1,1) })
+					end
 				else
-					Fatality:CreateAnimation(ActionButton, 0.2, {BackgroundColor3 = Fatality.CurrentTheme.Element, TextColor3 = Fatality.CurrentTheme.Text})
+					-- Возвращаем исходный цвет
+					if ButtonLogic.OverrideColor then
+						Fatality:CreateAnimation(ActionButton, 0.2, { BackgroundColor3 = ButtonLogic.OverrideColor, TextColor3 = Color3.new(1,1,1) })
+					else
+						Fatality:CreateAnimation(ActionButton, 0.2, { BackgroundColor3 = Fatality.CurrentTheme.Element, TextColor3 = Fatality.CurrentTheme.Text })
+					end
 				end
 			end)
 
@@ -5816,7 +5821,6 @@ function Fatal:AddMenu(Menu : Menu) -- ezezez
 					Fatality:CreateAnimation(VersionLabel, 0.5, { TextTransparency = 0 })
 					Fatality:CreateAnimation(AuthorLabel, 0.5, { TextTransparency = 0.2 })
 					Fatality:CreateAnimation(DescLabel, 0.5, { TextTransparency = 0 })
-					-- Tags fade in
 					for _, t in pairs(TagsContainer:GetChildren()) do
 						if t:IsA("Frame") then
 							Fatality:CreateAnimation(t, 0.5, { BackgroundTransparency = 0 })
@@ -5836,7 +5840,6 @@ function Fatal:AddMenu(Menu : Menu) -- ezezez
 					Fatality:CreateAnimation(VersionLabel, 0.5, { TextTransparency = 1 })
 					Fatality:CreateAnimation(AuthorLabel, 0.5, { TextTransparency = 1 })
 					Fatality:CreateAnimation(DescLabel, 0.5, { TextTransparency = 1 })
-					-- Tags fade out
 					for _, t in pairs(TagsContainer:GetChildren()) do
 						if t:IsA("Frame") then
 							Fatality:CreateAnimation(t, 0.5, { BackgroundTransparency = 1 })
@@ -5858,9 +5861,16 @@ function Fatal:AddMenu(Menu : Menu) -- ezezez
 				SetStatus = function(self, newStatus)
 					if StatusColors[newStatus] then Fatality:CreateAnimation(StatusDot, 0.3, {BackgroundColor3 = StatusColors[newStatus]}) end
 				end,
-				SetButton = function(self, text, color)
+				SetButton = function(self, text, color, bgColor)
 					ActionButton.Text = text
 					if color then ActionButton.TextColor3 = color end
+					if bgColor then 
+						ActionButton.BackgroundColor3 = bgColor 
+						ButtonLogic.OverrideColor = bgColor
+					else
+						ButtonLogic.OverrideColor = nil
+						ActionButton.BackgroundColor3 = Fatality.CurrentTheme.Element
+					end
 				end,
 				SetVisible = function(self, bool) Product.Visible = bool end,
 				GetButton = function() return ActionButton end
@@ -6642,6 +6652,7 @@ Fatality.FATALITY_PID = Fatality:RandomString();
 
 
 return Fatality;
+
 
 
 
