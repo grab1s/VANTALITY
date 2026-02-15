@@ -5642,7 +5642,7 @@ function Fatal:AddMenu(Menu : Menu) -- ezezez
 			TagsContainer.Parent = Product
 			TagsContainer.LayoutOrder = 4
 			TagsContainer.BackgroundTransparency = 1
-			TagsContainer.Size = UDim2.new(1, 0, 0, 20) -- Высота под теги
+			TagsContainer.Size = UDim2.new(1, 0, 0, 10) -- Высота под теги
 			TagsContainer.AutomaticSize = Enum.AutomaticSize.Y
 			TagsContainer.ZIndex = 20
 
@@ -6605,6 +6605,7 @@ Fatality.FATALITY_PID = Fatality:RandomString();
 
 
 return Fatality;
+
 
 
 
