@@ -1,0 +1,35 @@
+{
+  "scripts": [
+    {
+      "name": "Cool AutoFarm",
+      "author": "User1337",
+      "description": "Best autofarm for current game. Supports multi-tool.",
+      "url": "https://raw.githubusercontent.com/...",
+      "version": "1.0"
+    },
+    {
+      "name": "ESP Module",
+      "author": "DevVantality",
+      "description": "External ESP module addon for Luau API.",
+      "url": "https://pastebin.com/raw/...",
+      "version": "2.1"
+    }
+  ],
+  "script_configs": [
+    {
+      "name": "Legit Settings for AutoFarm",
+      "author": "ProPlayer",
+      "description": "Config file for Cool AutoFarm script.",
+      "url": "https://pastebin.com/raw/...",
+      "target_script": "Cool AutoFarm"
+    }
+  ],
+  "main_configs": [
+    {
+      "name": "HvH Scarlet",
+      "author": "TapMachine",
+      "description": "Aggressive HvH config for Vantality Main.",
+      "url": "https://pastebin.com/raw/..."
+    }
+  ]
+}
