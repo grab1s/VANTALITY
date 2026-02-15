@@ -5496,6 +5496,262 @@ function Fatal:AddMenu(Menu : Menu) -- ezezez
 			});
 		end;
 
+function MenuLib:AddProduct(Config)
+			Config = Config or {};
+			if not Fatality:CanShow(Config) then return Fatality.Dummy end
+			
+			-- Конфигурация по умолчанию
+			Config.Name = Config.Name or "SCRIPT NAME";
+			Config.Version = Config.Version or "v1.0.0";
+			Config.Author = Config.Author or "Unknown";
+			Config.Status = Config.Status or "Working"; -- Working, Updating, Patched
+			Config.Description = Config.Description or "No description provided.";
+			Config.Tags = Config.Tags or {};
+			Config.DateCreate = Config.DateCreate or "N/A";
+			Config.DateUpdate = Config.DateUpdate or "N/A";
+			Config.ButtonText = Config.ButtonText or "Download";
+			Config.Callback = Config.Callback or function() end;
+			Config.Position = Config.Position or "center";
+
+			-- Определение цветов статуса
+			local StatusColors = {
+				Working = Color3.fromRGB(100, 255, 100), -- Зеленый
+				Updating = Color3.fromRGB(255, 220, 80), -- Желтый
+				Patched = Color3.fromRGB(255, 80, 80)    -- Красный
+			}
+
+			-- Главный контейнер
+			local Product = Instance.new("Frame")
+			local UICorner = Instance.new("UICorner")
+			local UIStroke = Instance.new("UIStroke")
+			local Padding = Instance.new("UIPadding")
+			
+			Product.Name = Fatality:RandomString()
+			Product.Parent = (string.lower(Config.Position) == 'left' and Left) or (string.lower(Config.Position) == 'center' and Center) or Right;
+			Fatality:Register(Product, "Container")
+			Product.BorderColor3 = Color3.fromRGB(0, 0, 0)
+			Product.BorderSizePixel = 0
+			Product.Size = UDim2.new(1, 0, 0, 0) -- Высота авто
+			Product.AutomaticSize = Enum.AutomaticSize.Y -- Авто-высота
+			Product.ZIndex = 10
+
+			UICorner.CornerRadius = UDim.new(0, 4)
+			UICorner.Parent = Product
+
+			UIStroke.Color = Color3.fromRGB(29, 29, 29)
+			Fatality:Register(UIStroke, "Stroke", "Color")
+			UIStroke.Parent = Product
+			
+			Padding.Parent = Product
+			Padding.PaddingTop = UDim.new(0, 8)
+			Padding.PaddingBottom = UDim.new(0, 8)
+			Padding.PaddingLeft = UDim.new(0, 8)
+			Padding.PaddingRight = UDim.new(0, 8)
+
+			-- >> HEADER ROW (Name + Version)
+			local HeaderFrame = Instance.new("Frame")
+			HeaderFrame.Parent = Product
+			HeaderFrame.BackgroundTransparency = 1
+			HeaderFrame.Size = UDim2.new(1, 0, 0, 18)
+			HeaderFrame.LayoutOrder = 1
+
+			local TitleLabel = Instance.new("TextLabel")
+			TitleLabel.Parent = HeaderFrame
+			TitleLabel.BackgroundTransparency = 1
+			TitleLabel.Size = UDim2.new(0.7, 0, 1, 0)
+			TitleLabel.Font = Enum.Font.GothamBold
+			TitleLabel.Text = Config.Name
+			TitleLabel.TextColor3 = Fatality.CurrentTheme.Text
+			Fatality:Register(TitleLabel, "Text", "TextColor3")
+			TitleLabel.TextSize = 14
+			TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
+
+			local VersionLabel = Instance.new("TextLabel")
+			VersionLabel.Parent = HeaderFrame
+			VersionLabel.BackgroundTransparency = 1
+			VersionLabel.Size = UDim2.new(0.3, 0, 1, 0)
+			VersionLabel.Position = UDim2.new(0.7, 0, 0, 0)
+			VersionLabel.Font = Enum.Font.Gotham
+			VersionLabel.Text = Config.Version
+			VersionLabel.TextColor3 = Fatality.CurrentTheme.TextDark
+			Fatality:Register(VersionLabel, "TextDark", "TextColor3")
+			VersionLabel.TextSize = 12
+			VersionLabel.TextXAlignment = Enum.TextXAlignment.Right
+
+			-- >> SUB-HEADER (Author + Status)
+			local SubHeader = Instance.new("Frame")
+			SubHeader.Parent = Product
+			SubHeader.BackgroundTransparency = 1
+			SubHeader.Position = UDim2.new(0,0,0,18)
+			SubHeader.Size = UDim2.new(1, 0, 0, 16)
+			
+			local AuthorLabel = Instance.new("TextLabel")
+			AuthorLabel.Parent = SubHeader
+			AuthorLabel.BackgroundTransparency = 1
+			AuthorLabel.Size = UDim2.new(0.8, 0, 1, 0)
+			AuthorLabel.Font = Enum.Font.Gotham
+			AuthorLabel.Text = "by " .. Config.Author
+			AuthorLabel.TextColor3 = Fatality.CurrentTheme.Main
+			Fatality:Register(AuthorLabel, "Main", "TextColor3")
+			AuthorLabel.TextSize = 11
+			AuthorLabel.TextTransparency = 0.2
+			AuthorLabel.TextXAlignment = Enum.TextXAlignment.Left
+
+			local StatusDot = Instance.new("Frame")
+			local StatusCorner = Instance.new("UICorner")
+			local StatusGlow = Instance.new("UIStroke")
+			
+			StatusDot.Parent = SubHeader
+			StatusDot.AnchorPoint = Vector2.new(1, 0.5)
+			StatusDot.Position = UDim2.new(1, 0, 0.5, 0)
+			StatusDot.Size = UDim2.new(0, 8, 0, 8)
+			StatusDot.BackgroundColor3 = StatusColors[Config.Status] or StatusColors.Working
+			
+			StatusCorner.CornerRadius = UDim.new(1, 0)
+			StatusCorner.Parent = StatusDot
+			
+			-- >> DESCRIPTION
+			local DescLabel = Instance.new("TextLabel")
+			DescLabel.Parent = Product
+			DescLabel.BackgroundTransparency = 1
+			DescLabel.Position = UDim2.new(0,0,0,38)
+			DescLabel.Size = UDim2.new(1, 0, 0, 0)
+			DescLabel.AutomaticSize = Enum.AutomaticSize.Y
+			DescLabel.Font = Enum.Font.GothamMedium
+			DescLabel.Text = Config.Description
+			DescLabel.TextColor3 = Color3.fromRGB(220, 220, 220) -- Ярче, как ты просил
+			DescLabel.TextSize = 12
+			DescLabel.TextWrapped = true
+			DescLabel.TextXAlignment = Enum.TextXAlignment.Left
+			DescLabel.TextYAlignment = Enum.TextYAlignment.Top
+
+			-- Отступ для следующих элементов будет зависеть от высоты описания
+			-- Используем UIListLayout для самого продукта, чтобы не считать пиксели вручную
+			local ProductLayout = Instance.new("UIListLayout")
+			ProductLayout.Parent = Product
+			ProductLayout.SortOrder = Enum.SortOrder.LayoutOrder
+			ProductLayout.Padding = UDim.new(0, 4)
+
+			-- Раставляем Order
+			HeaderFrame.LayoutOrder = 1
+			SubHeader.LayoutOrder = 2
+			DescLabel.LayoutOrder = 3
+
+			-- >> TAGS
+			local TagsLabel = Instance.new("TextLabel")
+			TagsLabel.Parent = Product
+			TagsLabel.LayoutOrder = 4
+			TagsLabel.BackgroundTransparency = 1
+			TagsLabel.Size = UDim2.new(1, 0, 0, 14)
+			TagsLabel.Font = Enum.Font.Code
+			TagsLabel.TextColor3 = Fatality.CurrentTheme.TextDark
+			Fatality:Register(TagsLabel, "TextDark", "TextColor3")
+			TagsLabel.TextSize = 10
+			TagsLabel.TextXAlignment = Enum.TextXAlignment.Left
+			TagsLabel.Text = "tags: " .. (table.concat(Config.Tags, ", ") or "none")
+
+			-- >> DATES ROW
+			local DateRow = Instance.new("Frame")
+			DateRow.Parent = Product
+			DateRow.LayoutOrder = 5
+			DateRow.BackgroundTransparency = 1
+			DateRow.Size = UDim2.new(1, 0, 0, 14)
+
+			local DateAdd = Instance.new("TextLabel")
+			DateAdd.Parent = DateRow
+			DateAdd.BackgroundTransparency = 1
+			DateAdd.Size = UDim2.new(0.5, 0, 1, 0)
+			DateAdd.Font = Enum.Font.Gotham
+			DateAdd.TextColor3 = Color3.fromRGB(150, 150, 150)
+			DateAdd.TextSize = 10
+			DateAdd.TextXAlignment = Enum.TextXAlignment.Left
+			DateAdd.Text = "add: " .. Config.DateCreate
+
+			local DateUpd = Instance.new("TextLabel")
+			DateUpd.Parent = DateRow
+			DateUpd.BackgroundTransparency = 1
+			DateUpd.Size = UDim2.new(0.5, 0, 1, 0)
+			DateUpd.Position = UDim2.new(0.5, 0, 0, 0)
+			DateUpd.Font = Enum.Font.Gotham
+			DateUpd.TextColor3 = Color3.fromRGB(150, 150, 150)
+			DateUpd.TextSize = 10
+			DateUpd.TextXAlignment = Enum.TextXAlignment.Right
+			DateUpd.Text = "upd: " .. Config.DateUpdate
+
+			-- >> ACTION BUTTON
+			local ActionButton = Instance.new("TextButton")
+			local BtnCorner = Instance.new("UICorner")
+			local BtnStroke = Instance.new("UIStroke")
+
+			ActionButton.Name = "ActionBtn"
+			ActionButton.Parent = Product
+			ActionButton.LayoutOrder = 6
+			ActionButton.BackgroundColor3 = Fatality.CurrentTheme.Element
+			Fatality:Register(ActionButton, "Element")
+			ActionButton.Size = UDim2.new(1, 0, 0, 22)
+			ActionButton.Font = Enum.Font.GothamBold
+			ActionButton.Text = Config.ButtonText
+			ActionButton.TextColor3 = Fatality.CurrentTheme.Text
+			Fatality:Register(ActionButton, "Text", "TextColor3")
+			ActionButton.TextSize = 12
+			ActionButton.AutoButtonColor = false
+
+			BtnCorner.CornerRadius = UDim.new(0, 4)
+			BtnCorner.Parent = ActionButton
+
+			BtnStroke.Color = Fatality.CurrentTheme.Stroke
+			Fatality:Register(BtnStroke, "Stroke", "Color")
+			BtnStroke.Parent = ActionButton
+
+			-- Анимация кнопки
+			Fatality:CreateHover(ActionButton, function(hover)
+				if hover then
+					Fatality:CreateAnimation(ActionButton, 0.2, {BackgroundColor3 = Fatality.CurrentTheme.Main, TextColor3 = Color3.new(1,1,1)})
+				else
+					Fatality:CreateAnimation(ActionButton, 0.2, {BackgroundColor3 = Fatality.CurrentTheme.Element, TextColor3 = Fatality.CurrentTheme.Text})
+				end
+			end)
+
+			ActionButton.MouseButton1Click:Connect(function()
+				Config.Callback()
+			end)
+			
+			-- Spacer Bottom
+			local Space = Instance.new("Frame")
+			Space.Parent = Product
+			Space.LayoutOrder = 7
+			Space.BackgroundTransparency = 1
+			Space.Size = UDim2.new(1, 0, 0, 2)
+
+			-- Объект ответа для управления карточкой из скрипта
+			return {
+				SetStatus = function(self, newStatus)
+					if StatusColors[newStatus] then
+						Fatality:CreateAnimation(StatusDot, 0.3, {BackgroundColor3 = StatusColors[newStatus]})
+					end
+				end,
+				
+				SetButton = function(self, text, color)
+					ActionButton.Text = text
+					if color then
+						-- Переопределяем тему для этой конкретной кнопки (Hot Swap)
+						-- Важно: мы снимаем регистр темы с этой кнопки, чтобы она не сбрасывалась
+						-- Но в рамках этой либы просто изменим цвет, анимация hover может сбить, 
+						-- поэтому добавим флаг
+						
+						-- Простая реализация:
+						ActionButton.TextColor3 = color
+					end
+				end,
+				
+				SetVisible = function(self, bool)
+					Product.Visible = bool
+				end,
+				
+				GetButton = function() return ActionButton end -- Для тонкой настройки
+			}
+		end; -- 1
+
 		return MenuLib; --lolez
 	end;
 
@@ -6271,3 +6527,4 @@ Fatality.FATALITY_PID = Fatality:RandomString();
 
 
 return Fatality;
+
