@@ -1,5 +1,5 @@
 --[[
-    Fatality Interface
+    Fatality: Marketplace Interface
 	Modded by: grab1s
     Author: 4lpaca
     License: MIT
@@ -5756,7 +5756,7 @@ function Fatal:AddMenu(Menu : Menu) -- ezezez
 			l.Size = UDim2.new(1, 0, 1, 0)
 			l.Position = UDim2.new(0, offset, 0, 0)
 			l.Font = Enum.Font.GothamBlack
-			l.Text = "VANTALITY"
+			l.Text = "Marketplace"
 			l.TextColor3 = color
 			l.TextSize = 22
 			l.ZIndex = 202 + z
@@ -5790,7 +5790,7 @@ function Fatal:AddMenu(Menu : Menu) -- ezezez
 			'<font color="#666666">// special thanks</font>',
 			'<b>Mepilok, Tetraquark, ahk_lzt</b>',
 			' ',
-			'<font color="#666666">// 2026</font> <font color="#ff4a68">VANTALITY</font>'
+			'<font color="#666666">// 2026</font> <font color="#ff4a68">MARKETPLACE</font>'
 		}, "<br />")
 
 		LinkButton.Name = "LinkButton"
@@ -6268,5 +6268,6 @@ function Fatality:CreateNotifier(): Notifier
 end;
 
 Fatality.FATALITY_PID = Fatality:RandomString();
+
 
 return Fatality;
