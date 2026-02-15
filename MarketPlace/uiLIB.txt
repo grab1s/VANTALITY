@@ -4961,7 +4961,7 @@ function Fatality.new(Window: Window)
 
 function Fatal:AddMenu(Menu : Menu) -- ezezez
 		Menu = Menu or {};
-        if not Fatality:CanShow(Menu) then return { AddSection = function() return Fatality.Dummy end, AddPreview = function() return Fatality.Dummy end } end
+        if not Fatality:CanShow(Menu) then return { AddSection = function() return Fatality.Dummy end, AddPreview = function() return Fatality.Dummy end, AddProduct = function() return {SetButton=function()end, SetStatus=function()end, SetVisible=function()end, GetButton=function() return Instance.new("TextButton") end} end } end
 		Menu.Name = Menu.Name or "EXAMPLE";
 		Menu.Icon = Menu.Icon or "eye";
 		-- FIX: Отключаем AutoFill принудительно, чтобы работал скролл
@@ -5155,10 +5155,7 @@ function Fatal:AddMenu(Menu : Menu) -- ezezez
 		end)
 		Fatality:NewInput(MenuButton,function() for i,v in next , Fatal.Menus do if v.Root == MenuLiber then Fatal.MenuSelected = v; v.ValueSelect(true) else v.ValueSelect(false) end; end; end);
 		
-		-- Дальше идут AddPreview, AddListBox и AddSection (оставь их как в оригинале, они вложены в AddMenu)
-        -- Но так как я даю только функцию AddMenu, убедись, что закрывающие 'end' совпадают.
-        -- Ниже я просто копирую остаток функции AddMenu из твоего файла, чтобы ты мог заменить целиком блок.
-		
+		-- >> AddPreview (Original)
 		function MenuLib:AddPreview(Config: Preview)
 			Config = Config or {}; Config.Name = Config.Name or "PREVIEW"; Config.Position = Config.Position or "left"; Config.Height = Config.Height or 0;
 			local Preview = Instance.new("Frame")
@@ -5224,6 +5221,7 @@ function Fatal:AddMenu(Menu : Menu) -- ezezez
 			return MainBlock;
 		end;
 
+		-- >> AddListBox (Original)
 		function MenuLib:AddListBox(Config : Listbox)
 			Config = Config or {}; Config.Name = Config.Name or "LIST BOX"; Config.Position = Config.Position or "left"; Config.Height = Config.Height or 0; Config.Values = Config.Values or {}; Config.Multi = Config.Multi or false; Config.Default = Config.Default or ((Config.Multi and nil) or {}); Config.Callback = Config.Callback or function() end;
 			table.insert(Fatal.ElementContents,{ Name = Config.Name, Path = Menu.Name .. " > ".. Config.Name, _TAB = _B });
@@ -5423,6 +5421,7 @@ function Fatal:AddMenu(Menu : Menu) -- ezezez
 			return res;
 		end;
 
+		-- >> AddSection (Original)
 		function MenuLib:AddSection(Config : Section)
 			Config = Config or {};
 			if not Fatality:CanShow(Config) then return Fatality.Dummy end
@@ -5496,15 +5495,15 @@ function Fatal:AddMenu(Menu : Menu) -- ezezez
 			});
 		end;
 
-function MenuLib:AddProduct(Config)
+		-- >> AddProduct (FIXED Z-INDEX)
+		function MenuLib:AddProduct(Config)
 			Config = Config or {};
 			if not Fatality:CanShow(Config) then return Fatality.Dummy end
 			
-			-- Конфигурация по умолчанию
 			Config.Name = Config.Name or "SCRIPT NAME";
 			Config.Version = Config.Version or "v1.0.0";
 			Config.Author = Config.Author or "Unknown";
-			Config.Status = Config.Status or "Working"; -- Working, Updating, Patched
+			Config.Status = Config.Status or "Working";
 			Config.Description = Config.Description or "No description provided.";
 			Config.Tags = Config.Tags or {};
 			Config.DateCreate = Config.DateCreate or "N/A";
@@ -5513,14 +5512,12 @@ function MenuLib:AddProduct(Config)
 			Config.Callback = Config.Callback or function() end;
 			Config.Position = Config.Position or "center";
 
-			-- Определение цветов статуса
 			local StatusColors = {
-				Working = Color3.fromRGB(100, 255, 100), -- Зеленый
-				Updating = Color3.fromRGB(255, 220, 80), -- Желтый
-				Patched = Color3.fromRGB(255, 80, 80)    -- Красный
+				Working = Color3.fromRGB(100, 255, 100),
+				Updating = Color3.fromRGB(255, 220, 80),
+				Patched = Color3.fromRGB(255, 80, 80)
 			}
 
-			-- Главный контейнер
 			local Product = Instance.new("Frame")
 			local UICorner = Instance.new("UICorner")
 			local UIStroke = Instance.new("UIStroke")
@@ -5531,9 +5528,9 @@ function MenuLib:AddProduct(Config)
 			Fatality:Register(Product, "Container")
 			Product.BorderColor3 = Color3.fromRGB(0, 0, 0)
 			Product.BorderSizePixel = 0
-			Product.Size = UDim2.new(1, 0, 0, 0) -- Высота авто
-			Product.AutomaticSize = Enum.AutomaticSize.Y -- Авто-высота
-			Product.ZIndex = 10
+			Product.Size = UDim2.new(1, 0, 0, 0)
+			Product.AutomaticSize = Enum.AutomaticSize.Y
+			Product.ZIndex = 15 -- Higher than standard Background
 
 			UICorner.CornerRadius = UDim.new(0, 4)
 			UICorner.Parent = Product
@@ -5548,12 +5545,13 @@ function MenuLib:AddProduct(Config)
 			Padding.PaddingLeft = UDim.new(0, 8)
 			Padding.PaddingRight = UDim.new(0, 8)
 
-			-- >> HEADER ROW (Name + Version)
+			-- HEADER ROW
 			local HeaderFrame = Instance.new("Frame")
 			HeaderFrame.Parent = Product
 			HeaderFrame.BackgroundTransparency = 1
 			HeaderFrame.Size = UDim2.new(1, 0, 0, 18)
 			HeaderFrame.LayoutOrder = 1
+			HeaderFrame.ZIndex = 20
 
 			local TitleLabel = Instance.new("TextLabel")
 			TitleLabel.Parent = HeaderFrame
@@ -5565,6 +5563,7 @@ function MenuLib:AddProduct(Config)
 			Fatality:Register(TitleLabel, "Text", "TextColor3")
 			TitleLabel.TextSize = 14
 			TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
+			TitleLabel.ZIndex = 20
 
 			local VersionLabel = Instance.new("TextLabel")
 			VersionLabel.Parent = HeaderFrame
@@ -5577,13 +5576,15 @@ function MenuLib:AddProduct(Config)
 			Fatality:Register(VersionLabel, "TextDark", "TextColor3")
 			VersionLabel.TextSize = 12
 			VersionLabel.TextXAlignment = Enum.TextXAlignment.Right
+			VersionLabel.ZIndex = 20
 
-			-- >> SUB-HEADER (Author + Status)
+			-- SUB-HEADER
 			local SubHeader = Instance.new("Frame")
 			SubHeader.Parent = Product
 			SubHeader.BackgroundTransparency = 1
 			SubHeader.Position = UDim2.new(0,0,0,18)
 			SubHeader.Size = UDim2.new(1, 0, 0, 16)
+			SubHeader.ZIndex = 20
 			
 			local AuthorLabel = Instance.new("TextLabel")
 			AuthorLabel.Parent = SubHeader
@@ -5596,48 +5597,46 @@ function MenuLib:AddProduct(Config)
 			AuthorLabel.TextSize = 11
 			AuthorLabel.TextTransparency = 0.2
 			AuthorLabel.TextXAlignment = Enum.TextXAlignment.Left
+			AuthorLabel.ZIndex = 20
 
 			local StatusDot = Instance.new("Frame")
 			local StatusCorner = Instance.new("UICorner")
-			local StatusGlow = Instance.new("UIStroke")
 			
 			StatusDot.Parent = SubHeader
 			StatusDot.AnchorPoint = Vector2.new(1, 0.5)
 			StatusDot.Position = UDim2.new(1, 0, 0.5, 0)
 			StatusDot.Size = UDim2.new(0, 8, 0, 8)
 			StatusDot.BackgroundColor3 = StatusColors[Config.Status] or StatusColors.Working
+			StatusDot.ZIndex = 20
 			
 			StatusCorner.CornerRadius = UDim.new(1, 0)
 			StatusCorner.Parent = StatusDot
 			
-			-- >> DESCRIPTION
+			-- DESCRIPTION
 			local DescLabel = Instance.new("TextLabel")
 			DescLabel.Parent = Product
 			DescLabel.BackgroundTransparency = 1
-			DescLabel.Position = UDim2.new(0,0,0,38)
 			DescLabel.Size = UDim2.new(1, 0, 0, 0)
 			DescLabel.AutomaticSize = Enum.AutomaticSize.Y
 			DescLabel.Font = Enum.Font.GothamMedium
 			DescLabel.Text = Config.Description
-			DescLabel.TextColor3 = Color3.fromRGB(220, 220, 220) -- Ярче, как ты просил
+			DescLabel.TextColor3 = Color3.fromRGB(220, 220, 220)
 			DescLabel.TextSize = 12
 			DescLabel.TextWrapped = true
 			DescLabel.TextXAlignment = Enum.TextXAlignment.Left
 			DescLabel.TextYAlignment = Enum.TextYAlignment.Top
+			DescLabel.ZIndex = 20
 
-			-- Отступ для следующих элементов будет зависеть от высоты описания
-			-- Используем UIListLayout для самого продукта, чтобы не считать пиксели вручную
 			local ProductLayout = Instance.new("UIListLayout")
 			ProductLayout.Parent = Product
 			ProductLayout.SortOrder = Enum.SortOrder.LayoutOrder
 			ProductLayout.Padding = UDim.new(0, 4)
 
-			-- Раставляем Order
 			HeaderFrame.LayoutOrder = 1
 			SubHeader.LayoutOrder = 2
 			DescLabel.LayoutOrder = 3
 
-			-- >> TAGS
+			-- TAGS
 			local TagsLabel = Instance.new("TextLabel")
 			TagsLabel.Parent = Product
 			TagsLabel.LayoutOrder = 4
@@ -5649,13 +5648,15 @@ function MenuLib:AddProduct(Config)
 			TagsLabel.TextSize = 10
 			TagsLabel.TextXAlignment = Enum.TextXAlignment.Left
 			TagsLabel.Text = "tags: " .. (table.concat(Config.Tags, ", ") or "none")
+			TagsLabel.ZIndex = 20
 
-			-- >> DATES ROW
+			-- DATES
 			local DateRow = Instance.new("Frame")
 			DateRow.Parent = Product
 			DateRow.LayoutOrder = 5
 			DateRow.BackgroundTransparency = 1
 			DateRow.Size = UDim2.new(1, 0, 0, 14)
+			DateRow.ZIndex = 20
 
 			local DateAdd = Instance.new("TextLabel")
 			DateAdd.Parent = DateRow
@@ -5666,6 +5667,7 @@ function MenuLib:AddProduct(Config)
 			DateAdd.TextSize = 10
 			DateAdd.TextXAlignment = Enum.TextXAlignment.Left
 			DateAdd.Text = "add: " .. Config.DateCreate
+			DateAdd.ZIndex = 20
 
 			local DateUpd = Instance.new("TextLabel")
 			DateUpd.Parent = DateRow
@@ -5677,8 +5679,9 @@ function MenuLib:AddProduct(Config)
 			DateUpd.TextSize = 10
 			DateUpd.TextXAlignment = Enum.TextXAlignment.Right
 			DateUpd.Text = "upd: " .. Config.DateUpdate
+			DateUpd.ZIndex = 20
 
-			-- >> ACTION BUTTON
+			-- ACTION BUTTON
 			local ActionButton = Instance.new("TextButton")
 			local BtnCorner = Instance.new("UICorner")
 			local BtnStroke = Instance.new("UIStroke")
@@ -5695,6 +5698,7 @@ function MenuLib:AddProduct(Config)
 			Fatality:Register(ActionButton, "Text", "TextColor3")
 			ActionButton.TextSize = 12
 			ActionButton.AutoButtonColor = false
+			ActionButton.ZIndex = 25
 
 			BtnCorner.CornerRadius = UDim.new(0, 4)
 			BtnCorner.Parent = ActionButton
@@ -5703,7 +5707,6 @@ function MenuLib:AddProduct(Config)
 			Fatality:Register(BtnStroke, "Stroke", "Color")
 			BtnStroke.Parent = ActionButton
 
-			-- Анимация кнопки
 			Fatality:CreateHover(ActionButton, function(hover)
 				if hover then
 					Fatality:CreateAnimation(ActionButton, 0.2, {BackgroundColor3 = Fatality.CurrentTheme.Main, TextColor3 = Color3.new(1,1,1)})
@@ -5716,41 +5719,57 @@ function MenuLib:AddProduct(Config)
 				Config.Callback()
 			end)
 			
-			-- Spacer Bottom
 			local Space = Instance.new("Frame")
 			Space.Parent = Product
 			Space.LayoutOrder = 7
 			Space.BackgroundTransparency = 1
 			Space.Size = UDim2.new(1, 0, 0, 2)
+			Space.ZIndex = 15
 
-			-- Объект ответа для управления карточкой из скрипта
+			local Toggle = function(v)
+				if v then 
+					Fatality:CreateAnimation(Product, 0.5, { BackgroundTransparency = 0 })
+					Fatality:CreateAnimation(UIStroke, 0.5, { Transparency = 0 })
+					Fatality:CreateAnimation(TitleLabel, 0.5, { TextTransparency = 0 })
+					Fatality:CreateAnimation(VersionLabel, 0.5, { TextTransparency = 0 })
+					Fatality:CreateAnimation(AuthorLabel, 0.5, { TextTransparency = 0.2 })
+					Fatality:CreateAnimation(DescLabel, 0.5, { TextTransparency = 0 })
+					Fatality:CreateAnimation(TagsLabel, 0.5, { TextTransparency = 0 })
+					Fatality:CreateAnimation(DateAdd, 0.5, { TextTransparency = 0 })
+					Fatality:CreateAnimation(DateUpd, 0.5, { TextTransparency = 0 })
+					Fatality:CreateAnimation(ActionButton, 0.5, { BackgroundTransparency = 0, TextTransparency = 0 })
+					Fatality:CreateAnimation(BtnStroke, 0.5, { Transparency = 0 })
+					Fatality:CreateAnimation(StatusDot, 0.5, { BackgroundTransparency = 0 })
+				else 
+					Fatality:CreateAnimation(Product, 0.5, { BackgroundTransparency = 1 })
+					Fatality:CreateAnimation(UIStroke, 0.5, { Transparency = 1 })
+					Fatality:CreateAnimation(TitleLabel, 0.5, { TextTransparency = 1 })
+					Fatality:CreateAnimation(VersionLabel, 0.5, { TextTransparency = 1 })
+					Fatality:CreateAnimation(AuthorLabel, 0.5, { TextTransparency = 1 })
+					Fatality:CreateAnimation(DescLabel, 0.5, { TextTransparency = 1 })
+					Fatality:CreateAnimation(TagsLabel, 0.5, { TextTransparency = 1 })
+					Fatality:CreateAnimation(DateAdd, 0.5, { TextTransparency = 1 })
+					Fatality:CreateAnimation(DateUpd, 0.5, { TextTransparency = 1 })
+					Fatality:CreateAnimation(ActionButton, 0.5, { BackgroundTransparency = 1, TextTransparency = 1 })
+					Fatality:CreateAnimation(BtnStroke, 0.5, { Transparency = 1 })
+					Fatality:CreateAnimation(StatusDot, 0.5, { BackgroundTransparency = 1 })
+				end
+			end;
+			Toggle(BindEvent:GetAttribute('V'));
+			BindEvent.Event:Connect(Toggle);
+
 			return {
 				SetStatus = function(self, newStatus)
-					if StatusColors[newStatus] then
-						Fatality:CreateAnimation(StatusDot, 0.3, {BackgroundColor3 = StatusColors[newStatus]})
-					end
+					if StatusColors[newStatus] then Fatality:CreateAnimation(StatusDot, 0.3, {BackgroundColor3 = StatusColors[newStatus]}) end
 				end,
-				
 				SetButton = function(self, text, color)
 					ActionButton.Text = text
-					if color then
-						-- Переопределяем тему для этой конкретной кнопки (Hot Swap)
-						-- Важно: мы снимаем регистр темы с этой кнопки, чтобы она не сбрасывалась
-						-- Но в рамках этой либы просто изменим цвет, анимация hover может сбить, 
-						-- поэтому добавим флаг
-						
-						-- Простая реализация:
-						ActionButton.TextColor3 = color
-					end
+					if color then ActionButton.TextColor3 = color end
 				end,
-				
-				SetVisible = function(self, bool)
-					Product.Visible = bool
-				end,
-				
-				GetButton = function() return ActionButton end -- Для тонкой настройки
+				SetVisible = function(self, bool) Product.Visible = bool end,
+				GetButton = function() return ActionButton end
 			}
-		end; -- 1
+		end;
 
 		return MenuLib; --lolez
 	end;
@@ -6527,4 +6546,5 @@ Fatality.FATALITY_PID = Fatality:RandomString();
 
 
 return Fatality;
+
 
