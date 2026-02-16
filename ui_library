@@ -3907,13 +3907,12 @@ function Fatality:CreateConfigWindow(Root: ScreenGui , Fatal , Button: ImageButt
 	local AddConfigButton = Instance.new("ImageButton")
 	local UICorner_4 = Instance.new("UICorner")
 	
-	-- Buttons Right Column
 	local GetConfigButton = Instance.new("ImageButton")
 	local UICorner_5 = Instance.new("UICorner")
 	local SaveConfigButton = Instance.new("ImageButton")
 	local UICorner_6 = Instance.new("UICorner")
-	local RefreshButton = Instance.new("ImageButton") -- New Button
-	local UICorner_Ref = Instance.new("UICorner")   -- New Corner
+	local RefreshButton = Instance.new("ImageButton")
+	local UICorner_Ref = Instance.new("UICorner")  
 	local DeleteButton = Instance.new("ImageButton")
 	local UICorner_7 = Instance.new("UICorner")
 
@@ -3976,7 +3975,7 @@ function Fatality:CreateConfigWindow(Root: ScreenGui , Fatal , Button: ImageButt
 				ImageTransparency = 0.500
 			})
 			
-			Fatality:CreateAnimation(RefreshButton,0.3,{ -- Anim
+			Fatality:CreateAnimation(RefreshButton,0.3,{
 				ImageTransparency = 0.500
 			})
 
@@ -4040,7 +4039,7 @@ function Fatality:CreateConfigWindow(Root: ScreenGui , Fatal , Button: ImageButt
 				ImageTransparency = 1
 			})
 			
-			Fatality:CreateAnimation(RefreshButton,0.3,{ -- Anim
+			Fatality:CreateAnimation(RefreshButton,0.3,{ 
 				ImageTransparency = 1
 			})
 
@@ -4200,7 +4199,6 @@ function Fatality:CreateConfigWindow(Root: ScreenGui , Fatal , Button: ImageButt
 	UICorner_6.CornerRadius = UDim.new(1, 0)
 	UICorner_6.Parent = SaveConfigButton
 	
-	-- >> NEW REFRESH BUTTON <<
 	RefreshButton.Name = "RefreshButton"
 	RefreshButton.Parent = ConfigWindowFrame
 	RefreshButton.AnchorPoint = Vector2.new(1, 0)
@@ -4208,10 +4206,10 @@ function Fatality:CreateConfigWindow(Root: ScreenGui , Fatal , Button: ImageButt
 	RefreshButton.BackgroundTransparency = 1.000
 	RefreshButton.BorderColor3 = Color3.fromRGB(0, 0, 0)
 	RefreshButton.BorderSizePixel = 0
-	RefreshButton.Position = UDim2.new(1, -8, 0, 46) -- Positioned under Save
+	RefreshButton.Position = UDim2.new(1, -8, 0, 46) 
 	RefreshButton.Size = UDim2.new(0, 15, 0, 15)
 	RefreshButton.ZIndex = 209
-	RefreshButton.Image = "rbxassetid://10723434070" -- Loader Icon
+	RefreshButton.Image = "rbxassetid://10723434070" 
 	RefreshButton.ImageTransparency = 0.500
 	Fatality:Register(RefreshButton, "Text", "ImageColor3")
 
@@ -4225,7 +4223,7 @@ function Fatality:CreateConfigWindow(Root: ScreenGui , Fatal , Button: ImageButt
 	DeleteButton.BackgroundTransparency = 1.000
 	DeleteButton.BorderColor3 = Color3.fromRGB(0, 0, 0)
 	DeleteButton.BorderSizePixel = 0
-	DeleteButton.Position = UDim2.new(1, -8, 0, 64) -- Shifted down from 55
+	DeleteButton.Position = UDim2.new(1, -8, 0, 64) 
 	DeleteButton.Size = UDim2.new(0, 15, 0, 15)
 	DeleteButton.ZIndex = 209
 	DeleteButton.Image = "rbxassetid://10747362393"
@@ -5011,12 +5009,11 @@ function Fatality.new(Window: Window)
 		return ConfigElement;
 	end;
 
-function Fatal:AddMenu(Menu : Menu) -- ezezez
+function Fatal:AddMenu(Menu : Menu) -- 1111111111111
 		Menu = Menu or {};
         if not Fatality:CanShow(Menu) then return { AddSection = function() return Fatality.Dummy end, AddPreview = function() return Fatality.Dummy end } end
 		Menu.Name = Menu.Name or "EXAMPLE";
 		Menu.Icon = Menu.Icon or "eye";
-		-- FIX: Отключаем AutoFill принудительно, чтобы работал скролл
 		Menu.AutoFill = false; 
 
 		local MenuLib = {};
@@ -5092,8 +5089,7 @@ function Fatal:AddMenu(Menu : Menu) -- ezezez
 		MenuLiber.Size = UDim2.new(1, 0, 1, 0)
 		MenuLiber.ZIndex = 7
 		
-        -- LEFT COLUMN
-		Left.Name = "Left" -- Было рандомное имя, для LuauAPI лучше дать точное
+		Left.Name = "Left" 
 		Left.Parent = MenuLiber
 		Left.Active = true
 		Left.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -5109,10 +5105,8 @@ function Fatal:AddMenu(Menu : Menu) -- ezezez
 		UIListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 		UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
 		UIListLayout.Padding = UDim.new(0, 5)
-        -- FIX: Убираем VerticalFlex
 		UIListLayout.VerticalFlex = Enum.UIFlexAlignment.None; 
 
-        -- CENTER COLUMN
 		Center.Name = "Center"
 		Center.Parent = MenuLiber
 		Center.Active = true
@@ -5129,10 +5123,8 @@ function Fatal:AddMenu(Menu : Menu) -- ezezez
 		UIListLayout_2.HorizontalAlignment = Enum.HorizontalAlignment.Center
 		UIListLayout_2.SortOrder = Enum.SortOrder.LayoutOrder
 		UIListLayout_2.Padding = UDim.new(0, 5)
-        -- FIX: Убираем VerticalFlex
 		UIListLayout_2.VerticalFlex = Enum.UIFlexAlignment.None;
 
-        -- RIGHT COLUMN
 		Right.Name = "Right"
 		Right.Parent = MenuLiber
 		Right.Active = true
@@ -5149,13 +5141,11 @@ function Fatal:AddMenu(Menu : Menu) -- ezezez
 		UIListLayout_3.HorizontalAlignment = Enum.HorizontalAlignment.Center
 		UIListLayout_3.SortOrder = Enum.SortOrder.LayoutOrder
 		UIListLayout_3.Padding = UDim.new(0, 5)
-        -- FIX: Убираем VerticalFlex
 		UIListLayout_3.VerticalFlex = Enum.UIFlexAlignment.None;
 
 		local BindEvent = Instance.new('BindableEvent',MenuLiber);
 		BindEvent.Name = Fatality:RandomString();
 		
-        -- FIX: Всегда включаем обновление скролла
         Fatality:ScrollSignal(Right,UIListLayout_3,'Y'); 
         Fatality:ScrollSignal(Center,UIListLayout_2,'Y'); 
         Fatality:ScrollSignal(Left,UIListLayout,'Y'); 
@@ -5206,10 +5196,6 @@ function Fatal:AddMenu(Menu : Menu) -- ezezez
 			end;
 		end)
 		Fatality:NewInput(MenuButton,function() for i,v in next , Fatal.Menus do if v.Root == MenuLiber then Fatal.MenuSelected = v; v.ValueSelect(true) else v.ValueSelect(false) end; end; end);
-		
-		-- Дальше идут AddPreview, AddListBox и AddSection (оставь их как в оригинале, они вложены в AddMenu)
-        -- Но так как я даю только функцию AddMenu, убедись, что закрывающие 'end' совпадают.
-        -- Ниже я просто копирую остаток функции AddMenu из твоего файла, чтобы ты мог заменить целиком блок.
 		
 		function MenuLib:AddPreview(Config: Preview)
 			Config = Config or {}; Config.Name = Config.Name or "PREVIEW"; Config.Position = Config.Position or "left"; Config.Height = Config.Height or 0;
@@ -5548,7 +5534,7 @@ function Fatal:AddMenu(Menu : Menu) -- ezezez
 			});
 		end;
 
-		return MenuLib; --lolez
+		return MenuLib; -- 1111111111111
 	end;
 
 	do
