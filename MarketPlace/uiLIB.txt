@@ -4959,12 +4959,11 @@ function Fatality.new(Window: Window)
 		return ConfigElement;
 	end;
 
-function Fatal:AddMenu(Menu : Menu) -- ezezez
+function Fatal:AddMenu(Menu : Menu) -- 1111111111111
 		Menu = Menu or {};
         if not Fatality:CanShow(Menu) then return { AddSection = function() return Fatality.Dummy end, AddPreview = function() return Fatality.Dummy end, AddProduct = function() return {SetButton=function()end, SetStatus=function()end, SetVisible=function()end, GetButton=function() return Instance.new("TextButton") end} end } end
 		Menu.Name = Menu.Name or "EXAMPLE";
 		Menu.Icon = Menu.Icon or "eye";
-		-- FIX: Отключаем AutoFill принудительно, чтобы работал скролл
 		Menu.AutoFill = false; 
 
 		local MenuLib = {};
@@ -5040,8 +5039,7 @@ function Fatal:AddMenu(Menu : Menu) -- ezezez
 		MenuLiber.Size = UDim2.new(1, 0, 1, 0)
 		MenuLiber.ZIndex = 7
 		
-        -- LEFT COLUMN
-		Left.Name = "Left" -- Было рандомное имя, для LuauAPI лучше дать точное
+		Left.Name = "Left" 
 		Left.Parent = MenuLiber
 		Left.Active = true
 		Left.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -5057,10 +5055,8 @@ function Fatal:AddMenu(Menu : Menu) -- ezezez
 		UIListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 		UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
 		UIListLayout.Padding = UDim.new(0, 5)
-        -- FIX: Убираем VerticalFlex
 		UIListLayout.VerticalFlex = Enum.UIFlexAlignment.None; 
 
-        -- CENTER COLUMN
 		Center.Name = "Center"
 		Center.Parent = MenuLiber
 		Center.Active = true
@@ -5077,10 +5073,8 @@ function Fatal:AddMenu(Menu : Menu) -- ezezez
 		UIListLayout_2.HorizontalAlignment = Enum.HorizontalAlignment.Center
 		UIListLayout_2.SortOrder = Enum.SortOrder.LayoutOrder
 		UIListLayout_2.Padding = UDim.new(0, 5)
-        -- FIX: Убираем VerticalFlex
 		UIListLayout_2.VerticalFlex = Enum.UIFlexAlignment.None;
 
-        -- RIGHT COLUMN
 		Right.Name = "Right"
 		Right.Parent = MenuLiber
 		Right.Active = true
@@ -5097,13 +5091,11 @@ function Fatal:AddMenu(Menu : Menu) -- ezezez
 		UIListLayout_3.HorizontalAlignment = Enum.HorizontalAlignment.Center
 		UIListLayout_3.SortOrder = Enum.SortOrder.LayoutOrder
 		UIListLayout_3.Padding = UDim.new(0, 5)
-        -- FIX: Убираем VerticalFlex
 		UIListLayout_3.VerticalFlex = Enum.UIFlexAlignment.None;
 
 		local BindEvent = Instance.new('BindableEvent',MenuLiber);
 		BindEvent.Name = Fatality:RandomString();
 		
-        -- FIX: Всегда включаем обновление скролла
         Fatality:ScrollSignal(Right,UIListLayout_3,'Y'); 
         Fatality:ScrollSignal(Center,UIListLayout_2,'Y'); 
         Fatality:ScrollSignal(Left,UIListLayout,'Y'); 
@@ -5155,7 +5147,6 @@ function Fatal:AddMenu(Menu : Menu) -- ezezez
 		end)
 		Fatality:NewInput(MenuButton,function() for i,v in next , Fatal.Menus do if v.Root == MenuLiber then Fatal.MenuSelected = v; v.ValueSelect(true) else v.ValueSelect(false) end; end; end);
 		
-		-- >> AddPreview (Original)
 		function MenuLib:AddPreview(Config: Preview)
 			Config = Config or {}; Config.Name = Config.Name or "PREVIEW"; Config.Position = Config.Position or "left"; Config.Height = Config.Height or 0;
 			local Preview = Instance.new("Frame")
@@ -5221,7 +5212,6 @@ function Fatal:AddMenu(Menu : Menu) -- ezezez
 			return MainBlock;
 		end;
 
-		-- >> AddListBox (Original)
 		function MenuLib:AddListBox(Config : Listbox)
 			Config = Config or {}; Config.Name = Config.Name or "LIST BOX"; Config.Position = Config.Position or "left"; Config.Height = Config.Height or 0; Config.Values = Config.Values or {}; Config.Multi = Config.Multi or false; Config.Default = Config.Default or ((Config.Multi and nil) or {}); Config.Callback = Config.Callback or function() end;
 			table.insert(Fatal.ElementContents,{ Name = Config.Name, Path = Menu.Name .. " > ".. Config.Name, _TAB = _B });
@@ -5421,7 +5411,6 @@ function Fatal:AddMenu(Menu : Menu) -- ezezez
 			return res;
 		end;
 
-		-- >> AddSection (Original)
 		function MenuLib:AddSection(Config : Section)
 			Config = Config or {};
 			if not Fatality:CanShow(Config) then return Fatality.Dummy end
@@ -5495,7 +5484,6 @@ function Fatal:AddMenu(Menu : Menu) -- ezezez
 			});
 		end;
 
--- >> AddProduct (UPDATED FOR SMART BUTTONS)
 		function MenuLib:AddProduct(Config)
 			Config = Config or {};
 			if not Fatality:CanShow(Config) then return Fatality.Dummy end
@@ -5512,7 +5500,6 @@ function Fatal:AddMenu(Menu : Menu) -- ezezez
 			Config.Callback = Config.Callback or function() end;
 			Config.Position = Config.Position or "center";
 
-			-- >> HELPER: RELATIVE TIME
 			local function GetTimeAgo(dateStr)
 				if not dateStr or dateStr == "N/A" or dateStr == "-" then return dateStr end
 				local d, m, y, h, min = string.match(dateStr, "(%d+)%.(%d+)%.(%d+)%s+(%d+):(%d+)")
@@ -5567,7 +5554,6 @@ function Fatal:AddMenu(Menu : Menu) -- ezezez
 			Padding.PaddingLeft = UDim.new(0, 8)
 			Padding.PaddingRight = UDim.new(0, 8)
 
-			-- HEADER
 			local HeaderFrame = Instance.new("Frame")
 			HeaderFrame.Parent = Product
 			HeaderFrame.BackgroundTransparency = 1
@@ -5600,7 +5586,6 @@ function Fatal:AddMenu(Menu : Menu) -- ezezez
 			VersionLabel.TextXAlignment = Enum.TextXAlignment.Right
 			VersionLabel.ZIndex = 20
 
-			-- SUB-HEADER
 			local SubHeader = Instance.new("Frame")
 			SubHeader.Parent = Product
 			SubHeader.BackgroundTransparency = 1
@@ -5634,7 +5619,6 @@ function Fatal:AddMenu(Menu : Menu) -- ezezez
 			StatusCorner.CornerRadius = UDim.new(1, 0)
 			StatusCorner.Parent = StatusDot
 			
-			-- DESC
 			local DescLabel = Instance.new("TextLabel")
 			DescLabel.Parent = Product
 			DescLabel.BackgroundTransparency = 1
@@ -5658,7 +5642,6 @@ function Fatal:AddMenu(Menu : Menu) -- ezezez
 			SubHeader.LayoutOrder = 2
 			DescLabel.LayoutOrder = 3
 
-			-- TAGS
 			local TagsContainer = Instance.new("Frame")
 			TagsContainer.Name = "TagsContainer"
 			TagsContainer.Parent = Product
@@ -5716,7 +5699,6 @@ function Fatal:AddMenu(Menu : Menu) -- ezezez
 				TagsContainer.Size = UDim2.new(0,0,0,0)
 			end
 
-			-- DATES
 			local DateRow = Instance.new("Frame")
 			DateRow.Parent = Product
 			DateRow.LayoutOrder = 5
@@ -5747,7 +5729,6 @@ function Fatal:AddMenu(Menu : Menu) -- ezezez
 			DateUpd.Text = "upd: " .. GetTimeAgo(Config.DateUpdate)
 			DateUpd.ZIndex = 20
 
-			-- BUTTON
 			local ActionButton = Instance.new("TextButton")
 			local BtnCorner = Instance.new("UICorner")
 			local BtnStroke = Instance.new("UIStroke")
@@ -5773,27 +5754,23 @@ function Fatal:AddMenu(Menu : Menu) -- ezezez
 			Fatality:Register(BtnStroke, "Stroke", "Color")
 			BtnStroke.Parent = ActionButton
 
-			-- Button Logic Store
 			local ButtonLogic = {
 				DefaultColor = Fatality.CurrentTheme.Element,
 				DefaultText = Fatality.CurrentTheme.Text,
-				OverrideColor = nil -- Если установлен, Hover возвращается к этому цвету, а не к теме
+				OverrideColor = nil
 			}
 
 			Fatality:CreateHover(ActionButton, function(hover)
 				local targetColor = ButtonLogic.OverrideColor or Fatality.CurrentTheme.Element
 				
 				if hover then
-					-- При наведении делаем немного светлее или акцентнее
 					if ButtonLogic.OverrideColor then
-						-- Если цвет задан (например, красный для удаления), при наведении делаем его ярче
 						local h, s, v = ButtonLogic.OverrideColor:ToHSV()
 						Fatality:CreateAnimation(ActionButton, 0.2, { BackgroundColor3 = Color3.fromHSV(h, s, math.clamp(v + 0.1, 0, 1)) })
 					else
 						Fatality:CreateAnimation(ActionButton, 0.2, { BackgroundColor3 = Fatality.CurrentTheme.Main, TextColor3 = Color3.new(1,1,1) })
 					end
 				else
-					-- Возвращаем исходный цвет
 					if ButtonLogic.OverrideColor then
 						Fatality:CreateAnimation(ActionButton, 0.2, { BackgroundColor3 = ButtonLogic.OverrideColor, TextColor3 = Color3.new(1,1,1) })
 					else
@@ -5877,7 +5854,7 @@ function Fatal:AddMenu(Menu : Menu) -- ezezez
 			}
 		end;
 
-		return MenuLib; --lolez
+		return MenuLib; -- 1111111111111
 	end;
 
 	do
@@ -6652,6 +6629,7 @@ Fatality.FATALITY_PID = Fatality:RandomString();
 
 
 return Fatality;
+
 
 
 
