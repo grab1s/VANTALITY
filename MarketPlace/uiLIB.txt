@@ -5484,7 +5484,7 @@ function Fatal:AddMenu(Menu : Menu) -- 1111111111111
 			});
 		end;
 
--- >> AddProduct (FIXED: VISIBILITY, LAYOUT, SINGLE DATA FILE PREP)
+-- >> AddProduct (FIXED: STATUS DOT POSITION & LAYOUT)
 		function MenuLib:AddProduct(Config)
 			Config = Config or {};
 			if not Fatality:CanShow(Config) then return Fatality.Dummy end
@@ -5557,10 +5557,24 @@ function Fatal:AddMenu(Menu : Menu) -- 1111111111111
 			P_Pad.PaddingTop = UDim.new(0,8); P_Pad.PaddingBottom = UDim.new(0,8); P_Pad.PaddingLeft = UDim.new(0,8); P_Pad.PaddingRight = UDim.new(0,8); P_Pad.Parent = Product
 			P_List.SortOrder = Enum.SortOrder.LayoutOrder; P_List.Padding = UDim.new(0,4); P_List.Parent = Product
 
-			-- 1. HEADER
+			-- 1. HEADER (Title, Version, Status)
 			local Head = Instance.new("Frame", Product); Head.BackgroundTransparency=1; Head.Size=UDim2.new(1,0,0,16); Head.LayoutOrder=1; Head.ZIndex=20
+			
 			local Title = Instance.new("TextLabel", Head); Title.BackgroundTransparency=1; Title.Size=UDim2.new(0.7,0,1,0); Title.Font=Enum.Font.GothamBold; Title.Text=Config.Name; Title.TextColor3=Fatality.CurrentTheme.Text; Title.TextSize=13; Title.TextXAlignment=Enum.TextXAlignment.Left; Title.ZIndex=20; Fatality:Register(Title,"Text","TextColor3")
+			
+			-- Version Label
 			local Ver = Instance.new("TextLabel", Head); Ver.BackgroundTransparency=1; Ver.Size=UDim2.new(0.3,0,1,0); Ver.Position=UDim2.new(0.7,0,0,0); Ver.Font=Enum.Font.Gotham; Ver.Text=Config.Version; Ver.TextColor3=Fatality.CurrentTheme.TextDark; Ver.TextSize=11; Ver.TextXAlignment=Enum.TextXAlignment.Right; Ver.ZIndex=20; Fatality:Register(Ver,"TextDark","TextColor3")
+			
+			-- STATUS DOT (Parented to Header, positioned relative to Version)
+			-- Position: Right side (1), shifted down by 14px relative to header top
+			local StatDot = Instance.new("Frame", Head); 
+			StatDot.BackgroundTransparency=0; 
+			StatDot.Size=UDim2.new(0,6,0,6); 
+			StatDot.AnchorPoint = Vector2.new(1, 0)
+			StatDot.Position=UDim2.new(1, 0, 1, 2); -- Right aligned, just below the header line
+			StatDot.BackgroundColor3=StatusColors[Config.Status] or StatusColors.Working; 
+			StatDot.ZIndex=21
+			Instance.new("UICorner", StatDot).CornerRadius = UDim.new(1,0)
 
 			-- 2. SUBHEADER
 			local Sub = Instance.new("Frame", Product); Sub.BackgroundTransparency=1; Sub.Size=UDim2.new(1,0,0,14); Sub.LayoutOrder=2; Sub.ZIndex=20
@@ -5570,10 +5584,6 @@ function Fatal:AddMenu(Menu : Menu) -- 1111111111111
 			if Config.IsOfficial then
 				local Crown = Instance.new("ImageLabel", Sub); Crown.BackgroundTransparency=1; Crown.Size=UDim2.new(0,10,0,10); Crown.Image=Fatality:GetIcon("crown"); Crown.ImageColor3=Color3.fromRGB(255,215,0); Crown.ZIndex=20
 			end
-			
-			-- STATUS DOT (Absolute Right)
-			local StatDot = Instance.new("Frame", Product); StatDot.BackgroundTransparency=0; StatDot.Size=UDim2.new(0,6,0,6); StatDot.Position=UDim2.new(1,-6,0,22); StatDot.BackgroundColor3=StatusColors[Config.Status] or StatusColors.Working; StatDot.ZIndex=21
-			Instance.new("UICorner", StatDot).CornerRadius = UDim.new(1,0)
 
 			-- 3. DESC
 			local Desc = Instance.new("TextLabel", Product); Desc.BackgroundTransparency=1; Desc.Size=UDim2.new(1,0,0,0); Desc.AutomaticSize=Enum.AutomaticSize.Y; Desc.Font=Enum.Font.GothamMedium; Desc.Text=Config.Description; Desc.TextColor3=Color3.fromRGB(200,200,200); Desc.TextSize=11; Desc.TextWrapped=true; Desc.TextXAlignment=Enum.TextXAlignment.Left; Desc.LayoutOrder=3; Desc.ZIndex=20
@@ -5633,10 +5643,18 @@ function Fatal:AddMenu(Menu : Menu) -- 1111111111111
 			local function Vote(v)
 				local nv = (Config.UserVote == v) and 0 or v
 				Config.VoteCallback(nv)
-				if Config.UserVote == 1 then Config.Likes -= 1 elseif Config.UserVote == -1 then Config.Dislikes -= 1 end
-				if nv == 1 then Config.Likes += 1 elseif nv == -1 then Config.Dislikes += 1 end
+				-- Optimistic UI Update (Client side immediate feedback)
+				local cL, cD = Config.Likes, Config.Dislikes
+				
+				-- Revert old vote
+				if Config.UserVote == 1 then cL = cL - 1 elseif Config.UserVote == -1 then cD = cD - 1 end
+				-- Apply new vote
+				if nv == 1 then cL = cL + 1 elseif nv == -1 then cD = cD + 1 end
+				
+				Config.Likes, Config.Dislikes = cL, cD
 				Config.UserVote = nv
-				LkCnt.Text=tostring(Config.Likes); DkCnt.Text=tostring(Config.Dislikes)
+				
+				LkCnt.Text=tostring(cL); DkCnt.Text=tostring(cD)
 				LkBtn.ImageColor3 = (nv==1) and Color3.fromRGB(100,255,100) or Color3.fromRGB(150,150,150)
 				DkBtn.ImageColor3 = (nv==-1) and Color3.fromRGB(255,100,100) or Color3.fromRGB(150,150,150)
 			end
@@ -5672,350 +5690,24 @@ function Fatal:AddMenu(Menu : Menu) -- 1111111111111
 			BindEvent.Event:Connect(Toggle)
 
 			return {
-				SetStatus = function(s, st) if StatusColors[st] then Fatality:CreateAnimation(StatDot, 0.3, {BackgroundColor3=StatusColors[st]}) end end,
-				SetButton = function(s, t, c, b)
+				SetStatus = function(self, s) if StatusColors[s] then Fatality:CreateAnimation(StatDot, 0.3, {BackgroundColor3=StatusColors[st]}) end end,
+				SetButton = function(self, t, c, b)
 					InstBtn.Text = t
 					if c then InstBtn.TextColor3 = c end
 					ButtonOverride = b
 					if b then InstBtn.BackgroundColor3 = b; InstBtn.TextColor3 = Color3.new(1,1,1)
 					else InstBtn.BackgroundColor3 = Fatality.CurrentTheme.Element; InstBtn.TextColor3 = Fatality.CurrentTheme.Text end
 				end,
-				UpdateStats = function(s, l, d, dl)
-					if l then LkCnt.Text=tostring(l) end
-					if d then DkCnt.Text=tostring(d) end
-					if dl then DLCnt.Text=tostring(dl) end
+				UpdateStats = function(self, l, d, dl)
+					if l then LkCnt.Text=tostring(l); Config.Likes=l end
+					if d then DkCnt.Text=tostring(d); Config.Dislikes=d end
+					if dl then DLCnt.Text=tostring(dl); Config.Downloads=dl end
 				end,
-				SetVisible = function(s, b) Product.Visible = b end,
+				Destroy = function(self) Product:Destroy() end,
+				SetVisible = function(self, b) Product.Visible = b end,
 				GetButton = function() return InstBtn end
 			}
 		end;
-
-		return MenuLib; -- 1111111111111
-	end;
-
-do
-		local SearchFrame = Instance.new("Frame")
-		local UIStroke = Instance.new("UIStroke")
-		local UICorner = Instance.new("UICorner")
-		local DropShadow = Instance.new("ImageLabel")
-		local SearchBox = Instance.new("Frame")
-		local UICorner_2 = Instance.new("UICorner")
-		local UIStroke_2 = Instance.new("UIStroke")
-		local TextBox = Instance.new("TextBox")
-		local ScrollingFrame = Instance.new("ScrollingFrame")
-		local UIListLayout = Instance.new("UIListLayout")
-		local EmptyLabel = Instance.new("TextLabel") -- NEW: Empty state
-		local searchScale = UDim2.new(0, 295, 0, 295);
-		
-		Fatality:AddDragBlacklist(SearchFrame);
-		
-		local SearchToggle = function(value)
-			if value then
-				SearchFrame.Position = UDim2.fromOffset(SearchButton.AbsolutePosition.X - 5,SearchButton.AbsolutePosition.Y + (SearchButton.AbsoluteSize.Y * 3))
-				Fatality:CreateAnimation(SearchFrame,0.35,{ Size = searchScale }) 
-				Fatality:CreateAnimation(DropShadow,0.35,{ ImageTransparency = 0.750 }) 
-				Fatality:CreateAnimation(SearchBox,0.35,{ BackgroundTransparency = 0 }) 
-				Fatality:CreateAnimation(UIStroke_2,0.5,{ Transparency = 0.650 }) 
-				Fatality:CreateAnimation(UIStroke,0.5,{ Transparency = 0 }) 
-				Fatality:CreateAnimation(TextBox,0.5,{ TextTransparency = 0 })
-			else
-				Fatality:CreateAnimation(UIStroke,0.5,{ Transparency = 1 }) 
-				Fatality:CreateAnimation(SearchFrame,0.35,{ Size = UDim2.new(searchScale.X.Scale, searchScale.X.Offset, 0, 0) }) 
-				Fatality:CreateAnimation(DropShadow,0.35,{ ImageTransparency = 1 }) 
-				Fatality:CreateAnimation(SearchBox,0.5,{ BackgroundTransparency = 1 }) 
-				Fatality:CreateAnimation(UIStroke_2,0.5,{ Transparency = 1 }) 
-				Fatality:CreateAnimation(TextBox,0.5,{ TextTransparency = 1 }) 
-				-- Clear list on close
-				for i,v in next , ScrollingFrame:GetChildren() do 
-					if v:IsA('Frame') then v:Destroy(); end; 
-				end;
-				EmptyLabel.Visible = false
-			end;
-		end;
-		
-		SearchFrame.Name = Fatality:RandomString()
-		SearchFrame.Parent = Fatalitywin;
-		SearchFrame.AnchorPoint = Vector2.new(0, 1)
-		Fatality:Register(SearchFrame, "Background")
-		SearchFrame.BorderColor3 = Color3.fromRGB(0, 0, 0)
-		SearchFrame.BorderSizePixel = 0
-		SearchFrame.Position = UDim2.new(4,0,4,0)
-		SearchFrame.Size = searchScale
-		SearchFrame.ZIndex = 100
-		SearchFrame.ClipsDescendants = true
-		
-		UIStroke.Color = Color3.fromRGB(29, 29, 29)
-		Fatality:Register(UIStroke, "Stroke", "Color")
-		UIStroke.Parent = SearchFrame
-		UICorner.CornerRadius = UDim.new(0, 2)
-		UICorner.Parent = SearchFrame
-		
-		DropShadow.Name = Fatality:RandomString()
-		DropShadow.Parent = SearchFrame
-		DropShadow.AnchorPoint = Vector2.new(0.5, 0.5)
-		DropShadow.BackgroundTransparency = 1.000
-		DropShadow.BorderSizePixel = 0
-		DropShadow.Position = UDim2.new(0.5, 0, 0.5, 0)
-		DropShadow.Rotation = 0.010
-		DropShadow.Size = UDim2.new(1, 47, 1, 47)
-		DropShadow.ZIndex = 99
-		DropShadow.Image = "rbxassetid://6014261993"
-		Fatality:Register(DropShadow, "Outline", "ImageColor3")
-		DropShadow.ImageTransparency = 0.750
-		DropShadow.ScaleType = Enum.ScaleType.Slice
-		DropShadow.SliceCenter = Rect.new(49, 49, 450, 450)
-		
-		SearchBox.Name = Fatality:RandomString()
-		SearchBox.Parent = SearchFrame
-		SearchBox.AnchorPoint = Vector2.new(0.5, 0)
-		Fatality:Register(SearchBox, "Element")
-		SearchBox.BorderColor3 = Color3.fromRGB(0, 0, 0)
-		SearchBox.BorderSizePixel = 0
-		SearchBox.Position = UDim2.new(0.5, 0, 0, 9)
-		SearchBox.Size = UDim2.new(1, -15, 0, 25)
-		SearchBox.ZIndex = 101
-		UICorner_2.CornerRadius = UDim.new(0, 2)
-		UICorner_2.Parent = SearchBox
-		
-		UIStroke_2.Transparency = 0.650
-		UIStroke_2.Color = Color3.fromRGB(29, 29, 29)
-		Fatality:Register(UIStroke_2, "Stroke", "Color")
-		UIStroke_2.Parent = SearchBox
-		
-		TextBox.Parent = SearchBox
-		TextBox.AnchorPoint = Vector2.new(0.5, 0.5)
-		TextBox.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-		TextBox.BackgroundTransparency = 1.000
-		TextBox.BorderColor3 = Color3.fromRGB(0, 0, 0)
-		TextBox.BorderSizePixel = 0
-		TextBox.Position = UDim2.new(0.5, 0, 0.5, 0)
-		TextBox.Size = UDim2.new(1, -15, 1, -5)
-		TextBox.ZIndex = 102
-		TextBox.ClearTextOnFocus = false
-		TextBox.FontFace = Fatality.FontSemiBold;
-		TextBox.PlaceholderText = "Search by name, author or tags..."
-		TextBox.Text = ""
-		Fatality:Register(TextBox, "Text", "TextColor3")
-		TextBox.TextSize = 12.000
-		TextBox.TextXAlignment = Enum.TextXAlignment.Left
-		
-		ScrollingFrame.Parent = SearchFrame
-		ScrollingFrame.Active = true
-		ScrollingFrame.AnchorPoint = Vector2.new(0.5, 0)
-		Fatality:Register(ScrollingFrame, "Background")
-		ScrollingFrame.BackgroundTransparency = 1
-		ScrollingFrame.BorderColor3 = Color3.fromRGB(0, 0, 0)
-		ScrollingFrame.BorderSizePixel = 0
-		ScrollingFrame.Position = UDim2.new(0.5, 0, 0, 40)
-		ScrollingFrame.Size = UDim2.new(1, -15, 1, -45)
-		ScrollingFrame.ZIndex = 102
-		ScrollingFrame.ScrollBarThickness = 0
-		
-		-- Empty State Label
-		EmptyLabel.Name = "EmptyLabel"
-		EmptyLabel.Parent = SearchFrame
-		EmptyLabel.BackgroundTransparency = 1
-		EmptyLabel.Size = UDim2.new(1, 0, 0, 20)
-		EmptyLabel.Position = UDim2.new(0, 0, 0.5, 0)
-		EmptyLabel.ZIndex = 105
-		EmptyLabel.Font = Enum.Font.GothamBold
-		EmptyLabel.Text = "No results found"
-		Fatality:Register(EmptyLabel, "TextDark", "TextColor3")
-		EmptyLabel.TextSize = 14
-		EmptyLabel.Visible = false
-		
-		UIListLayout.Parent = ScrollingFrame
-		UIListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
-		UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
-		UIListLayout.Padding = UDim.new(0, 4)
-		UIListLayout:GetPropertyChangedSignal('AbsoluteContentSize'):Connect(function() ScrollingFrame.CanvasSize = UDim2.fromOffset(0,UIListLayout.AbsoluteContentSize.Y) end)
-		
-		SearchToggle(false);
-		Fatality:CreateHover(SearchButton,function(bool) if bool then Fatality:CreateAnimation(SearchButton,0.5,{ ImageTransparency = 0.1 }) else Fatality:CreateAnimation(SearchButton,0.5,{ ImageTransparency = 0.5 }) end	end);
-		
-		local SearchInformation = {};
-		
-		-- Helper to get icon based on Type
-		local function GetTypeIcon(tabName)
-			if tabName == "SCRIPTS" then return "rbxassetid://10709810463" end -- Code icon
-			if tabName == "CONFIGS" then return "rbxassetid://10734950309" end -- Settings icon
-			return "rbxassetid://10709752906" -- Default album icon
-		end
-		
-		local get_button = function(Name, Path, TAB_WARP, TabType)
-			local ResultFrame = Instance.new("Frame")
-			local UICorner = Instance.new("UICorner")
-			local TypeIcon = Instance.new("ImageLabel") -- NEW ICON
-			local FeatureName = Instance.new("TextLabel")
-			local FeaturePath = Instance.new("TextLabel")
-			
-			ResultFrame.Name = Fatality:RandomString()
-			ResultFrame.Parent = ScrollingFrame;
-			Fatality:Register(ResultFrame, "Element")
-			ResultFrame.BackgroundTransparency = 1.000
-			ResultFrame.BorderColor3 = Color3.fromRGB(0, 0, 0)
-			ResultFrame.BorderSizePixel = 0
-			ResultFrame.Size = UDim2.new(1, 0, 0, 42)
-			ResultFrame.ZIndex = 103
-			
-			UICorner.CornerRadius = UDim.new(0, 4)
-			UICorner.Parent = ResultFrame
-			
-			-- Type Icon
-			TypeIcon.Parent = ResultFrame
-			TypeIcon.BackgroundTransparency = 1
-			TypeIcon.Position = UDim2.new(0, 8, 0.5, -8) -- Centered Vertically
-			TypeIcon.Size = UDim2.new(0, 16, 0, 16)
-			TypeIcon.Image = GetTypeIcon(TabType)
-			TypeIcon.ImageColor3 = Fatality.CurrentTheme.TextDark
-			Fatality:Register(TypeIcon, "TextDark", "ImageColor3")
-			TypeIcon.ZIndex = 104
-			
-			FeatureName.Name = Fatality:RandomString()
-			FeatureName.Parent = ResultFrame
-			FeatureName.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-			FeatureName.BackgroundTransparency = 1.000
-			FeatureName.BorderColor3 = Color3.fromRGB(0, 0, 0)
-			FeatureName.BorderSizePixel = 0
-			FeatureName.Position = UDim2.new(0, 32, 0, 5) -- Shifted right for icon
-			FeatureName.Size = UDim2.new(1, -35, 0, 15)
-			FeatureName.ZIndex = 104
-			FeatureName.FontFace = Fatality.FontSemiBold
-			FeatureName.Text = Name
-			Fatality:Register(FeatureName, "Text", "TextColor3")
-			FeatureName.TextSize = 14.000
-			FeatureName.TextXAlignment = Enum.TextXAlignment.Left
-			FeatureName.TextTruncate = Enum.TextTruncate.AtEnd
-			
-			FeaturePath.Name = Fatality:RandomString()
-			FeaturePath.Parent = ResultFrame
-			FeaturePath.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-			FeaturePath.BackgroundTransparency = 1.000
-			FeaturePath.BorderColor3 = Color3.fromRGB(0, 0, 0)
-			FeaturePath.BorderSizePixel = 0
-			FeaturePath.Position = UDim2.new(0, 32, 0, 22) -- Shifted right
-			FeaturePath.Size = UDim2.new(1, -35, 0, 15)
-			FeaturePath.ZIndex = 104
-			FeaturePath.FontFace = Fatality.FontSemiBold
-			FeaturePath.Text = Path
-			Fatality:Register(FeaturePath, "Text", "TextColor3")
-			FeaturePath.TextSize = 12.000
-			FeaturePath.TextTransparency = 0.500
-			FeaturePath.TextXAlignment = Enum.TextXAlignment.Left
-			FeaturePath.TextTruncate = Enum.TextTruncate.AtEnd
-			
-			local button = Fatality:NewInput(ResultFrame);
-			
-			Fatality:CreateHover(button,function(bool) 
-				if bool then 
-					Fatality:CreateAnimation(ResultFrame,0.5,{ BackgroundTransparency = 0 }) 
-					Fatality:CreateAnimation(TypeIcon, 0.5, { ImageColor3 = Fatality.CurrentTheme.Main })
-				else 
-					Fatality:CreateAnimation(ResultFrame,0.5,{ BackgroundTransparency = 1 }) 
-					Fatality:CreateAnimation(TypeIcon, 0.5, { ImageColor3 = Fatality.CurrentTheme.TextDark })
-				end	
-			end);
-			
-			button.MouseButton1Click:Connect(function() 
-				if TAB_WARP then 
-					for i,v in next , Fatal.Menus do 
-						if v.Root == TAB_WARP.Root then 
-							Fatal.MenuSelected = v; 
-							v.ValueSelect(true) 
-						else 
-							v.ValueSelect(false) 
-						end; 
-					end; 
-				end; 
-			end);
-			return ResultFrame;
-		end
-		
-		SearchButton.MouseButton1Click:Connect(function() 
-			TextBox.Text = ""; 
-			SearchToggle(true); 
-			table.clear(SearchInformation); 
-			EmptyLabel.Visible = false
-			
-			for i,v in next , ScrollingFrame:GetChildren() do 
-				if v:IsA('Frame') then v:Destroy(); end; 
-			end; 
-			
-			for i, v in pairs(Fatal.ElementContents) do
-				local rootTab = ""
-				if v.MenuName then
-					rootTab = v.MenuName
-				else
-					local parts = string.split(v.Path, " > ")
-					rootTab = parts[1] or ""
-				end
-				rootTab = string.upper(rootTab)
-
-				if rootTab ~= "CONFIGS" and rootTab ~= "SCRIPTS" then continue end
-				
-				local searchString = string.lower(v.Name)
-				if v.Author then searchString = searchString .. " " .. string.lower(v.Author) end
-				if v.Description then searchString = searchString .. " " .. string.lower(v.Description) end
-				if v.Tags then searchString = searchString .. " " .. string.lower(v.Tags) end
-				
-				local displayPath = v.Path
-				if v.IsProduct then displayPath = "Click to view product page" end
-				
-				-- Pass rootTab to get_button for icon selection
-				local button = get_button(v.Name, displayPath, v._TAB, rootTab);
-				
-				table.insert(SearchInformation, {
-					root = button,
-					searchData = searchString
-				})
-			end
-		end)
-		
-		local DearchDelay = tick();
-		TextBox:GetPropertyChangedSignal('Text'):Connect(function()
-			DearchDelay = tick();
-			local currentText = TextBox.Text
-			
-			if not currentText:byte() then 
-				for i,v in next , SearchInformation do v.root.Visible = true; end; 
-				EmptyLabel.Visible = false
-				return; 
-			end;
-			
-			task.delay(0.5, function() 
-				if (tick() - DearchDelay) > 0.5 and TextBox.Text == currentText then 
-					local queryParts = string.split(string.lower(currentText), " ")
-					local visibleCount = 0
-					
-					for i, v in next, SearchInformation do 
-						local match = true
-						-- Multi-word check (AND logic)
-						for _, word in ipairs(queryParts) do
-							if word ~= "" and not string.find(v.searchData, word, 1, true) then
-								match = false
-								break
-							end
-						end
-						
-						if match then 
-							v.root.Visible = true; 
-							visibleCount = visibleCount + 1
-						else 
-							v.root.Visible = false; 
-						end; 
-					end; 
-					
-					EmptyLabel.Visible = (visibleCount == 0)
-				end; 
-			end)
-		end);
-		
-		UserInputService.InputBegan:Connect(function(input) 
-			if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then 
-				if not Fatality:IsMouseOverFrame(SearchFrame) then SearchToggle(false); end 
-			end 
-		end)
-	end; -- 55555
 
 	do
 		local AboutFrame = Instance.new("Frame")
@@ -6630,6 +6322,7 @@ Fatality.FATALITY_PID = Fatality:RandomString();
 
 
 return Fatality;
+
 
 
 
