@@ -5484,7 +5484,7 @@ function Fatal:AddMenu(Menu : Menu) -- 1111111111111
 			});
 		end;
 
--- >> AddProduct (FINAL: SYNC SUPPORT & LAYOUT FIXES)
+-- >> AddProduct (REFACTORED: Layout cleanup, Button Sync support)
 		function MenuLib:AddProduct(Config)
 			Config = Config or {};
 			if not Fatality:CanShow(Config) then return Fatality.Dummy end
@@ -5562,7 +5562,7 @@ function Fatal:AddMenu(Menu : Menu) -- 1111111111111
 			local Title = Instance.new("TextLabel", Head); Title.BackgroundTransparency=1; Title.Size=UDim2.new(0.7,0,1,0); Title.Font=Enum.Font.GothamBold; Title.Text=Config.Name; Title.TextColor3=Fatality.CurrentTheme.Text; Title.TextSize=13; Title.TextXAlignment=Enum.TextXAlignment.Left; Title.TextTruncate=Enum.TextTruncate.AtEnd; Title.ZIndex=20; Fatality:Register(Title,"Text","TextColor3")
 			local Ver = Instance.new("TextLabel", Head); Ver.BackgroundTransparency=1; Ver.Size=UDim2.new(0.3,0,1,0); Ver.Position=UDim2.new(0.7,0,0,0); Ver.Font=Enum.Font.Gotham; Ver.Text=Config.Version; Ver.TextColor3=Fatality.CurrentTheme.TextDark; Ver.TextSize=11; Ver.TextXAlignment=Enum.TextXAlignment.Right; Ver.ZIndex=20; Fatality:Register(Ver,"TextDark","TextColor3")
 			
-			-- STATUS DOT (Right side, under version)
+			-- STATUS DOT
 			local StatDot = Instance.new("Frame", Head); 
 			StatDot.BackgroundTransparency=0; 
 			StatDot.Size=UDim2.new(0,6,0,6); 
@@ -5572,11 +5572,13 @@ function Fatal:AddMenu(Menu : Menu) -- 1111111111111
 			StatDot.ZIndex=21
 			Instance.new("UICorner", StatDot).CornerRadius = UDim.new(1,0)
 
-			-- 2. SUBHEADER
+			-- 2. SUBHEADER (Updated: Crown moved to right)
 			local Sub = Instance.new("Frame", Product); Sub.BackgroundTransparency=1; Sub.Size=UDim2.new(1,0,0,14); Sub.LayoutOrder=2; Sub.ZIndex=20
 			local SL = Instance.new("UIListLayout", Sub); SL.FillDirection=Enum.FillDirection.Horizontal; SL.Padding=UDim.new(0,4); SL.VerticalAlignment=Enum.VerticalAlignment.Center
+			
 			local By = Instance.new("TextLabel", Sub); By.BackgroundTransparency=1; By.AutomaticSize=Enum.AutomaticSize.X; By.Size=UDim2.new(0,0,1,0); By.Font=Enum.Font.Gotham; By.Text="by"; By.TextColor3=Fatality.CurrentTheme.TextDark; By.TextSize=10; By.ZIndex=20; Fatality:Register(By,"TextDark","TextColor3")
 			local Auth = Instance.new("TextLabel", Sub); Auth.BackgroundTransparency=1; Auth.AutomaticSize=Enum.AutomaticSize.X; Auth.Size=UDim2.new(0,0,1,0); Auth.Font=Enum.Font.Gotham; Auth.Text=Config.Author; Auth.TextColor3=Fatality.CurrentTheme.Main; Auth.TextSize=10; Auth.ZIndex=20; Fatality:Register(Auth,"Main","TextColor3")
+			
 			if Config.IsOfficial then
 				local Crown = Instance.new("ImageLabel", Sub); Crown.BackgroundTransparency=1; Crown.Size=UDim2.new(0,10,0,10); Crown.Image=Fatality:GetIcon("crown"); Crown.ImageColor3=Color3.fromRGB(255,215,0); Crown.ZIndex=20
 			end
@@ -5593,23 +5595,27 @@ function Fatal:AddMenu(Menu : Menu) -- 1111111111111
 			end
 			if #Config.Tags == 0 then TagBox.Visible=false end
 
-			-- 5. STATS ROW (Likes, DLs, Fav)
+			-- 5. STATS ROW (Updated: Closer gap, Downloads removed)
 			local StatRow = Instance.new("Frame", Product); StatRow.BackgroundTransparency=1; StatRow.Size=UDim2.new(1,0,0,16); StatRow.LayoutOrder=5; StatRow.ZIndex=20
 			
 			local LkBtn = Instance.new("ImageButton", StatRow); LkBtn.BackgroundTransparency=1; LkBtn.Size=UDim2.new(0,14,0,14); LkBtn.Position=UDim2.new(0,0,0.5,-7); LkBtn.Image=Fatality:GetIcon("chevron-up"); LkBtn.ImageColor3=(Config.UserVote==1 and Color3.fromRGB(100,255,100) or Color3.fromRGB(150,150,150)); LkBtn.ZIndex=21
 			local LkCnt = Instance.new("TextLabel", StatRow); LkCnt.BackgroundTransparency=1; LkCnt.Position=UDim2.new(0,16,0,0); LkCnt.Size=UDim2.new(0,20,1,0); LkCnt.Font=Enum.Font.GothamBold; LkCnt.TextSize=10; LkCnt.TextColor3=Color3.fromRGB(100,255,100); LkCnt.TextXAlignment=Enum.TextXAlignment.Left; LkCnt.Text=tostring(Config.Likes); LkCnt.ZIndex=21
 			
-			local DkBtn = Instance.new("ImageButton", StatRow); DkBtn.BackgroundTransparency=1; DkBtn.Size=UDim2.new(0,14,0,14); DkBtn.Position=UDim2.new(0,40,0.5,-7); DkBtn.Image=Fatality:GetIcon("chevron-down"); DkBtn.ImageColor3=(Config.UserVote==-1 and Color3.fromRGB(255,100,100) or Color3.fromRGB(150,150,150)); DkBtn.ZIndex=21
-			local DkCnt = Instance.new("TextLabel", StatRow); DkCnt.BackgroundTransparency=1; DkCnt.Position=UDim2.new(0,56,0,0); DkCnt.Size=UDim2.new(0,20,1,0); DkCnt.Font=Enum.Font.GothamBold; DkCnt.TextSize=10; DkCnt.TextColor3=Color3.fromRGB(255,100,100); DkCnt.TextXAlignment=Enum.TextXAlignment.Left; DkCnt.Text=tostring(Config.Dislikes); DkCnt.ZIndex=21
-
-			local DLIcon = Instance.new("ImageLabel", StatRow); DLIcon.BackgroundTransparency=1; DLIcon.Size=UDim2.new(0,12,0,12); DLIcon.Position=UDim2.new(1,-65,0.5,-6); DLIcon.Image=Fatality:GetIcon("upload"); DLIcon.ImageColor3=Fatality.CurrentTheme.TextDark; DLIcon.ZIndex=21; Fatality:Register(DLIcon,"TextDark","ImageColor3")
-			local DLCnt = Instance.new("TextLabel", StatRow); DLCnt.BackgroundTransparency=1; DLCnt.Position=UDim2.new(1,-50,0,0); DLCnt.Size=UDim2.new(0,30,1,0); DLCnt.Font=Enum.Font.Gotham; DLCnt.TextSize=10; DLCnt.TextColor3=Fatality.CurrentTheme.TextDark; DLCnt.TextXAlignment=Enum.TextXAlignment.Left; DLCnt.Text=tostring(Config.Downloads); DLCnt.ZIndex=21; Fatality:Register(DLCnt,"TextDark","TextColor3")
+			-- Moved closer (from 40 to 35)
+			local DkBtn = Instance.new("ImageButton", StatRow); DkBtn.BackgroundTransparency=1; DkBtn.Size=UDim2.new(0,14,0,14); DkBtn.Position=UDim2.new(0,35,0.5,-7); DkBtn.Image=Fatality:GetIcon("chevron-down"); DkBtn.ImageColor3=(Config.UserVote==-1 and Color3.fromRGB(255,100,100) or Color3.fromRGB(150,150,150)); DkBtn.ZIndex=21
+			local DkCnt = Instance.new("TextLabel", StatRow); DkCnt.BackgroundTransparency=1; DkCnt.Position=UDim2.new(0,51,0,0); DkCnt.Size=UDim2.new(0,20,1,0); DkCnt.Font=Enum.Font.GothamBold; DkCnt.TextSize=10; DkCnt.TextColor3=Color3.fromRGB(255,100,100); DkCnt.TextXAlignment=Enum.TextXAlignment.Left; DkCnt.Text=tostring(Config.Dislikes); DkCnt.ZIndex=21
 
 			local FavBtn = Instance.new("ImageButton", StatRow); FavBtn.BackgroundTransparency=1; FavBtn.Size=UDim2.new(0,16,0,16); FavBtn.AnchorPoint=Vector2.new(1,0.5); FavBtn.Position=UDim2.new(1,0,0.5,0); FavBtn.Image=Fatality:GetIcon("star"); FavBtn.ImageColor3=(Config.IsFavorite and Color3.fromRGB(255,220,80) or Color3.fromRGB(80,80,80)); FavBtn.ZIndex=21
 
-			-- 6. BUTTON ROW
+			-- 6. BUTTON ROW (Updated: Button + Download count on right)
 			local BtnCont = Instance.new("Frame", Product); BtnCont.BackgroundTransparency=1; BtnCont.Size=UDim2.new(1,0,0,22); BtnCont.LayoutOrder=6; BtnCont.ZIndex=20
-			local InstBtn = Instance.new("TextButton", BtnCont); InstBtn.BackgroundColor3=Fatality.CurrentTheme.Element; InstBtn.Size=UDim2.new(1,0,1,0); InstBtn.Font=Enum.Font.GothamBold; InstBtn.Text=Config.ButtonText; InstBtn.TextColor3=Fatality.CurrentTheme.Text; InstBtn.TextSize=11; InstBtn.AutoButtonColor=false; InstBtn.ZIndex=25; Fatality:Register(InstBtn,"Element"); Fatality:Register(InstBtn,"Text","TextColor3"); Instance.new("UICorner", InstBtn).CornerRadius=UDim.new(0,4); local IBS=Instance.new("UIStroke", InstBtn); IBS.Color=Fatality.CurrentTheme.Stroke; Fatality:Register(IBS,"Stroke","Color")
+			
+			local InstBtn = Instance.new("TextButton", BtnCont); InstBtn.BackgroundColor3=Fatality.CurrentTheme.Element; InstBtn.Size=UDim2.new(1,-50,1,0); InstBtn.Font=Enum.Font.GothamBold; InstBtn.Text=Config.ButtonText; InstBtn.TextColor3=Fatality.CurrentTheme.Text; InstBtn.TextSize=11; InstBtn.AutoButtonColor=false; InstBtn.ZIndex=25; Fatality:Register(InstBtn,"Element"); Fatality:Register(InstBtn,"Text","TextColor3"); Instance.new("UICorner", InstBtn).CornerRadius=UDim.new(0,4); local IBS=Instance.new("UIStroke", InstBtn); IBS.Color=Fatality.CurrentTheme.Stroke; Fatality:Register(IBS,"Stroke","Color")
+			
+			-- Download Count in Button Row
+			local DLCont = Instance.new("Frame", BtnCont); DLCont.BackgroundTransparency=1; DLCont.Size=UDim2.new(0,45,1,0); DLCont.Position=UDim2.new(1,-45,0,0); DLCont.ZIndex=21
+			local DLIcon = Instance.new("ImageLabel", DLCont); DLIcon.BackgroundTransparency=1; DLIcon.Size=UDim2.new(0,12,0,12); DLIcon.AnchorPoint=Vector2.new(0,0.5); DLIcon.Position=UDim2.new(0,0,0.5,0); DLIcon.Image=Fatality:GetIcon("download"); DLIcon.ImageColor3=Fatality.CurrentTheme.TextDark; DLIcon.ZIndex=21; Fatality:Register(DLIcon,"TextDark","ImageColor3")
+			local DLCnt = Instance.new("TextLabel", DLCont); DLCnt.BackgroundTransparency=1; DLCnt.Size=UDim2.new(1,-14,1,0); DLCnt.Position=UDim2.new(0,14,0,0); DLCnt.Font=Enum.Font.Gotham; DLCnt.TextSize=10; DLCnt.TextColor3=Fatality.CurrentTheme.TextDark; DLCnt.TextXAlignment=Enum.TextXAlignment.Right; DLCnt.Text=tostring(Config.Downloads); DLCnt.ZIndex=21; Fatality:Register(DLCnt,"TextDark","TextColor3")
 
 			-- 7. DATES ROW
 			local DateRow = Instance.new("Frame", Product); DateRow.BackgroundTransparency=1; DateRow.Size=UDim2.new(1,0,0,12); DateRow.LayoutOrder=7; DateRow.ZIndex=20
@@ -5620,18 +5626,23 @@ function Fatal:AddMenu(Menu : Menu) -- 1111111111111
 			local Sp = Instance.new("Frame", Product); Sp.BackgroundTransparency=1; Sp.Size=UDim2.new(1,0,0,2); Sp.LayoutOrder=8
 
 			-- LOGIC
-			local ButtonOverride = nil
+			-- Updated Hover: Less bright (Task 5)
 			Fatality:CreateHover(InstBtn, function(h)
-				local bg = ButtonOverride or (h and Fatality.CurrentTheme.Main or Fatality.CurrentTheme.Element)
-				if h and ButtonOverride then local hu,s,v=bg:ToHSV() bg=Color3.fromHSV(hu,s,math.clamp(v+0.1,0,1)) end
-				Fatality:CreateAnimation(InstBtn, 0.2, {BackgroundColor3=bg})
+				if h then 
+					local c = InstBtn.BackgroundColor3
+					local h, s, v = c:ToHSV()
+					-- Lighten very slightly, not bright white
+					Fatality:CreateAnimation(InstBtn, 0.2, {BackgroundColor3 = Color3.fromHSV(h, s, math.clamp(v + 0.15, 0, 1))})
+				else
+					Fatality:CreateAnimation(InstBtn, 0.2, {BackgroundColor3 = Fatality.CurrentTheme.Element})
+				end
 			end)
+			
 			Fatality:CreateHover(FavBtn, function(h) Fatality:CreateAnimation(FavBtn, 0.2, {ImageTransparency = h and 0 or 0.3}) end)
 
 			InstBtn.MouseButton1Click:Connect(Config.Callback)
 			FavBtn.MouseButton1Click:Connect(function()
 				Config.IsFavorite = not Config.IsFavorite
-				-- Visuals update immediately here, but also will be synced by script via SetVisuals
 				FavBtn.ImageColor3 = Config.IsFavorite and Color3.fromRGB(255,220,80) or Color3.fromRGB(80,80,80)
 				Config.FavCallback(Config.IsFavorite)
 			end)
@@ -5660,7 +5671,7 @@ function Fatal:AddMenu(Menu : Menu) -- 1111111111111
 						else Fatality:CreateAnimation(obj, 0.5, {ImageTransparency=t}) end
 					elseif obj:IsA("UIStroke") and obj.Parent ~= Product and obj.Parent ~= InstBtn then
 						Fatality:CreateAnimation(obj, 0.5, {Transparency=t})
-					elseif obj:IsA("Frame") and obj.Parent.Name == "TagsContainer" then -- Tag chips
+					elseif obj:IsA("Frame") and obj.Parent.Name == "TagsContainer" then 
 						Fatality:CreateAnimation(obj, 0.5, {BackgroundTransparency=t})
 					end
 				end
@@ -5670,12 +5681,11 @@ function Fatal:AddMenu(Menu : Menu) -- 1111111111111
 
 			return {
 				SetStatus = function(self, s) if StatusColors[s] then Fatality:CreateAnimation(StatDot, 0.3, {BackgroundColor3=StatusColors[s]}) end end,
-				SetButton = function(self, t, c, b)
+				SetButton = function(self, t) -- Removed color override args (Task 4)
 					InstBtn.Text = t
-					if c then InstBtn.TextColor3 = c end
-					ButtonOverride = b
-					if b then InstBtn.BackgroundColor3 = b; InstBtn.TextColor3 = Color3.new(1,1,1)
-					else InstBtn.BackgroundColor3 = Fatality.CurrentTheme.Element; InstBtn.TextColor3 = Fatality.CurrentTheme.Text end
+					-- Reset to theme default (cleaned up custom colors)
+					InstBtn.TextColor3 = Fatality.CurrentTheme.Text
+					InstBtn.BackgroundColor3 = Fatality.CurrentTheme.Element
 				end,
 				-- EXTERNAL UPDATE METHOD
 				SetVisuals = function(self, data)
@@ -6640,6 +6650,7 @@ Fatality.FATALITY_PID = Fatality:RandomString();
 
 
 return Fatality;
+
 
 
 
