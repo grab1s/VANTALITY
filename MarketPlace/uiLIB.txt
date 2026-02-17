@@ -5712,6 +5712,51 @@ function Fatal:AddMenu(Menu : Menu) -- 1111111111111
 			}
 		end;
 
+-- >> AddColumnTitle (NEW: Minimalist Column Headers)
+		function MenuLib:AddColumnTitle(Config)
+			Config = Config or {}
+			Config.Text = Config.Text or "TITLE"
+			Config.Position = Config.Position or "center"
+
+			-- Determine Parent
+			local Parent = (Config.Position == 'left' and Left) or (Config.Position == 'center' and Center) or Right
+
+			-- Container
+			local Container = Instance.new("Frame")
+			Container.Name = "ColTitle_" .. Config.Text
+			Container.Parent = Parent
+			Container.BackgroundTransparency = 1
+			Container.Size = UDim2.new(1, 0, 0, 25) -- Compact height
+			Container.LayoutOrder = -999 -- FORCE TOP PRIORITY
+			Container.ZIndex = 10
+
+			-- Text
+			local Label = Instance.new("TextLabel")
+			Label.Parent = Container
+			Label.BackgroundTransparency = 1
+			Label.Size = UDim2.new(1, 0, 1, -5) -- Slight padding bottom
+			Label.Position = UDim2.new(0, 0, 0, 5) -- Slight padding top
+			Label.Font = Enum.Font.GothamBold
+			Label.TextColor3 = Color3.fromRGB(90, 90, 90) -- Dark Gray (Not too dark, not too bright)
+			Label.TextSize = 11
+			Label.Text = string.upper(Config.Text)
+			Label.TextXAlignment = Enum.TextXAlignment.Center
+			Label.ZIndex = 11
+
+			-- Animation Sync
+			local Toggle = function(v)
+				if v then
+					Fatality:CreateAnimation(Label, 0.5, {TextTransparency = 0})
+				else
+					Fatality:CreateAnimation(Label, 0.5, {TextTransparency = 1})
+				end
+			end
+			Toggle(BindEvent:GetAttribute('V'))
+			BindEvent.Event:Connect(Toggle)
+
+			return Container
+		end
+
 		return MenuLib; -- 1111111111111
 	end;
 
@@ -6652,6 +6697,7 @@ Fatality.FATALITY_PID = Fatality:RandomString();
 
 
 return Fatality;
+
 
 
 
