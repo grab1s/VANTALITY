@@ -5484,6 +5484,7 @@ function Fatal:AddMenu(Menu : Menu) -- 1111111111111
 			});
 		end;
 
+-- >> AddProduct (UPDATED: REGISTER FOR SEARCH)
 		function MenuLib:AddProduct(Config)
 			Config = Config or {};
 			if not Fatality:CanShow(Config) then return Fatality.Dummy end
@@ -5500,6 +5501,20 @@ function Fatal:AddMenu(Menu : Menu) -- 1111111111111
 			Config.Callback = Config.Callback or function() end;
 			Config.Position = Config.Position or "center";
 
+			-- REGISTER IN SEARCH SYSTEM
+			table.insert(Fatal.ElementContents, {
+				Name = Config.Name,
+				Path = Menu.Name .. " > " .. Config.Name,
+				_TAB = _B,
+				-- Metadata for Advanced Search
+				MenuName = Menu.Name,
+				Author = Config.Author,
+				Description = Config.Description,
+				Tags = table.concat(Config.Tags, " "),
+				IsProduct = true
+			});
+
+			-- >> HELPER: RELATIVE TIME
 			local function GetTimeAgo(dateStr)
 				if not dateStr or dateStr == "N/A" or dateStr == "-" then return dateStr end
 				local d, m, y, h, min = string.match(dateStr, "(%d+)%.(%d+)%.(%d+)%s+(%d+):(%d+)")
@@ -5554,6 +5569,7 @@ function Fatal:AddMenu(Menu : Menu) -- 1111111111111
 			Padding.PaddingLeft = UDim.new(0, 8)
 			Padding.PaddingRight = UDim.new(0, 8)
 
+			-- HEADER
 			local HeaderFrame = Instance.new("Frame")
 			HeaderFrame.Parent = Product
 			HeaderFrame.BackgroundTransparency = 1
@@ -5586,6 +5602,7 @@ function Fatal:AddMenu(Menu : Menu) -- 1111111111111
 			VersionLabel.TextXAlignment = Enum.TextXAlignment.Right
 			VersionLabel.ZIndex = 20
 
+			-- SUB-HEADER
 			local SubHeader = Instance.new("Frame")
 			SubHeader.Parent = Product
 			SubHeader.BackgroundTransparency = 1
@@ -5619,6 +5636,7 @@ function Fatal:AddMenu(Menu : Menu) -- 1111111111111
 			StatusCorner.CornerRadius = UDim.new(1, 0)
 			StatusCorner.Parent = StatusDot
 			
+			-- DESC
 			local DescLabel = Instance.new("TextLabel")
 			DescLabel.Parent = Product
 			DescLabel.BackgroundTransparency = 1
@@ -5642,6 +5660,7 @@ function Fatal:AddMenu(Menu : Menu) -- 1111111111111
 			SubHeader.LayoutOrder = 2
 			DescLabel.LayoutOrder = 3
 
+			-- TAGS
 			local TagsContainer = Instance.new("Frame")
 			TagsContainer.Name = "TagsContainer"
 			TagsContainer.Parent = Product
@@ -5699,6 +5718,7 @@ function Fatal:AddMenu(Menu : Menu) -- 1111111111111
 				TagsContainer.Size = UDim2.new(0,0,0,0)
 			end
 
+			-- DATES
 			local DateRow = Instance.new("Frame")
 			DateRow.Parent = Product
 			DateRow.LayoutOrder = 5
@@ -5729,6 +5749,7 @@ function Fatal:AddMenu(Menu : Menu) -- 1111111111111
 			DateUpd.Text = "upd: " .. GetTimeAgo(Config.DateUpdate)
 			DateUpd.ZIndex = 20
 
+			-- BUTTON
 			local ActionButton = Instance.new("TextButton")
 			local BtnCorner = Instance.new("UICorner")
 			local BtnStroke = Instance.new("UIStroke")
@@ -5754,15 +5775,14 @@ function Fatal:AddMenu(Menu : Menu) -- 1111111111111
 			Fatality:Register(BtnStroke, "Stroke", "Color")
 			BtnStroke.Parent = ActionButton
 
+			-- Button Logic Store
 			local ButtonLogic = {
 				DefaultColor = Fatality.CurrentTheme.Element,
 				DefaultText = Fatality.CurrentTheme.Text,
-				OverrideColor = nil
+				OverrideColor = nil 
 			}
 
 			Fatality:CreateHover(ActionButton, function(hover)
-				local targetColor = ButtonLogic.OverrideColor or Fatality.CurrentTheme.Element
-				
 				if hover then
 					if ButtonLogic.OverrideColor then
 						local h, s, v = ButtonLogic.OverrideColor:ToHSV()
@@ -6629,6 +6649,7 @@ Fatality.FATALITY_PID = Fatality:RandomString();
 
 
 return Fatality;
+
 
 
 
