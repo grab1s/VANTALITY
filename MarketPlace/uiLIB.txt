@@ -5484,27 +5484,27 @@ function Fatal:AddMenu(Menu : Menu) -- 1111111111111
 			});
 		end;
 
--- >> AddProduct (UPDATED: FAVORITES + OFFICIAL STATUS)
+-- >> AddProduct (FIXED: COMPACT LAYOUT & NO DUPLICATION LOGIC HERE)
 		function MenuLib:AddProduct(Config)
 			Config = Config or {};
 			if not Fatality:CanShow(Config) then return Fatality.Dummy end
 			
 			Config.Name = Config.Name or "SCRIPT NAME";
-			Config.Version = Config.Version or "v1.0.0";
+			Config.Version = Config.Version or "1.0";
 			Config.Author = Config.Author or "Unknown";
 			Config.Status = Config.Status or "Working";
-			Config.Description = Config.Description or "No description provided.";
+			Config.Description = Config.Description or "No desc.";
 			Config.Tags = Config.Tags or {};
-			Config.DateCreate = Config.DateCreate or "N/A";
-			Config.DateUpdate = Config.DateUpdate or "N/A";
+			Config.DateCreate = Config.DateCreate or "-";
+			Config.DateUpdate = Config.DateUpdate or "-";
 			Config.ButtonText = Config.ButtonText or "Download";
-			Config.IsOfficial = Config.IsOfficial or false; -- NEW
-			Config.IsFavorite = Config.IsFavorite or false; -- NEW
+			Config.IsOfficial = Config.IsOfficial or false;
+			Config.IsFavorite = Config.IsFavorite or false;
 			Config.Callback = Config.Callback or function() end;
-			Config.FavCallback = Config.FavCallback or function(state) end; -- NEW
+			Config.FavCallback = Config.FavCallback or function(state) end;
 			Config.Position = Config.Position or "center";
 
-			-- REGISTER IN SEARCH SYSTEM
+			-- SEARCH REGISTRATION
 			table.insert(Fatal.ElementContents, {
 				Name = Config.Name,
 				Path = Menu.Name .. " > " .. Config.Name,
@@ -5516,26 +5516,20 @@ function Fatal:AddMenu(Menu : Menu) -- 1111111111111
 				IsProduct = true
 			});
 
-			-- >> HELPER: RELATIVE TIME
+			-- HELPER
 			local function GetTimeAgo(dateStr)
 				if not dateStr or dateStr == "N/A" or dateStr == "-" then return dateStr end
 				local d, m, y, h, min = string.match(dateStr, "(%d+)%.(%d+)%.(%d+)%s+(%d+):(%d+)")
-				if not d then
-					d, m, y = string.match(dateStr, "(%d+)%.(%d+)%.(%d+)")
-					h, min = 0, 0
-				end
+				if not d then d, m, y = string.match(dateStr, "(%d+)%.(%d+)%.(%d+)") h, min = 0, 0 end
 				if not d or not m or not y then return dateStr end
-				local now = os.time()
-				local target = os.time({year = y, month = m, day = d, hour = h, min = min, sec = 0})
-				local diff = now - target
-				if diff < 0 then return "just now" end
+				local diff = os.time() - os.time({year = y, month = m, day = d, hour = h, min = min, sec = 0})
 				if diff < 60 then return "just now" end
-				if diff < 3600 then return math.floor(diff / 60) .. " min ago" end
-				if diff < 86400 then return math.floor(diff / 3600) .. " hours ago" end
-				if diff < 604800 then return math.floor(diff / 86400) .. " days ago" end
-				if diff < 2592000 then return math.floor(diff / 604800) .. " weeks ago" end
-				if diff < 31536000 then return math.floor(diff / 2592000) .. " months ago" end
-				return math.floor(diff / 31536000) .. " years ago"
+				if diff < 3600 then return math.floor(diff / 60) .. "m ago" end
+				if diff < 86400 then return math.floor(diff / 3600) .. "h ago" end
+				if diff < 604800 then return math.floor(diff / 86400) .. "d ago" end
+				if diff < 2592000 then return math.floor(diff / 604800) .. "w ago" end
+				if diff < 31536000 then return math.floor(diff / 2592000) .. "mo ago" end
+				return math.floor(diff / 31536000) .. "y ago"
 			end
 
 			local StatusColors = {
@@ -5544,10 +5538,12 @@ function Fatal:AddMenu(Menu : Menu) -- 1111111111111
 				Patched = Color3.fromRGB(255, 80, 80)
 			}
 
+			-- MAIN CONTAINER
 			local Product = Instance.new("Frame")
 			local UICorner = Instance.new("UICorner")
 			local UIStroke = Instance.new("UIStroke")
 			local Padding = Instance.new("UIPadding")
+			local Layout = Instance.new("UIListLayout")
 			
 			Product.Name = Fatality:RandomString()
 			Product.Parent = (string.lower(Config.Position) == 'left' and Left) or (string.lower(Config.Position) == 'center' and Center) or Right;
@@ -5560,7 +5556,6 @@ function Fatal:AddMenu(Menu : Menu) -- 1111111111111
 
 			UICorner.CornerRadius = UDim.new(0, 4)
 			UICorner.Parent = Product
-
 			UIStroke.Color = Color3.fromRGB(29, 29, 29)
 			Fatality:Register(UIStroke, "Stroke", "Color")
 			UIStroke.Parent = Product
@@ -5570,389 +5565,318 @@ function Fatal:AddMenu(Menu : Menu) -- 1111111111111
 			Padding.PaddingBottom = UDim.new(0, 8)
 			Padding.PaddingLeft = UDim.new(0, 8)
 			Padding.PaddingRight = UDim.new(0, 8)
+			
+			Layout.Parent = Product
+			Layout.SortOrder = Enum.SortOrder.LayoutOrder
+			Layout.Padding = UDim.new(0, 4)
 
-			-- HEADER
-			local HeaderFrame = Instance.new("Frame")
-			HeaderFrame.Parent = Product
-			HeaderFrame.BackgroundTransparency = 1
-			HeaderFrame.Size = UDim2.new(1, 0, 0, 18)
-			HeaderFrame.LayoutOrder = 1
-			HeaderFrame.ZIndex = 20
+			-- 1. HEADER (Title + Version)
+			local Header = Instance.new("Frame")
+			Header.Parent = Product
+			Header.BackgroundTransparency = 1
+			Header.Size = UDim2.new(1, 0, 0, 16)
+			Header.LayoutOrder = 1
+			Header.ZIndex = 20
 
-			local TitleLabel = Instance.new("TextLabel")
-			TitleLabel.Parent = HeaderFrame
-			TitleLabel.BackgroundTransparency = 1
-			TitleLabel.Size = UDim2.new(0.7, 0, 1, 0)
-			TitleLabel.Font = Enum.Font.GothamBold
-			TitleLabel.Text = Config.Name
-			TitleLabel.TextColor3 = Fatality.CurrentTheme.Text
-			Fatality:Register(TitleLabel, "Text", "TextColor3")
-			TitleLabel.TextSize = 14
-			TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
-			TitleLabel.ZIndex = 20
+			local Title = Instance.new("TextLabel")
+			Title.Parent = Header
+			Title.BackgroundTransparency = 1
+			Title.Size = UDim2.new(0.75, 0, 1, 0)
+			Title.Font = Enum.Font.GothamBold
+			Title.Text = Config.Name
+			Title.TextColor3 = Fatality.CurrentTheme.Text
+			Fatality:Register(Title, "Text", "TextColor3")
+			Title.TextSize = 13
+			Title.TextXAlignment = Enum.TextXAlignment.Left
+			Title.TextTruncate = Enum.TextTruncate.AtEnd
+			Title.ZIndex = 20
 
-			local VersionLabel = Instance.new("TextLabel")
-			VersionLabel.Parent = HeaderFrame
-			VersionLabel.BackgroundTransparency = 1
-			VersionLabel.Size = UDim2.new(0.3, 0, 1, 0)
-			VersionLabel.Position = UDim2.new(0.7, 0, 0, 0)
-			VersionLabel.Font = Enum.Font.Gotham
-			VersionLabel.Text = Config.Version
-			VersionLabel.TextColor3 = Fatality.CurrentTheme.TextDark
-			Fatality:Register(VersionLabel, "TextDark", "TextColor3")
-			VersionLabel.TextSize = 12
-			VersionLabel.TextXAlignment = Enum.TextXAlignment.Right
-			VersionLabel.ZIndex = 20
+			local Ver = Instance.new("TextLabel")
+			Ver.Parent = Header
+			Ver.BackgroundTransparency = 1
+			Ver.Size = UDim2.new(0.25, 0, 1, 0)
+			Ver.Position = UDim2.new(0.75, 0, 0, 0)
+			Ver.Font = Enum.Font.Gotham
+			Ver.Text = Config.Version
+			Ver.TextColor3 = Fatality.CurrentTheme.TextDark
+			Fatality:Register(Ver, "TextDark", "TextColor3")
+			Ver.TextSize = 11
+			Ver.TextXAlignment = Enum.TextXAlignment.Right
+			Ver.ZIndex = 20
 
-			-- SUB-HEADER (UPDATED FOR OFFICIAL ICON)
+			-- 2. SUB-HEADER (Author + Icons + Status)
 			local SubHeader = Instance.new("Frame")
 			SubHeader.Parent = Product
 			SubHeader.BackgroundTransparency = 1
-			SubHeader.Position = UDim2.new(0,0,0,18)
-			SubHeader.Size = UDim2.new(1, 0, 0, 16)
+			SubHeader.Size = UDim2.new(1, 0, 0, 14)
+			SubHeader.LayoutOrder = 2
 			SubHeader.ZIndex = 20
 			
-			-- Layout to handle Crown + Author + Status
 			local SubLayout = Instance.new("UIListLayout")
 			SubLayout.Parent = SubHeader
 			SubLayout.FillDirection = Enum.FillDirection.Horizontal
-			SubLayout.SortOrder = Enum.SortOrder.LayoutOrder
 			SubLayout.VerticalAlignment = Enum.VerticalAlignment.Center
 			SubLayout.Padding = UDim.new(0, 4)
 
-			local AuthorPrefix = Instance.new("TextLabel")
-			AuthorPrefix.Parent = SubHeader
-			AuthorPrefix.BackgroundTransparency = 1
-			AuthorPrefix.AutomaticSize = Enum.AutomaticSize.X
-			AuthorPrefix.Size = UDim2.new(0, 0, 1, 0)
-			AuthorPrefix.Font = Enum.Font.Gotham
-			AuthorPrefix.Text = "by"
-			AuthorPrefix.TextColor3 = Fatality.CurrentTheme.TextDark
-			Fatality:Register(AuthorPrefix, "TextDark", "TextColor3")
-			AuthorPrefix.TextSize = 11
-			AuthorPrefix.LayoutOrder = 1
-			AuthorPrefix.ZIndex = 20
+			local ByLbl = Instance.new("TextLabel")
+			ByLbl.Parent = SubHeader
+			ByLbl.BackgroundTransparency = 1
+			ByLbl.AutomaticSize = Enum.AutomaticSize.X
+			ByLbl.Size = UDim2.new(0,0,1,0)
+			ByLbl.Font = Enum.Font.Gotham
+			ByLbl.Text = "by"
+			ByLbl.TextColor3 = Fatality.CurrentTheme.TextDark
+			Fatality:Register(ByLbl, "TextDark", "TextColor3")
+			ByLbl.TextSize = 10
+			ByLbl.ZIndex = 20
 
-			local AuthorLabel = Instance.new("TextLabel")
-			AuthorLabel.Parent = SubHeader
-			AuthorLabel.BackgroundTransparency = 1
-			AuthorLabel.AutomaticSize = Enum.AutomaticSize.X
-			AuthorLabel.Size = UDim2.new(0, 0, 1, 0)
-			AuthorLabel.Font = Enum.Font.Gotham
-			AuthorLabel.Text = Config.Author
-			AuthorLabel.TextColor3 = Fatality.CurrentTheme.Main
-			Fatality:Register(AuthorLabel, "Main", "TextColor3")
-			AuthorLabel.TextSize = 11
-			AuthorLabel.LayoutOrder = 2
-			AuthorLabel.ZIndex = 20
+			local AuthLbl = Instance.new("TextLabel")
+			AuthLbl.Parent = SubHeader
+			AuthLbl.BackgroundTransparency = 1
+			AuthLbl.AutomaticSize = Enum.AutomaticSize.X
+			AuthLbl.Size = UDim2.new(0,0,1,0)
+			AuthLbl.Font = Enum.Font.Gotham
+			AuthLbl.Text = Config.Author
+			AuthLbl.TextColor3 = Fatality.CurrentTheme.Main
+			Fatality:Register(AuthLbl, "Main", "TextColor3")
+			AuthLbl.TextSize = 10
+			AuthLbl.ZIndex = 20
 
-			-- CROWN ICON
 			if Config.IsOfficial then
 				local Crown = Instance.new("ImageLabel")
 				Crown.Parent = SubHeader
 				Crown.BackgroundTransparency = 1
-				Crown.Size = UDim2.new(0, 11, 0, 11)
+				Crown.Size = UDim2.new(0, 10, 0, 10)
 				Crown.Image = Fatality:GetIcon("crown")
-				Crown.ImageColor3 = Color3.fromRGB(255, 215, 0) -- Gold
-				Crown.LayoutOrder = 3
+				Crown.ImageColor3 = Color3.fromRGB(255, 215, 0)
 				Crown.ZIndex = 20
 			end
-
-			-- Status Dot (Absolute positioned to right)
-			local StatusFrame = Instance.new("Frame")
-			StatusFrame.Parent = Product -- Parent to Product, not SubHeader to detach from list
-			StatusFrame.BackgroundTransparency = 1
-			StatusFrame.Size = UDim2.new(1, 0, 0, 16)
-			StatusFrame.Position = UDim2.new(0,0,0,18)
-			StatusFrame.ZIndex = 21
 			
+			-- Spacer to push status to right (not possible with UIListLayout easily, using absolute frame for Status)
+			-- Actually, let's just put Status in a separate frame on top of SubHeader
 			local StatusDot = Instance.new("Frame")
-			local StatusCorner = Instance.new("UICorner")
-			StatusDot.Parent = StatusFrame
-			StatusDot.AnchorPoint = Vector2.new(1, 0.5)
-			StatusDot.Position = UDim2.new(1, 0, 0.5, 0)
-			StatusDot.Size = UDim2.new(0, 8, 0, 8)
+			local SC = Instance.new("UICorner")
+			StatusDot.Parent = SubHeader
+			StatusDot.BackgroundTransparency = 0
+			StatusDot.Size = UDim2.new(0, 6, 0, 6)
 			StatusDot.BackgroundColor3 = StatusColors[Config.Status] or StatusColors.Working
-			StatusDot.ZIndex = 21
-			StatusCorner.CornerRadius = UDim.new(1, 0)
-			StatusCorner.Parent = StatusDot
+			StatusDot.ZIndex = 20
+			SC.CornerRadius = UDim.new(1, 0)
+			SC.Parent = StatusDot
 			
-			-- DESC
-			local DescLabel = Instance.new("TextLabel")
-			DescLabel.Parent = Product
-			DescLabel.BackgroundTransparency = 1
-			DescLabel.Size = UDim2.new(1, 0, 0, 0)
-			DescLabel.AutomaticSize = Enum.AutomaticSize.Y
-			DescLabel.Font = Enum.Font.GothamMedium
-			DescLabel.Text = Config.Description
-			DescLabel.TextColor3 = Color3.fromRGB(220, 220, 220)
-			DescLabel.TextSize = 12
-			DescLabel.TextWrapped = true
-			DescLabel.TextXAlignment = Enum.TextXAlignment.Left
-			DescLabel.TextYAlignment = Enum.TextYAlignment.Top
-			DescLabel.ZIndex = 20
+			-- 3. DESCRIPTION
+			local Desc = Instance.new("TextLabel")
+			Desc.Parent = Product
+			Desc.BackgroundTransparency = 1
+			Desc.Size = UDim2.new(1, 0, 0, 0)
+			Desc.AutomaticSize = Enum.AutomaticSize.Y
+			Desc.Font = Enum.Font.GothamMedium
+			Desc.Text = Config.Description
+			Desc.TextColor3 = Color3.fromRGB(200, 200, 200)
+			Desc.TextSize = 11
+			Desc.TextWrapped = true
+			Desc.TextXAlignment = Enum.TextXAlignment.Left
+			Desc.LayoutOrder = 3
+			Desc.ZIndex = 20
 
-			local ProductLayout = Instance.new("UIListLayout")
-			ProductLayout.Parent = Product
-			ProductLayout.SortOrder = Enum.SortOrder.LayoutOrder
-			ProductLayout.Padding = UDim.new(0, 4)
-
-			HeaderFrame.LayoutOrder = 1
-			SubHeader.LayoutOrder = 2
-			DescLabel.LayoutOrder = 3
-
-			-- TAGS
-			local TagsContainer = Instance.new("Frame")
-			TagsContainer.Name = "TagsContainer"
-			TagsContainer.Parent = Product
-			TagsContainer.LayoutOrder = 4
-			TagsContainer.BackgroundTransparency = 1
-			TagsContainer.Size = UDim2.new(1, 0, 0, 20)
-			TagsContainer.AutomaticSize = Enum.AutomaticSize.Y
-			TagsContainer.ZIndex = 20
-
-			local TagsLayout = Instance.new("UIListLayout")
-			TagsLayout.Parent = TagsContainer
-			TagsLayout.FillDirection = Enum.FillDirection.Horizontal
-			TagsLayout.SortOrder = Enum.SortOrder.LayoutOrder
-			TagsLayout.Padding = UDim.new(0, 4)
-			TagsLayout.Wraps = true
-
+			-- 4. TAGS
+			local TagsBox = Instance.new("Frame")
+			TagsBox.Parent = Product
+			TagsBox.BackgroundTransparency = 1
+			TagsBox.Size = UDim2.new(1, 0, 0, 16)
+			TagsBox.AutomaticSize = Enum.AutomaticSize.Y
+			TagsBox.LayoutOrder = 4
+			TagsBox.ZIndex = 20
+			
+			local TagsLay = Instance.new("UIListLayout")
+			TagsLay.Parent = TagsBox
+			TagsLay.FillDirection = Enum.FillDirection.Horizontal
+			TagsLay.Padding = UDim.new(0, 4)
+			TagsLay.Wraps = true
+			
 			if Config.Tags and #Config.Tags > 0 then
-				for _, tagText in ipairs(Config.Tags) do
-					local TagFrame = Instance.new("Frame")
-					local TagCorner = Instance.new("UICorner")
-					local TagStroke = Instance.new("UIStroke")
-					local TagLabel = Instance.new("TextLabel")
-					local TagPad = Instance.new("UIPadding")
-
-					TagFrame.Name = "Tag_" .. tagText
-					TagFrame.Parent = TagsContainer
-					TagFrame.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
-					TagFrame.BorderSizePixel = 0
-					TagFrame.Size = UDim2.new(0, 0, 0, 16)
-					TagFrame.AutomaticSize = Enum.AutomaticSize.X
-					TagFrame.ZIndex = 21
-
-					TagCorner.CornerRadius = UDim.new(0, 4)
-					TagCorner.Parent = TagFrame
-
-					TagStroke.Color = Color3.fromRGB(60, 60, 60)
-					TagStroke.Thickness = 1
-					TagStroke.Parent = TagFrame
-
-					TagPad.Parent = TagFrame
-					TagPad.PaddingLeft = UDim.new(0, 5)
-					TagPad.PaddingRight = UDim.new(0, 5)
-
-					TagLabel.Parent = TagFrame
-					TagLabel.BackgroundTransparency = 1
-					TagLabel.Size = UDim2.new(1, 0, 1, 0)
-					TagLabel.Font = Enum.Font.GothamBold
-					TagLabel.Text = string.lower(tagText)
-					TagLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
-					TagLabel.TextSize = 9
-					TagLabel.ZIndex = 22
+				for _, t in ipairs(Config.Tags) do
+					local Chip = Instance.new("Frame")
+					Chip.Parent = TagsBox
+					Chip.BackgroundColor3 = Color3.fromRGB(35,35,35)
+					Chip.Size = UDim2.new(0,0,0,14)
+					Chip.AutomaticSize = Enum.AutomaticSize.X
+					Chip.ZIndex = 21
+					Instance.new("UICorner", Chip).CornerRadius = UDim.new(0,3)
+					local Str = Instance.new("UIStroke", Chip)
+					Str.Color = Color3.fromRGB(50,50,50)
+					local Pad = Instance.new("UIPadding", Chip)
+					Pad.PaddingLeft = UDim.new(0,4) Pad.PaddingRight = UDim.new(0,4)
+					local Lbl = Instance.new("TextLabel", Chip)
+					Lbl.BackgroundTransparency = 1
+					Lbl.Size = UDim2.new(1,0,1,0)
+					Lbl.Font = Enum.Font.Gotham
+					Lbl.TextSize = 9
+					Lbl.TextColor3 = Color3.fromRGB(180,180,180)
+					Lbl.Text = string.lower(t)
+					Lbl.ZIndex = 22
 				end
 			else
-				TagsContainer.Visible = false
-				TagsContainer.Size = UDim2.new(0,0,0,0)
+				TagsBox.Visible = false
 			end
 
-			-- DATES
-			local DateRow = Instance.new("Frame")
-			DateRow.Parent = Product
-			DateRow.LayoutOrder = 5
-			DateRow.BackgroundTransparency = 1
-			DateRow.Size = UDim2.new(1, 0, 0, 14)
-			DateRow.ZIndex = 20
-
-			local DateAdd = Instance.new("TextLabel")
-			DateAdd.Parent = DateRow
-			DateAdd.BackgroundTransparency = 1
-			DateAdd.Size = UDim2.new(0.5, 0, 1, 0)
-			DateAdd.Font = Enum.Font.Gotham
-			DateAdd.TextColor3 = Color3.fromRGB(150, 150, 150)
-			DateAdd.TextSize = 10
-			DateAdd.TextXAlignment = Enum.TextXAlignment.Left
-			DateAdd.Text = "add: " .. GetTimeAgo(Config.DateCreate)
-			DateAdd.ZIndex = 20
-
-			local DateUpd = Instance.new("TextLabel")
-			DateUpd.Parent = DateRow
-			DateUpd.BackgroundTransparency = 1
-			DateUpd.Size = UDim2.new(0.5, 0, 1, 0)
-			DateUpd.Position = UDim2.new(0.5, 0, 0, 0)
-			DateUpd.Font = Enum.Font.Gotham
-			DateUpd.TextColor3 = Color3.fromRGB(150, 150, 150)
-			DateUpd.TextSize = 10
-			DateUpd.TextXAlignment = Enum.TextXAlignment.Right
-			DateUpd.Text = "upd: " .. GetTimeAgo(Config.DateUpdate)
-			DateUpd.ZIndex = 20
-
-			-- BUTTON
-			local ActionButton = Instance.new("TextButton")
-			local BtnCorner = Instance.new("UICorner")
-			local BtnStroke = Instance.new("UIStroke")
-
-			ActionButton.Name = "ActionBtn"
-			ActionButton.Parent = Product
-			ActionButton.LayoutOrder = 6
-			ActionButton.BackgroundColor3 = Fatality.CurrentTheme.Element
-			Fatality:Register(ActionButton, "Element")
-			ActionButton.Size = UDim2.new(1, 0, 0, 22)
-			ActionButton.Font = Enum.Font.GothamBold
-			ActionButton.Text = Config.ButtonText
-			ActionButton.TextColor3 = Fatality.CurrentTheme.Text
-			Fatality:Register(ActionButton, "Text", "TextColor3")
-			ActionButton.TextSize = 12
-			ActionButton.AutoButtonColor = false
-			ActionButton.ZIndex = 25
-
-			BtnCorner.CornerRadius = UDim.new(0, 4)
-			BtnCorner.Parent = ActionButton
-
-			BtnStroke.Color = Fatality.CurrentTheme.Stroke
-			Fatality:Register(BtnStroke, "Stroke", "Color")
-			BtnStroke.Parent = ActionButton
-
-			-- FAVORITE BUTTON (NEW)
-			local FavContainer = Instance.new("Frame")
-			FavContainer.Name = "FavContainer"
-			FavContainer.Parent = Product
-			FavContainer.LayoutOrder = 7
-			FavContainer.BackgroundTransparency = 1
-			FavContainer.Size = UDim2.new(1, 0, 0, 20)
-			FavContainer.ZIndex = 20
+			-- 5. DATES
+			local Dates = Instance.new("Frame")
+			Dates.Parent = Product
+			Dates.BackgroundTransparency = 1
+			Dates.Size = UDim2.new(1, 0, 0, 12)
+			Dates.LayoutOrder = 5
+			Dates.ZIndex = 20
 			
-			local FavButton = Instance.new("ImageButton")
-			FavButton.Parent = FavContainer
-			FavButton.AnchorPoint = Vector2.new(1, 0)
-			FavButton.Position = UDim2.new(1, 0, 0, 0)
-			FavButton.Size = UDim2.new(0, 20, 0, 20)
-			FavButton.BackgroundTransparency = 1
-			FavButton.Image = Config.IsFavorite and Fatality:GetIcon("minus") or Fatality:GetIcon("plus")
-			FavButton.ImageColor3 = Config.IsFavorite and Color3.fromRGB(255, 220, 80) or Color3.fromRGB(150, 150, 150)
-			FavButton.ZIndex = 25
+			local D1 = Instance.new("TextLabel", Dates)
+			D1.BackgroundTransparency = 1
+			D1.Size = UDim2.new(0.5, 0, 1, 0)
+			D1.Font = Enum.Font.Gotham
+			D1.TextColor3 = Color3.fromRGB(120, 120, 120)
+			D1.TextSize = 9
+			D1.TextXAlignment = Enum.TextXAlignment.Left
+			D1.Text = "add: " .. GetTimeAgo(Config.DateCreate)
+			D1.ZIndex = 20
 			
-			-- Button Logic Store
-			local ButtonLogic = {
-				DefaultColor = Fatality.CurrentTheme.Element,
-				DefaultText = Fatality.CurrentTheme.Text,
-				OverrideColor = nil 
-			}
+			local D2 = Instance.new("TextLabel", Dates)
+			D2.BackgroundTransparency = 1
+			D2.Size = UDim2.new(0.5, 0, 1, 0)
+			D2.Position = UDim2.new(0.5, 0, 0, 0)
+			D2.Font = Enum.Font.Gotham
+			D2.TextColor3 = Color3.fromRGB(120, 120, 120)
+			D2.TextSize = 9
+			D2.TextXAlignment = Enum.TextXAlignment.Right
+			D2.Text = "upd: " .. GetTimeAgo(Config.DateUpdate)
+			D2.ZIndex = 20
 
-			Fatality:CreateHover(ActionButton, function(hover)
-				if hover then
-					if ButtonLogic.OverrideColor then
-						local h, s, v = ButtonLogic.OverrideColor:ToHSV()
-						Fatality:CreateAnimation(ActionButton, 0.2, { BackgroundColor3 = Color3.fromHSV(h, s, math.clamp(v + 0.1, 0, 1)) })
+			-- 6. ACTION FOOTER (Buttons Row)
+			local Footer = Instance.new("Frame")
+			Footer.Parent = Product
+			Footer.BackgroundTransparency = 1
+			Footer.Size = UDim2.new(1, 0, 0, 20)
+			Footer.LayoutOrder = 6
+			Footer.ZIndex = 20
+			
+			local InstallBtn = Instance.new("TextButton")
+			InstallBtn.Parent = Footer
+			InstallBtn.BackgroundColor3 = Fatality.CurrentTheme.Element
+			Fatality:Register(InstallBtn, "Element")
+			InstallBtn.Size = UDim2.new(1, -24, 1, 0) -- Leave space for fav icon
+			InstallBtn.Font = Enum.Font.GothamBold
+			InstallBtn.Text = Config.ButtonText
+			InstallBtn.TextColor3 = Fatality.CurrentTheme.Text
+			Fatality:Register(InstallBtn, "Text", "TextColor3")
+			InstallBtn.TextSize = 11
+			InstallBtn.AutoButtonColor = false
+			InstallBtn.ZIndex = 25
+			Instance.new("UICorner", InstallBtn).CornerRadius = UDim.new(0, 4)
+			local IBStroke = Instance.new("UIStroke", InstallBtn)
+			IBStroke.Color = Fatality.CurrentTheme.Stroke
+			Fatality:Register(IBStroke, "Stroke", "Color")
+
+			local FavBtn = Instance.new("ImageButton")
+			FavBtn.Parent = Footer
+			FavBtn.AnchorPoint = Vector2.new(1, 0)
+			FavBtn.Position = UDim2.new(1, 0, 0, 0)
+			FavBtn.Size = UDim2.new(0, 20, 1, 0)
+			FavBtn.BackgroundTransparency = 1
+			FavBtn.Image = Config.IsFavorite and Fatality:GetIcon("minus") or Fatality:GetIcon("plus")
+			FavBtn.ImageColor3 = Config.IsFavorite and Color3.fromRGB(255, 220, 80) or Color3.fromRGB(100, 100, 100)
+			FavBtn.ZIndex = 25
+
+			-- HOVER LOGIC
+			local ButtonOverride = nil
+			
+			Fatality:CreateHover(InstallBtn, function(h)
+				if h then
+					local clr = ButtonOverride and ButtonOverride or Fatality.CurrentTheme.Main
+					local txt = ButtonOverride and Color3.new(1,1,1) or Color3.new(1,1,1)
+					
+					if ButtonOverride then
+						local hue, sat, val = ButtonOverride:ToHSV()
+						Fatality:CreateAnimation(InstallBtn, 0.2, {BackgroundColor3 = Color3.fromHSV(hue, sat, math.clamp(val+0.1,0,1)), TextColor3 = txt})
 					else
-						Fatality:CreateAnimation(ActionButton, 0.2, { BackgroundColor3 = Fatality.CurrentTheme.Main, TextColor3 = Color3.new(1,1,1) })
+						Fatality:CreateAnimation(InstallBtn, 0.2, {BackgroundColor3 = clr, TextColor3 = txt})
 					end
 				else
-					if ButtonLogic.OverrideColor then
-						Fatality:CreateAnimation(ActionButton, 0.2, { BackgroundColor3 = ButtonLogic.OverrideColor, TextColor3 = Color3.new(1,1,1) })
-					else
-						Fatality:CreateAnimation(ActionButton, 0.2, { BackgroundColor3 = Fatality.CurrentTheme.Element, TextColor3 = Fatality.CurrentTheme.Text })
-					end
+					local clr = ButtonOverride and ButtonOverride or Fatality.CurrentTheme.Element
+					local txt = ButtonOverride and Color3.new(1,1,1) or Fatality.CurrentTheme.Text
+					Fatality:CreateAnimation(InstallBtn, 0.2, {BackgroundColor3 = clr, TextColor3 = txt})
 				end
 			end)
 			
-			Fatality:CreateHover(FavButton, function(hover)
-				if hover then
-					Fatality:CreateAnimation(FavButton, 0.2, { ImageTransparency = 0 })
-				else
-					Fatality:CreateAnimation(FavButton, 0.2, { ImageTransparency = 0.3 })
-				end
+			Fatality:CreateHover(FavBtn, function(h)
+				Fatality:CreateAnimation(FavBtn, 0.2, { ImageTransparency = h and 0 or 0.4 })
 			end)
-
-			ActionButton.MouseButton1Click:Connect(function() Config.Callback() end)
 			
-			FavButton.MouseButton1Click:Connect(function()
+			-- EVENTS
+			InstallBtn.MouseButton1Click:Connect(Config.Callback)
+			
+			FavBtn.MouseButton1Click:Connect(function()
 				Config.IsFavorite = not Config.IsFavorite
-				
 				if Config.IsFavorite then
-					FavButton.Image = Fatality:GetIcon("minus")
-					Fatality:CreateAnimation(FavButton, 0.3, { ImageColor3 = Color3.fromRGB(255, 220, 80) })
+					FavBtn.Image = Fatality:GetIcon("minus")
+					Fatality:CreateAnimation(FavBtn, 0.3, { ImageColor3 = Color3.fromRGB(255, 220, 80) })
 				else
-					FavButton.Image = Fatality:GetIcon("plus")
-					Fatality:CreateAnimation(FavButton, 0.3, { ImageColor3 = Color3.fromRGB(150, 150, 150) })
+					FavBtn.Image = Fatality:GetIcon("plus")
+					Fatality:CreateAnimation(FavBtn, 0.3, { ImageColor3 = Color3.fromRGB(100, 100, 100) })
 				end
-				
 				Config.FavCallback(Config.IsFavorite)
 			end)
-			
-			local Space = Instance.new("Frame")
-			Space.Parent = Product
-			Space.LayoutOrder = 8
-			Space.BackgroundTransparency = 1
-			Space.Size = UDim2.new(1, 0, 0, 2)
-			Space.ZIndex = 15
+
+			-- VISIBILITY TOGGLE (ANIMATION)
+			local Spacer = Instance.new("Frame", Product)
+			Spacer.LayoutOrder = 7
+			Spacer.BackgroundTransparency = 1
+			Spacer.Size = UDim2.new(1,0,0,2)
 
 			local Toggle = function(v)
-				if v then 
-					Fatality:CreateAnimation(Product, 0.5, { BackgroundTransparency = 0 })
-					Fatality:CreateAnimation(UIStroke, 0.5, { Transparency = 0 })
-					Fatality:CreateAnimation(TitleLabel, 0.5, { TextTransparency = 0 })
-					Fatality:CreateAnimation(VersionLabel, 0.5, { TextTransparency = 0 })
-					Fatality:CreateAnimation(AuthorLabel, 0.5, { TextTransparency = 0.2 })
-					Fatality:CreateAnimation(DescLabel, 0.5, { TextTransparency = 0 })
-					for _, t in pairs(TagsContainer:GetChildren()) do
-						if t:IsA("Frame") then
-							Fatality:CreateAnimation(t, 0.5, { BackgroundTransparency = 0 })
-							if t:FindFirstChild("UIStroke") then Fatality:CreateAnimation(t.UIStroke, 0.5, { Transparency = 0 }) end
-							if t:FindFirstChild("TextLabel") then Fatality:CreateAnimation(t.TextLabel, 0.5, { TextTransparency = 0 }) end
-						end
+				local target = v and 0 or 1
+				local visible = v
+				
+				Fatality:CreateAnimation(Product, 0.5, { BackgroundTransparency = target })
+				Fatality:CreateAnimation(UIStroke, 0.5, { Transparency = target })
+				
+				-- Fade Texts
+				local texts = {Title, Ver, ByLbl, AuthLbl, Desc, D1, D2, InstallBtn}
+				for _, obj in pairs(texts) do Fatality:CreateAnimation(obj, 0.5, { TextTransparency = v and (obj==ByLbl and 0.4 or 0) or 1 }) end
+				
+				-- Fade Backgrounds/Images
+				Fatality:CreateAnimation(InstallBtn, 0.5, { BackgroundTransparency = target })
+				Fatality:CreateAnimation(IBStroke, 0.5, { Transparency = target })
+				Fatality:CreateAnimation(FavBtn, 0.5, { ImageTransparency = v and 0.4 or 1 })
+				Fatality:CreateAnimation(StatusDot, 0.5, { BackgroundTransparency = target })
+				
+				-- Handle Tags
+				for _, t in pairs(TagsBox:GetChildren()) do
+					if t:IsA("Frame") then
+						Fatality:CreateAnimation(t, 0.5, { BackgroundTransparency = target })
+						if t:FindFirstChild("TextLabel") then Fatality:CreateAnimation(t.TextLabel, 0.5, { TextTransparency = target }) end
+						if t:FindFirstChild("UIStroke") then Fatality:CreateAnimation(t.UIStroke, 0.5, { Transparency = target }) end
 					end
-					Fatality:CreateAnimation(DateAdd, 0.5, { TextTransparency = 0 })
-					Fatality:CreateAnimation(DateUpd, 0.5, { TextTransparency = 0 })
-					Fatality:CreateAnimation(ActionButton, 0.5, { BackgroundTransparency = 0, TextTransparency = 0 })
-					Fatality:CreateAnimation(BtnStroke, 0.5, { Transparency = 0 })
-					Fatality:CreateAnimation(StatusDot, 0.5, { BackgroundTransparency = 0 })
-					Fatality:CreateAnimation(FavButton, 0.5, { ImageTransparency = 0.3 })
-				else 
-					Fatality:CreateAnimation(Product, 0.5, { BackgroundTransparency = 1 })
-					Fatality:CreateAnimation(UIStroke, 0.5, { Transparency = 1 })
-					Fatality:CreateAnimation(TitleLabel, 0.5, { TextTransparency = 1 })
-					Fatality:CreateAnimation(VersionLabel, 0.5, { TextTransparency = 1 })
-					Fatality:CreateAnimation(AuthorLabel, 0.5, { TextTransparency = 1 })
-					Fatality:CreateAnimation(DescLabel, 0.5, { TextTransparency = 1 })
-					for _, t in pairs(TagsContainer:GetChildren()) do
-						if t:IsA("Frame") then
-							Fatality:CreateAnimation(t, 0.5, { BackgroundTransparency = 1 })
-							if t:FindFirstChild("UIStroke") then Fatality:CreateAnimation(t.UIStroke, 0.5, { Transparency = 1 }) end
-							if t:FindFirstChild("TextLabel") then Fatality:CreateAnimation(t.TextLabel, 0.5, { TextTransparency = 1 }) end
-						end
-					end
-					Fatality:CreateAnimation(DateAdd, 0.5, { TextTransparency = 1 })
-					Fatality:CreateAnimation(DateUpd, 0.5, { TextTransparency = 1 })
-					Fatality:CreateAnimation(ActionButton, 0.5, { BackgroundTransparency = 1, TextTransparency = 1 })
-					Fatality:CreateAnimation(BtnStroke, 0.5, { Transparency = 1 })
-					Fatality:CreateAnimation(StatusDot, 0.5, { BackgroundTransparency = 1 })
-					Fatality:CreateAnimation(FavButton, 0.5, { ImageTransparency = 1 })
 				end
-			end;
-			Toggle(BindEvent:GetAttribute('V'));
-			BindEvent.Event:Connect(Toggle);
+			end
+			Toggle(BindEvent:GetAttribute('V'))
+			BindEvent.Event:Connect(Toggle)
 
 			return {
 				SetStatus = function(self, newStatus)
 					if StatusColors[newStatus] then Fatality:CreateAnimation(StatusDot, 0.3, {BackgroundColor3 = StatusColors[newStatus]}) end
 				end,
 				SetButton = function(self, text, color, bgColor)
-					ActionButton.Text = text
-					if color then ActionButton.TextColor3 = color end
-					if bgColor then 
-						ActionButton.BackgroundColor3 = bgColor 
-						ButtonLogic.OverrideColor = bgColor
+					InstallBtn.Text = text
+					if color then InstallBtn.TextColor3 = color end
+					ButtonOverride = bgColor
+					if bgColor then
+						InstallBtn.BackgroundColor3 = bgColor
+						InstallBtn.TextColor3 = Color3.new(1,1,1)
 					else
-						ButtonLogic.OverrideColor = nil
-						ActionButton.BackgroundColor3 = Fatality.CurrentTheme.Element
+						InstallBtn.BackgroundColor3 = Fatality.CurrentTheme.Element
+						InstallBtn.TextColor3 = Fatality.CurrentTheme.Text
 					end
 				end,
 				SetVisible = function(self, bool) Product.Visible = bool end,
-				GetButton = function() return ActionButton end
+				GetButton = function() return InstallBtn end
 			}
 		end;
 
@@ -6896,5 +6820,6 @@ Fatality.FATALITY_PID = Fatality:RandomString();
 
 
 return Fatality;
+
 
 
