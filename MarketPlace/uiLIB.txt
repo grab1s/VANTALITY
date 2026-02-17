@@ -5484,12 +5484,12 @@ function Fatal:AddMenu(Menu : Menu) -- 1111111111111
 			});
 		end;
 
--- >> AddProduct (FIXED: STATUS DOT POSITION & LAYOUT)
+-- >> AddProduct (FINAL: SYNC SUPPORT & LAYOUT FIXES)
 		function MenuLib:AddProduct(Config)
 			Config = Config or {};
 			if not Fatality:CanShow(Config) then return Fatality.Dummy end
 			
-			-- Data
+			-- Data Defaults
 			Config.Name = Config.Name or "SCRIPT";
 			Config.Version = Config.Version or "1.0";
 			Config.Author = Config.Author or "Unknown";
@@ -5557,21 +5557,17 @@ function Fatal:AddMenu(Menu : Menu) -- 1111111111111
 			P_Pad.PaddingTop = UDim.new(0,8); P_Pad.PaddingBottom = UDim.new(0,8); P_Pad.PaddingLeft = UDim.new(0,8); P_Pad.PaddingRight = UDim.new(0,8); P_Pad.Parent = Product
 			P_List.SortOrder = Enum.SortOrder.LayoutOrder; P_List.Padding = UDim.new(0,4); P_List.Parent = Product
 
-			-- 1. HEADER (Title, Version, Status)
+			-- 1. HEADER
 			local Head = Instance.new("Frame", Product); Head.BackgroundTransparency=1; Head.Size=UDim2.new(1,0,0,16); Head.LayoutOrder=1; Head.ZIndex=20
-			
-			local Title = Instance.new("TextLabel", Head); Title.BackgroundTransparency=1; Title.Size=UDim2.new(0.7,0,1,0); Title.Font=Enum.Font.GothamBold; Title.Text=Config.Name; Title.TextColor3=Fatality.CurrentTheme.Text; Title.TextSize=13; Title.TextXAlignment=Enum.TextXAlignment.Left; Title.ZIndex=20; Fatality:Register(Title,"Text","TextColor3")
-			
-			-- Version Label
+			local Title = Instance.new("TextLabel", Head); Title.BackgroundTransparency=1; Title.Size=UDim2.new(0.7,0,1,0); Title.Font=Enum.Font.GothamBold; Title.Text=Config.Name; Title.TextColor3=Fatality.CurrentTheme.Text; Title.TextSize=13; Title.TextXAlignment=Enum.TextXAlignment.Left; Title.TextTruncate=Enum.TextTruncate.AtEnd; Title.ZIndex=20; Fatality:Register(Title,"Text","TextColor3")
 			local Ver = Instance.new("TextLabel", Head); Ver.BackgroundTransparency=1; Ver.Size=UDim2.new(0.3,0,1,0); Ver.Position=UDim2.new(0.7,0,0,0); Ver.Font=Enum.Font.Gotham; Ver.Text=Config.Version; Ver.TextColor3=Fatality.CurrentTheme.TextDark; Ver.TextSize=11; Ver.TextXAlignment=Enum.TextXAlignment.Right; Ver.ZIndex=20; Fatality:Register(Ver,"TextDark","TextColor3")
 			
-			-- STATUS DOT (Parented to Header, positioned relative to Version)
-			-- Position: Right side (1), shifted down by 14px relative to header top
+			-- STATUS DOT (Right side, under version)
 			local StatDot = Instance.new("Frame", Head); 
 			StatDot.BackgroundTransparency=0; 
 			StatDot.Size=UDim2.new(0,6,0,6); 
 			StatDot.AnchorPoint = Vector2.new(1, 0)
-			StatDot.Position=UDim2.new(1, 0, 1, 2); -- Right aligned, just below the header line
+			StatDot.Position=UDim2.new(1, 0, 1, 2); 
 			StatDot.BackgroundColor3=StatusColors[Config.Status] or StatusColors.Working; 
 			StatDot.ZIndex=21
 			Instance.new("UICorner", StatDot).CornerRadius = UDim.new(1,0)
@@ -5630,12 +5626,12 @@ function Fatal:AddMenu(Menu : Menu) -- 1111111111111
 				if h and ButtonOverride then local hu,s,v=bg:ToHSV() bg=Color3.fromHSV(hu,s,math.clamp(v+0.1,0,1)) end
 				Fatality:CreateAnimation(InstBtn, 0.2, {BackgroundColor3=bg})
 			end)
-			
 			Fatality:CreateHover(FavBtn, function(h) Fatality:CreateAnimation(FavBtn, 0.2, {ImageTransparency = h and 0 or 0.3}) end)
 
 			InstBtn.MouseButton1Click:Connect(Config.Callback)
 			FavBtn.MouseButton1Click:Connect(function()
 				Config.IsFavorite = not Config.IsFavorite
+				-- Visuals update immediately here, but also will be synced by script via SetVisuals
 				FavBtn.ImageColor3 = Config.IsFavorite and Color3.fromRGB(255,220,80) or Color3.fromRGB(80,80,80)
 				Config.FavCallback(Config.IsFavorite)
 			end)
@@ -5643,25 +5639,11 @@ function Fatal:AddMenu(Menu : Menu) -- 1111111111111
 			local function Vote(v)
 				local nv = (Config.UserVote == v) and 0 or v
 				Config.VoteCallback(nv)
-				-- Optimistic UI Update (Client side immediate feedback)
-				local cL, cD = Config.Likes, Config.Dislikes
-				
-				-- Revert old vote
-				if Config.UserVote == 1 then cL = cL - 1 elseif Config.UserVote == -1 then cD = cD - 1 end
-				-- Apply new vote
-				if nv == 1 then cL = cL + 1 elseif nv == -1 then cD = cD + 1 end
-				
-				Config.Likes, Config.Dislikes = cL, cD
-				Config.UserVote = nv
-				
-				LkCnt.Text=tostring(cL); DkCnt.Text=tostring(cD)
-				LkBtn.ImageColor3 = (nv==1) and Color3.fromRGB(100,255,100) or Color3.fromRGB(150,150,150)
-				DkBtn.ImageColor3 = (nv==-1) and Color3.fromRGB(255,100,100) or Color3.fromRGB(150,150,150)
 			end
 			LkBtn.MouseButton1Click:Connect(function() Vote(1) end)
 			DkBtn.MouseButton1Click:Connect(function() Vote(-1) end)
 
-			-- ANIMATION TOGGLE (AUTO-DETECT CHILDREN)
+			-- ANIMATION TOGGLE
 			local Toggle = function(v)
 				local t = v and 0 or 1
 				Fatality:CreateAnimation(Product, 0.5, {BackgroundTransparency=t})
@@ -5674,11 +5656,8 @@ function Fatal:AddMenu(Menu : Menu) -- 1111111111111
 					if obj:IsA("TextLabel") or obj:IsA("TextButton") then
 						Fatality:CreateAnimation(obj, 0.5, {TextTransparency=t})
 					elseif obj:IsA("ImageLabel") or obj:IsA("ImageButton") then
-						if obj == FavBtn then
-							Fatality:CreateAnimation(obj, 0.5, {ImageTransparency = v and 0.3 or 1})
-						else
-							Fatality:CreateAnimation(obj, 0.5, {ImageTransparency=t})
-						end
+						if obj == FavBtn then Fatality:CreateAnimation(obj, 0.5, {ImageTransparency = v and 0.3 or 1})
+						else Fatality:CreateAnimation(obj, 0.5, {ImageTransparency=t}) end
 					elseif obj:IsA("UIStroke") and obj.Parent ~= Product and obj.Parent ~= InstBtn then
 						Fatality:CreateAnimation(obj, 0.5, {Transparency=t})
 					elseif obj:IsA("Frame") and obj.Parent.Name == "TagsContainer" then -- Tag chips
@@ -5690,7 +5669,7 @@ function Fatal:AddMenu(Menu : Menu) -- 1111111111111
 			BindEvent.Event:Connect(Toggle)
 
 			return {
-				SetStatus = function(self, s) if StatusColors[s] then Fatality:CreateAnimation(StatDot, 0.3, {BackgroundColor3=StatusColors[st]}) end end,
+				SetStatus = function(self, s) if StatusColors[s] then Fatality:CreateAnimation(StatDot, 0.3, {BackgroundColor3=StatusColors[s]}) end end,
 				SetButton = function(self, t, c, b)
 					InstBtn.Text = t
 					if c then InstBtn.TextColor3 = c end
@@ -5698,17 +5677,28 @@ function Fatal:AddMenu(Menu : Menu) -- 1111111111111
 					if b then InstBtn.BackgroundColor3 = b; InstBtn.TextColor3 = Color3.new(1,1,1)
 					else InstBtn.BackgroundColor3 = Fatality.CurrentTheme.Element; InstBtn.TextColor3 = Fatality.CurrentTheme.Text end
 				end,
-				UpdateStats = function(self, l, d, dl)
-					if l then LkCnt.Text=tostring(l); Config.Likes=l end
-					if d then DkCnt.Text=tostring(d); Config.Dislikes=d end
-					if dl then DLCnt.Text=tostring(dl); Config.Downloads=dl end
+				-- EXTERNAL UPDATE METHOD
+				SetVisuals = function(self, data)
+					if data.Likes ~= nil then LkCnt.Text=tostring(data.Likes) end
+					if data.Dislikes ~= nil then DkCnt.Text=tostring(data.Dislikes) end
+					if data.Downloads ~= nil then DLCnt.Text=tostring(data.Downloads) end
+					
+					if data.Vote ~= nil then
+						Config.UserVote = data.Vote
+						LkBtn.ImageColor3 = (data.Vote==1) and Color3.fromRGB(100,255,100) or Color3.fromRGB(150,150,150)
+						DkBtn.ImageColor3 = (data.Vote==-1) and Color3.fromRGB(255,100,100) or Color3.fromRGB(150,150,150)
+					end
+					
+					if data.Fav ~= nil then
+						Config.IsFavorite = data.Fav
+						FavBtn.ImageColor3 = data.Fav and Color3.fromRGB(255,220,80) or Color3.fromRGB(80,80,80)
+					end
 				end,
 				Destroy = function(self) Product:Destroy() end,
 				SetVisible = function(self, b) Product.Visible = b end,
 				GetButton = function() return InstBtn end
 			}
 		end;
-
 
 		return MenuLib; -- 1111111111111
 	end;
@@ -6650,6 +6640,7 @@ Fatality.FATALITY_PID = Fatality:RandomString();
 
 
 return Fatality;
+
 
 
 
