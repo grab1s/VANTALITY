@@ -6064,10 +6064,25 @@ do
 				if v:IsA('Frame') then v:Destroy(); end; 
 			end; 
 			
-			-- Build Search List (UPDATED FOR DEEP SEARCH & FILTERING)
+			-- Build Search List (UPDATED: STRICT FILTER FOR CONFIGS & SCRIPTS ONLY)
 			for i, v in pairs(Fatal.ElementContents) do
-				-- IGNORE MISC TAB
-				if v.MenuName and string.upper(v.MenuName) == "MISC" then continue end
+				-- 1. Determine Root Tab Name
+				local rootTab = ""
+				if v.MenuName then
+					rootTab = v.MenuName
+				else
+					-- Fallback for standard elements: Extract from Path (e.g., "MISC > MENU")
+					local parts = string.split(v.Path, " > ")
+					rootTab = parts[1] or ""
+				end
+				
+				rootTab = string.upper(rootTab)
+
+				-- 2. Strict Filter: Allow ONLY "CONFIGS" and "SCRIPTS"
+				-- This automatically excludes "MISC" and anything else
+				if rootTab ~= "CONFIGS" and rootTab ~= "SCRIPTS" then 
+					continue 
+				end
 				
 				-- CREATE SEARCH STRING (Name + Author + Desc + Tags)
 				local searchString = string.lower(v.Name)
@@ -6116,7 +6131,7 @@ do
 				if not Fatality:IsMouseOverFrame(SearchFrame) then SearchToggle(false); end 
 			end 
 		end)
-	end;
+	end; -- 6575
 
 	do
 		local AboutFrame = Instance.new("Frame")
@@ -6731,13 +6746,3 @@ Fatality.FATALITY_PID = Fatality:RandomString();
 
 
 return Fatality;
-
-
-
-
-
-
-
-
-
-
