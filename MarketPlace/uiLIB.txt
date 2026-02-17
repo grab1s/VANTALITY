@@ -5877,7 +5877,7 @@ function Fatal:AddMenu(Menu : Menu) -- 1111111111111
 		return MenuLib; -- 1111111111111
 	end;
 
-	do
+do
 		local SearchFrame = Instance.new("Frame")
 		local UIStroke = Instance.new("UIStroke")
 		local UICorner = Instance.new("UICorner")
@@ -5890,6 +5890,7 @@ function Fatal:AddMenu(Menu : Menu) -- 1111111111111
 		local UIListLayout = Instance.new("UIListLayout")
 		local searchScale = UDim2.new(0, 295, 0, 295);
 		Fatality:AddDragBlacklist(SearchFrame);
+		
 		local SearchToggle = function(value)
 			if value then
 				SearchFrame.Position = UDim2.fromOffset(SearchButton.AbsolutePosition.X - 5,SearchButton.AbsolutePosition.Y + (SearchButton.AbsoluteSize.Y * 3))
@@ -5898,6 +5899,7 @@ function Fatal:AddMenu(Menu : Menu) -- 1111111111111
 				Fatality:CreateAnimation(UIStroke,0.5,{ Transparency = 1 }) Fatality:CreateAnimation(SearchFrame,0.35,{ Size = UDim2.new(searchScale.X.Scale, searchScale.X.Offset, 0, 0) }) Fatality:CreateAnimation(DropShadow,0.35,{ ImageTransparency = 1 }) Fatality:CreateAnimation(SearchBox,0.5,{ BackgroundTransparency = 1 }) Fatality:CreateAnimation(UIStroke_2,0.5,{ Transparency = 1 }) Fatality:CreateAnimation(TextBox,0.5,{ TextTransparency = 1 }) table.foreach(ScrollingFrame:GetChildren(),function(i,v) if v:IsA('Frame') then v:Destroy(); end; end);
 			end;
 		end;
+		
 		SearchFrame.Name = Fatality:RandomString()
 		SearchFrame.Parent = Fatalitywin;
 		SearchFrame.AnchorPoint = Vector2.new(0, 1)
@@ -5913,6 +5915,7 @@ function Fatal:AddMenu(Menu : Menu) -- 1111111111111
 		UIStroke.Parent = SearchFrame
 		UICorner.CornerRadius = UDim.new(0, 2)
 		UICorner.Parent = SearchFrame
+		
 		DropShadow.Name = Fatality:RandomString()
 		DropShadow.Parent = SearchFrame
 		DropShadow.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -5927,6 +5930,7 @@ function Fatal:AddMenu(Menu : Menu) -- 1111111111111
 		DropShadow.ImageTransparency = 0.750
 		DropShadow.ScaleType = Enum.ScaleType.Slice
 		DropShadow.SliceCenter = Rect.new(49, 49, 450, 450)
+		
 		SearchBox.Name = Fatality:RandomString()
 		SearchBox.Parent = SearchFrame
 		SearchBox.AnchorPoint = Vector2.new(0.5, 0)
@@ -5938,10 +5942,12 @@ function Fatal:AddMenu(Menu : Menu) -- 1111111111111
 		SearchBox.ZIndex = 101
 		UICorner_2.CornerRadius = UDim.new(0, 2)
 		UICorner_2.Parent = SearchBox
+		
 		UIStroke_2.Transparency = 0.650
 		UIStroke_2.Color = Color3.fromRGB(29, 29, 29)
 		Fatality:Register(UIStroke_2, "Stroke", "Color")
 		UIStroke_2.Parent = SearchBox
+		
 		TextBox.Parent = SearchBox
 		TextBox.AnchorPoint = Vector2.new(0.5, 0.5)
 		TextBox.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
@@ -5953,11 +5959,12 @@ function Fatal:AddMenu(Menu : Menu) -- 1111111111111
 		TextBox.ZIndex = 102
 		TextBox.ClearTextOnFocus = false
 		TextBox.FontFace = Fatality.FontSemiBold;
-		TextBox.PlaceholderText = "Search"
+		TextBox.PlaceholderText = "Search..."
 		TextBox.Text = ""
 		Fatality:Register(TextBox, "Text", "TextColor3")
 		TextBox.TextSize = 12.000
 		TextBox.TextXAlignment = Enum.TextXAlignment.Left
+		
 		ScrollingFrame.Parent = SearchFrame
 		ScrollingFrame.Active = true
 		ScrollingFrame.AnchorPoint = Vector2.new(0.5, 0)
@@ -5969,19 +5976,24 @@ function Fatal:AddMenu(Menu : Menu) -- 1111111111111
 		ScrollingFrame.Size = UDim2.new(1, -15, 1, -45)
 		ScrollingFrame.ZIndex = 102
 		ScrollingFrame.ScrollBarThickness = 0
+		
 		UIListLayout.Parent = ScrollingFrame
 		UIListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 		UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
 		UIListLayout.Padding = UDim.new(0, 4)
 		UIListLayout:GetPropertyChangedSignal('AbsoluteContentSize'):Connect(function() ScrollingFrame.CanvasSize = UDim2.fromOffset(0,UIListLayout.AbsoluteContentSize.Y) end)
+		
 		SearchToggle(false);
 		Fatality:CreateHover(SearchButton,function(bool) if bool then Fatality:CreateAnimation(SearchButton,0.5,{ ImageTransparency = 0.1 }) else Fatality:CreateAnimation(SearchButton,0.5,{ ImageTransparency = 0.5 }) end	end);
+		
 		local SearchInformation = {};
-		local get_button = function(Name,Path,TAB_WARP)
+		
+		local get_button = function(Name, Path, TAB_WARP)
 			local ResultFrame = Instance.new("Frame")
 			local UICorner = Instance.new("UICorner")
 			local FeatureName = Instance.new("TextLabel")
 			local FeaturePath = Instance.new("TextLabel")
+			
 			ResultFrame.Name = Fatality:RandomString()
 			ResultFrame.Parent = ScrollingFrame;
 			Fatality:Register(ResultFrame, "Element")
@@ -5990,8 +6002,10 @@ function Fatal:AddMenu(Menu : Menu) -- 1111111111111
 			ResultFrame.BorderSizePixel = 0
 			ResultFrame.Size = UDim2.new(1, 0, 0, 42)
 			ResultFrame.ZIndex = 103
+			
 			UICorner.CornerRadius = UDim.new(0, 4)
 			UICorner.Parent = ResultFrame
+			
 			FeatureName.Name = Fatality:RandomString()
 			FeatureName.Parent = ResultFrame
 			FeatureName.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
@@ -6006,6 +6020,7 @@ function Fatal:AddMenu(Menu : Menu) -- 1111111111111
 			Fatality:Register(FeatureName, "Text", "TextColor3")
 			FeatureName.TextSize = 14.000
 			FeatureName.TextXAlignment = Enum.TextXAlignment.Left
+			
 			FeaturePath.Name = Fatality:RandomString()
 			FeaturePath.Parent = ResultFrame
 			FeaturePath.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
@@ -6021,19 +6036,86 @@ function Fatal:AddMenu(Menu : Menu) -- 1111111111111
 			FeaturePath.TextSize = 12.000
 			FeaturePath.TextTransparency = 0.500
 			FeaturePath.TextXAlignment = Enum.TextXAlignment.Left
+			
 			local button = Fatality:NewInput(ResultFrame);
 			Fatality:CreateHover(button,function(bool) if bool then Fatality:CreateAnimation(ResultFrame,0.5,{ BackgroundTransparency = 0 }) else Fatality:CreateAnimation(ResultFrame,0.5,{ BackgroundTransparency = 1 }) end	end);
-			button.MouseButton1Click:Connect(function() if TAB_WARP then for i,v in next , Fatal.Menus do if v.Root == TAB_WARP.Root then Fatal.MenuSelected = v; v.ValueSelect(true) else v.ValueSelect(false) end; end; end; end);
+			button.MouseButton1Click:Connect(function() 
+				if TAB_WARP then 
+					for i,v in next , Fatal.Menus do 
+						if v.Root == TAB_WARP.Root then 
+							Fatal.MenuSelected = v; 
+							v.ValueSelect(true) 
+						else 
+							v.ValueSelect(false) 
+						end; 
+					end; 
+				end; 
+			end);
 			return ResultFrame;
 		end
-		SearchButton.MouseButton1Click:Connect(function() TextBox.Text = ""; SearchToggle(true); table.clear(SearchInformation); table.foreach(ScrollingFrame:GetChildren(),function(i,v) if v:IsA('Frame') then v:Destroy(); end; end); table.foreach(Fatal.ElementContents,function(i,v) local button = get_button(v.Name,v.Path,v._TAB); SearchInformation[v.Path.." - "..Fatality:RandomString()] = { root = button, callback = function() end, }; end); end)
+		
+		SearchButton.MouseButton1Click:Connect(function() 
+			TextBox.Text = ""; 
+			SearchToggle(true); 
+			table.clear(SearchInformation); 
+			
+			-- Clear existing list
+			for i,v in next , ScrollingFrame:GetChildren() do 
+				if v:IsA('Frame') then v:Destroy(); end; 
+			end; 
+			
+			-- Build Search List (UPDATED FOR DEEP SEARCH & FILTERING)
+			for i, v in pairs(Fatal.ElementContents) do
+				-- IGNORE MISC TAB
+				if v.MenuName and string.upper(v.MenuName) == "MISC" then continue end
+				
+				-- CREATE SEARCH STRING (Name + Author + Desc + Tags)
+				local searchString = string.lower(v.Name)
+				if v.Author then searchString = searchString .. " " .. string.lower(v.Author) end
+				if v.Description then searchString = searchString .. " " .. string.lower(v.Description) end
+				if v.Tags then searchString = searchString .. " " .. string.lower(v.Tags) end
+				
+				-- Use generic "Go to Product" instead of "Install" button visuals
+				local displayPath = v.Path
+				if v.IsProduct then displayPath = "Click to view product page" end
+				
+				local button = get_button(v.Name, displayPath, v._TAB);
+				
+				-- Store button reference and the rich search string
+				table.insert(SearchInformation, {
+					root = button,
+					searchData = searchString
+				})
+			end
+		end)
+		
 		local DearchDelay = tick();
 		TextBox:GetPropertyChangedSignal('Text'):Connect(function()
 			DearchDelay = tick();
-			if not TextBox.Text:byte() then for i,v in next , SearchInformation do v.root.Visible = true; end; return; end;
-			task.delay(0.5,function() if (tick() - DearchDelay) > 0.5 then for i,v in next , SearchInformation do if string.find(tostring(string.lower(i)),string.lower(TextBox.Text),1,true) then v.root.Visible = true; else v.root.Visible = false; end; end; end; end)
+			if not TextBox.Text:byte() then 
+				for i,v in next , SearchInformation do v.root.Visible = true; end; 
+				return; 
+			end;
+			
+			task.delay(0.5, function() 
+				if (tick() - DearchDelay) > 0.5 then 
+					local query = string.lower(TextBox.Text)
+					for i, v in next, SearchInformation do 
+						if string.find(v.searchData, query, 1, true) then 
+							v.root.Visible = true; 
+						else 
+							v.root.Visible = false; 
+						end; 
+					end; 
+				end; 
+			end)
 		end);
-		UserInputService.InputBegan:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then if not Fatality:IsMouseOverFrame(SearchFrame) then SearchToggle(false); end end end)
+		
+		UserInputService.InputBegan:Connect(function(input) 
+			if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then 
+				if not Fatality:IsMouseOverFrame(SearchFrame) then SearchToggle(false); end 
+			end 
+		end)
 	end;
 
 	do
@@ -6649,6 +6731,7 @@ Fatality.FATALITY_PID = Fatality:RandomString();
 
 
 return Fatality;
+
 
 
 
