@@ -5484,7 +5484,7 @@ function Fatal:AddMenu(Menu : Menu) -- 1111111111111
 			});
 		end;
 
--- >> AddProduct (UPDATED: REGISTER FOR SEARCH)
+-- >> AddProduct (UPDATED: FAVORITES + OFFICIAL STATUS)
 		function MenuLib:AddProduct(Config)
 			Config = Config or {};
 			if not Fatality:CanShow(Config) then return Fatality.Dummy end
@@ -5498,7 +5498,10 @@ function Fatal:AddMenu(Menu : Menu) -- 1111111111111
 			Config.DateCreate = Config.DateCreate or "N/A";
 			Config.DateUpdate = Config.DateUpdate or "N/A";
 			Config.ButtonText = Config.ButtonText or "Download";
+			Config.IsOfficial = Config.IsOfficial or false; -- NEW
+			Config.IsFavorite = Config.IsFavorite or false; -- NEW
 			Config.Callback = Config.Callback or function() end;
+			Config.FavCallback = Config.FavCallback or function(state) end; -- NEW
 			Config.Position = Config.Position or "center";
 
 			-- REGISTER IN SEARCH SYSTEM
@@ -5506,7 +5509,6 @@ function Fatal:AddMenu(Menu : Menu) -- 1111111111111
 				Name = Config.Name,
 				Path = Menu.Name .. " > " .. Config.Name,
 				_TAB = _B,
-				-- Metadata for Advanced Search
 				MenuName = Menu.Name,
 				Author = Config.Author,
 				Description = Config.Description,
@@ -5602,7 +5604,7 @@ function Fatal:AddMenu(Menu : Menu) -- 1111111111111
 			VersionLabel.TextXAlignment = Enum.TextXAlignment.Right
 			VersionLabel.ZIndex = 20
 
-			-- SUB-HEADER
+			-- SUB-HEADER (UPDATED FOR OFFICIAL ICON)
 			local SubHeader = Instance.new("Frame")
 			SubHeader.Parent = Product
 			SubHeader.BackgroundTransparency = 1
@@ -5610,29 +5612,68 @@ function Fatal:AddMenu(Menu : Menu) -- 1111111111111
 			SubHeader.Size = UDim2.new(1, 0, 0, 16)
 			SubHeader.ZIndex = 20
 			
+			-- Layout to handle Crown + Author + Status
+			local SubLayout = Instance.new("UIListLayout")
+			SubLayout.Parent = SubHeader
+			SubLayout.FillDirection = Enum.FillDirection.Horizontal
+			SubLayout.SortOrder = Enum.SortOrder.LayoutOrder
+			SubLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+			SubLayout.Padding = UDim.new(0, 4)
+
+			local AuthorPrefix = Instance.new("TextLabel")
+			AuthorPrefix.Parent = SubHeader
+			AuthorPrefix.BackgroundTransparency = 1
+			AuthorPrefix.AutomaticSize = Enum.AutomaticSize.X
+			AuthorPrefix.Size = UDim2.new(0, 0, 1, 0)
+			AuthorPrefix.Font = Enum.Font.Gotham
+			AuthorPrefix.Text = "by"
+			AuthorPrefix.TextColor3 = Fatality.CurrentTheme.TextDark
+			Fatality:Register(AuthorPrefix, "TextDark", "TextColor3")
+			AuthorPrefix.TextSize = 11
+			AuthorPrefix.LayoutOrder = 1
+			AuthorPrefix.ZIndex = 20
+
 			local AuthorLabel = Instance.new("TextLabel")
 			AuthorLabel.Parent = SubHeader
 			AuthorLabel.BackgroundTransparency = 1
-			AuthorLabel.Size = UDim2.new(0.8, 0, 1, 0)
+			AuthorLabel.AutomaticSize = Enum.AutomaticSize.X
+			AuthorLabel.Size = UDim2.new(0, 0, 1, 0)
 			AuthorLabel.Font = Enum.Font.Gotham
-			AuthorLabel.Text = "by " .. Config.Author
+			AuthorLabel.Text = Config.Author
 			AuthorLabel.TextColor3 = Fatality.CurrentTheme.Main
 			Fatality:Register(AuthorLabel, "Main", "TextColor3")
 			AuthorLabel.TextSize = 11
-			AuthorLabel.TextTransparency = 0.2
-			AuthorLabel.TextXAlignment = Enum.TextXAlignment.Left
+			AuthorLabel.LayoutOrder = 2
 			AuthorLabel.ZIndex = 20
 
+			-- CROWN ICON
+			if Config.IsOfficial then
+				local Crown = Instance.new("ImageLabel")
+				Crown.Parent = SubHeader
+				Crown.BackgroundTransparency = 1
+				Crown.Size = UDim2.new(0, 11, 0, 11)
+				Crown.Image = Fatality:GetIcon("crown")
+				Crown.ImageColor3 = Color3.fromRGB(255, 215, 0) -- Gold
+				Crown.LayoutOrder = 3
+				Crown.ZIndex = 20
+			end
+
+			-- Status Dot (Absolute positioned to right)
+			local StatusFrame = Instance.new("Frame")
+			StatusFrame.Parent = Product -- Parent to Product, not SubHeader to detach from list
+			StatusFrame.BackgroundTransparency = 1
+			StatusFrame.Size = UDim2.new(1, 0, 0, 16)
+			StatusFrame.Position = UDim2.new(0,0,0,18)
+			StatusFrame.ZIndex = 21
+			
 			local StatusDot = Instance.new("Frame")
 			local StatusCorner = Instance.new("UICorner")
-			
-			StatusDot.Parent = SubHeader
+			StatusDot.Parent = StatusFrame
 			StatusDot.AnchorPoint = Vector2.new(1, 0.5)
 			StatusDot.Position = UDim2.new(1, 0, 0.5, 0)
 			StatusDot.Size = UDim2.new(0, 8, 0, 8)
 			StatusDot.BackgroundColor3 = StatusColors[Config.Status] or StatusColors.Working
-			StatusDot.ZIndex = 20
-			
+			StatusDot.ZIndex = 21
 			StatusCorner.CornerRadius = UDim.new(1, 0)
 			StatusCorner.Parent = StatusDot
 			
@@ -5775,6 +5816,25 @@ function Fatal:AddMenu(Menu : Menu) -- 1111111111111
 			Fatality:Register(BtnStroke, "Stroke", "Color")
 			BtnStroke.Parent = ActionButton
 
+			-- FAVORITE BUTTON (NEW)
+			local FavContainer = Instance.new("Frame")
+			FavContainer.Name = "FavContainer"
+			FavContainer.Parent = Product
+			FavContainer.LayoutOrder = 7
+			FavContainer.BackgroundTransparency = 1
+			FavContainer.Size = UDim2.new(1, 0, 0, 20)
+			FavContainer.ZIndex = 20
+			
+			local FavButton = Instance.new("ImageButton")
+			FavButton.Parent = FavContainer
+			FavButton.AnchorPoint = Vector2.new(1, 0)
+			FavButton.Position = UDim2.new(1, 0, 0, 0)
+			FavButton.Size = UDim2.new(0, 20, 0, 20)
+			FavButton.BackgroundTransparency = 1
+			FavButton.Image = Config.IsFavorite and Fatality:GetIcon("minus") or Fatality:GetIcon("plus")
+			FavButton.ImageColor3 = Config.IsFavorite and Color3.fromRGB(255, 220, 80) or Color3.fromRGB(150, 150, 150)
+			FavButton.ZIndex = 25
+			
 			-- Button Logic Store
 			local ButtonLogic = {
 				DefaultColor = Fatality.CurrentTheme.Element,
@@ -5798,14 +5858,34 @@ function Fatal:AddMenu(Menu : Menu) -- 1111111111111
 					end
 				end
 			end)
+			
+			Fatality:CreateHover(FavButton, function(hover)
+				if hover then
+					Fatality:CreateAnimation(FavButton, 0.2, { ImageTransparency = 0 })
+				else
+					Fatality:CreateAnimation(FavButton, 0.2, { ImageTransparency = 0.3 })
+				end
+			end)
 
-			ActionButton.MouseButton1Click:Connect(function()
-				Config.Callback()
+			ActionButton.MouseButton1Click:Connect(function() Config.Callback() end)
+			
+			FavButton.MouseButton1Click:Connect(function()
+				Config.IsFavorite = not Config.IsFavorite
+				
+				if Config.IsFavorite then
+					FavButton.Image = Fatality:GetIcon("minus")
+					Fatality:CreateAnimation(FavButton, 0.3, { ImageColor3 = Color3.fromRGB(255, 220, 80) })
+				else
+					FavButton.Image = Fatality:GetIcon("plus")
+					Fatality:CreateAnimation(FavButton, 0.3, { ImageColor3 = Color3.fromRGB(150, 150, 150) })
+				end
+				
+				Config.FavCallback(Config.IsFavorite)
 			end)
 			
 			local Space = Instance.new("Frame")
 			Space.Parent = Product
-			Space.LayoutOrder = 7
+			Space.LayoutOrder = 8
 			Space.BackgroundTransparency = 1
 			Space.Size = UDim2.new(1, 0, 0, 2)
 			Space.ZIndex = 15
@@ -5830,6 +5910,7 @@ function Fatal:AddMenu(Menu : Menu) -- 1111111111111
 					Fatality:CreateAnimation(ActionButton, 0.5, { BackgroundTransparency = 0, TextTransparency = 0 })
 					Fatality:CreateAnimation(BtnStroke, 0.5, { Transparency = 0 })
 					Fatality:CreateAnimation(StatusDot, 0.5, { BackgroundTransparency = 0 })
+					Fatality:CreateAnimation(FavButton, 0.5, { ImageTransparency = 0.3 })
 				else 
 					Fatality:CreateAnimation(Product, 0.5, { BackgroundTransparency = 1 })
 					Fatality:CreateAnimation(UIStroke, 0.5, { Transparency = 1 })
@@ -5849,6 +5930,7 @@ function Fatal:AddMenu(Menu : Menu) -- 1111111111111
 					Fatality:CreateAnimation(ActionButton, 0.5, { BackgroundTransparency = 1, TextTransparency = 1 })
 					Fatality:CreateAnimation(BtnStroke, 0.5, { Transparency = 1 })
 					Fatality:CreateAnimation(StatusDot, 0.5, { BackgroundTransparency = 1 })
+					Fatality:CreateAnimation(FavButton, 0.5, { ImageTransparency = 1 })
 				end
 			end;
 			Toggle(BindEvent:GetAttribute('V'));
@@ -6814,4 +6896,5 @@ Fatality.FATALITY_PID = Fatality:RandomString();
 
 
 return Fatality;
+
 
