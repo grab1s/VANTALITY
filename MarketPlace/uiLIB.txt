@@ -5484,7 +5484,7 @@ function Fatal:AddMenu(Menu : Menu) -- 1111111111111
 			});
 		end;
 
--- >> AddProduct (FIXED: COMPACT LAYOUT & NO DUPLICATION LOGIC HERE)
+-- >> AddProduct (UPDATED: STATS, MAIN TAB SUPPORT, NEW LAYOUT)
 		function MenuLib:AddProduct(Config)
 			Config = Config or {};
 			if not Fatality:CanShow(Config) then return Fatality.Dummy end
@@ -5499,9 +5499,17 @@ function Fatal:AddMenu(Menu : Menu) -- 1111111111111
 			Config.DateUpdate = Config.DateUpdate or "-";
 			Config.ButtonText = Config.ButtonText or "Download";
 			Config.IsOfficial = Config.IsOfficial or false;
+			
+			-- Stats Data
+			Config.Likes = Config.Likes or 0;
+			Config.Dislikes = Config.Dislikes or 0;
+			Config.Downloads = Config.Downloads or 0;
+			Config.UserVote = Config.UserVote or 0; -- 0 = none, 1 = like, -1 = dislike
 			Config.IsFavorite = Config.IsFavorite or false;
+			
 			Config.Callback = Config.Callback or function() end;
 			Config.FavCallback = Config.FavCallback or function(state) end;
+			Config.VoteCallback = Config.VoteCallback or function(vote) end; -- 1, -1, 0
 			Config.Position = Config.Position or "center";
 
 			-- SEARCH REGISTRATION
@@ -5652,15 +5660,15 @@ function Fatal:AddMenu(Menu : Menu) -- 1111111111111
 				Crown.ZIndex = 20
 			end
 			
-			-- Spacer to push status to right (not possible with UIListLayout easily, using absolute frame for Status)
-			-- Actually, let's just put Status in a separate frame on top of SubHeader
+			-- Status Dot (Absolute Right)
 			local StatusDot = Instance.new("Frame")
 			local SC = Instance.new("UICorner")
-			StatusDot.Parent = SubHeader
+			StatusDot.Parent = Product -- Parent to Product for absolute pos
 			StatusDot.BackgroundTransparency = 0
 			StatusDot.Size = UDim2.new(0, 6, 0, 6)
+			StatusDot.Position = UDim2.new(1, -6, 0, 22) -- Aligned with SubHeader roughly
 			StatusDot.BackgroundColor3 = StatusColors[Config.Status] or StatusColors.Working
-			StatusDot.ZIndex = 20
+			StatusDot.ZIndex = 21
 			SC.CornerRadius = UDim.new(1, 0)
 			SC.Parent = StatusDot
 			
@@ -5720,48 +5728,89 @@ function Fatal:AddMenu(Menu : Menu) -- 1111111111111
 				TagsBox.Visible = false
 			end
 
-			-- 5. DATES
-			local Dates = Instance.new("Frame")
-			Dates.Parent = Product
-			Dates.BackgroundTransparency = 1
-			Dates.Size = UDim2.new(1, 0, 0, 12)
-			Dates.LayoutOrder = 5
-			Dates.ZIndex = 20
-			
-			local D1 = Instance.new("TextLabel", Dates)
-			D1.BackgroundTransparency = 1
-			D1.Size = UDim2.new(0.5, 0, 1, 0)
-			D1.Font = Enum.Font.Gotham
-			D1.TextColor3 = Color3.fromRGB(120, 120, 120)
-			D1.TextSize = 9
-			D1.TextXAlignment = Enum.TextXAlignment.Left
-			D1.Text = "add: " .. GetTimeAgo(Config.DateCreate)
-			D1.ZIndex = 20
-			
-			local D2 = Instance.new("TextLabel", Dates)
-			D2.BackgroundTransparency = 1
-			D2.Size = UDim2.new(0.5, 0, 1, 0)
-			D2.Position = UDim2.new(0.5, 0, 0, 0)
-			D2.Font = Enum.Font.Gotham
-			D2.TextColor3 = Color3.fromRGB(120, 120, 120)
-			D2.TextSize = 9
-			D2.TextXAlignment = Enum.TextXAlignment.Right
-			D2.Text = "upd: " .. GetTimeAgo(Config.DateUpdate)
-			D2.ZIndex = 20
+			-- 5. STATS ROW (Likes, Downloads, Fav) - ABOVE BUTTON
+			local StatsRow = Instance.new("Frame")
+			StatsRow.Parent = Product
+			StatsRow.BackgroundTransparency = 1
+			StatsRow.Size = UDim2.new(1, 0, 0, 16)
+			StatsRow.LayoutOrder = 5
+			StatsRow.ZIndex = 20
 
-			-- 6. ACTION FOOTER (Buttons Row)
-			local Footer = Instance.new("Frame")
-			Footer.Parent = Product
-			Footer.BackgroundTransparency = 1
-			Footer.Size = UDim2.new(1, 0, 0, 20)
-			Footer.LayoutOrder = 6
-			Footer.ZIndex = 20
+			-- Left Side: Rating
+			local LikeBtn = Instance.new("ImageButton", StatsRow)
+			LikeBtn.BackgroundTransparency = 1
+			LikeBtn.Size = UDim2.new(0, 14, 0, 14)
+			LikeBtn.Position = UDim2.new(0, 0, 0.5, -7)
+			LikeBtn.Image = Fatality:GetIcon("chevron-up")
+			LikeBtn.ImageColor3 = Config.UserVote == 1 and Color3.fromRGB(100,255,100) or Color3.fromRGB(150,150,150)
+			
+			local LikeCnt = Instance.new("TextLabel", StatsRow)
+			LikeCnt.BackgroundTransparency = 1
+			LikeCnt.Position = UDim2.new(0, 16, 0, 0)
+			LikeCnt.Size = UDim2.new(0, 20, 1, 0)
+			LikeCnt.Font = Enum.Font.GothamBold
+			LikeCnt.TextSize = 10
+			LikeCnt.TextColor3 = Color3.fromRGB(100,255,100)
+			LikeCnt.TextXAlignment = Enum.TextXAlignment.Left
+			LikeCnt.Text = tostring(Config.Likes)
+
+			local DislikeBtn = Instance.new("ImageButton", StatsRow)
+			DislikeBtn.BackgroundTransparency = 1
+			DislikeBtn.Size = UDim2.new(0, 14, 0, 14)
+			DislikeBtn.Position = UDim2.new(0, 40, 0.5, -7)
+			DislikeBtn.Image = Fatality:GetIcon("chevron-down")
+			DislikeBtn.ImageColor3 = Config.UserVote == -1 and Color3.fromRGB(255,100,100) or Color3.fromRGB(150,150,150)
+
+			local DislikeCnt = Instance.new("TextLabel", StatsRow)
+			DislikeCnt.BackgroundTransparency = 1
+			DislikeCnt.Position = UDim2.new(0, 56, 0, 0)
+			DislikeCnt.Size = UDim2.new(0, 20, 1, 0)
+			DislikeCnt.Font = Enum.Font.GothamBold
+			DislikeCnt.TextSize = 10
+			DislikeCnt.TextColor3 = Color3.fromRGB(255,100,100)
+			DislikeCnt.TextXAlignment = Enum.TextXAlignment.Left
+			DislikeCnt.Text = tostring(Config.Dislikes)
+
+			-- Right Side: Downloads + Fav
+			local DLIcon = Instance.new("ImageLabel", StatsRow)
+			DLIcon.BackgroundTransparency = 1
+			DLIcon.Size = UDim2.new(0, 12, 0, 12)
+			DLIcon.Position = UDim2.new(1, -65, 0.5, -6)
+			DLIcon.Image = Fatality:GetIcon("upload")
+			DLIcon.ImageColor3 = Fatality.CurrentTheme.TextDark
+			Fatality:Register(DLIcon, "TextDark", "ImageColor3")
+
+			local DLCnt = Instance.new("TextLabel", StatsRow)
+			DLCnt.BackgroundTransparency = 1
+			DLCnt.Position = UDim2.new(1, -50, 0, 0)
+			DLCnt.Size = UDim2.new(0, 30, 1, 0)
+			DLCnt.Font = Enum.Font.Gotham
+			DLCnt.TextSize = 10
+			DLCnt.TextColor3 = Fatality.CurrentTheme.TextDark
+			Fatality:Register(DLCnt, "TextDark", "TextColor3")
+			DLCnt.TextXAlignment = Enum.TextXAlignment.Left
+			DLCnt.Text = tostring(Config.Downloads)
+
+			local FavBtn = Instance.new("ImageButton", StatsRow)
+			FavBtn.AnchorPoint = Vector2.new(1, 0.5)
+			FavBtn.Position = UDim2.new(1, 0, 0.5, 0)
+			FavBtn.Size = UDim2.new(0, 16, 0, 16)
+			FavBtn.BackgroundTransparency = 1
+			FavBtn.Image = Config.IsFavorite and Fatality:GetIcon("star") or Fatality:GetIcon("star")
+			FavBtn.ImageColor3 = Config.IsFavorite and Color3.fromRGB(255, 220, 80) or Color3.fromRGB(80, 80, 80)
+
+			-- 6. ACTION BUTTON
+			local ButtonCont = Instance.new("Frame")
+			ButtonCont.Parent = Product
+			ButtonCont.BackgroundTransparency = 1
+			ButtonCont.Size = UDim2.new(1, 0, 0, 22)
+			ButtonCont.LayoutOrder = 6
 			
 			local InstallBtn = Instance.new("TextButton")
-			InstallBtn.Parent = Footer
+			InstallBtn.Parent = ButtonCont
 			InstallBtn.BackgroundColor3 = Fatality.CurrentTheme.Element
 			Fatality:Register(InstallBtn, "Element")
-			InstallBtn.Size = UDim2.new(1, -24, 1, 0) -- Leave space for fav icon
+			InstallBtn.Size = UDim2.new(1, 0, 1, 0)
 			InstallBtn.Font = Enum.Font.GothamBold
 			InstallBtn.Text = Config.ButtonText
 			InstallBtn.TextColor3 = Fatality.CurrentTheme.Text
@@ -5774,85 +5823,103 @@ function Fatal:AddMenu(Menu : Menu) -- 1111111111111
 			IBStroke.Color = Fatality.CurrentTheme.Stroke
 			Fatality:Register(IBStroke, "Stroke", "Color")
 
-			local FavBtn = Instance.new("ImageButton")
-			FavBtn.Parent = Footer
-			FavBtn.AnchorPoint = Vector2.new(1, 0)
-			FavBtn.Position = UDim2.new(1, 0, 0, 0)
-			FavBtn.Size = UDim2.new(0, 20, 1, 0)
-			FavBtn.BackgroundTransparency = 1
-			FavBtn.Image = Config.IsFavorite and Fatality:GetIcon("minus") or Fatality:GetIcon("plus")
-			FavBtn.ImageColor3 = Config.IsFavorite and Color3.fromRGB(255, 220, 80) or Color3.fromRGB(100, 100, 100)
-			FavBtn.ZIndex = 25
+			-- 7. DATES (MOVED TO BOTTOM)
+			local Dates = Instance.new("Frame")
+			Dates.Parent = Product
+			Dates.BackgroundTransparency = 1
+			Dates.Size = UDim2.new(1, 0, 0, 12)
+			Dates.LayoutOrder = 7
+			Dates.ZIndex = 20
+			
+			local D1 = Instance.new("TextLabel", Dates)
+			D1.BackgroundTransparency = 1
+			D1.Size = UDim2.new(0.5, 0, 1, 0)
+			D1.Font = Enum.Font.Gotham
+			D1.TextColor3 = Color3.fromRGB(80, 80, 80)
+			D1.TextSize = 9
+			D1.TextXAlignment = Enum.TextXAlignment.Left
+			D1.Text = "added: " .. GetTimeAgo(Config.DateCreate)
+			
+			local D2 = Instance.new("TextLabel", Dates)
+			D2.BackgroundTransparency = 1
+			D2.Size = UDim2.new(0.5, 0, 1, 0)
+			D2.Position = UDim2.new(0.5, 0, 0, 0)
+			D2.Font = Enum.Font.Gotham
+			D2.TextColor3 = Color3.fromRGB(80, 80, 80)
+			D2.TextSize = 9
+			D2.TextXAlignment = Enum.TextXAlignment.Right
+			D2.Text = "updated: " .. GetTimeAgo(Config.DateUpdate)
 
-			-- HOVER LOGIC
+			-- LOGIC & EVENTS
 			local ButtonOverride = nil
-			
 			Fatality:CreateHover(InstallBtn, function(h)
-				if h then
-					local clr = ButtonOverride and ButtonOverride or Fatality.CurrentTheme.Main
-					local txt = ButtonOverride and Color3.new(1,1,1) or Color3.new(1,1,1)
-					
-					if ButtonOverride then
-						local hue, sat, val = ButtonOverride:ToHSV()
-						Fatality:CreateAnimation(InstallBtn, 0.2, {BackgroundColor3 = Color3.fromHSV(hue, sat, math.clamp(val+0.1,0,1)), TextColor3 = txt})
-					else
-						Fatality:CreateAnimation(InstallBtn, 0.2, {BackgroundColor3 = clr, TextColor3 = txt})
-					end
-				else
-					local clr = ButtonOverride and ButtonOverride or Fatality.CurrentTheme.Element
-					local txt = ButtonOverride and Color3.new(1,1,1) or Fatality.CurrentTheme.Text
-					Fatality:CreateAnimation(InstallBtn, 0.2, {BackgroundColor3 = clr, TextColor3 = txt})
+				local targetBg = ButtonOverride or (h and Fatality.CurrentTheme.Main or Fatality.CurrentTheme.Element)
+				if h and ButtonOverride then
+					local hu, s, v = targetBg:ToHSV()
+					targetBg = Color3.fromHSV(hu, s, math.clamp(v+0.1,0,1))
 				end
+				Fatality:CreateAnimation(InstallBtn, 0.2, {BackgroundColor3 = targetBg})
 			end)
-			
-			Fatality:CreateHover(FavBtn, function(h)
-				Fatality:CreateAnimation(FavBtn, 0.2, { ImageTransparency = h and 0 or 0.4 })
-			end)
-			
-			-- EVENTS
+
 			InstallBtn.MouseButton1Click:Connect(Config.Callback)
 			
 			FavBtn.MouseButton1Click:Connect(function()
 				Config.IsFavorite = not Config.IsFavorite
-				if Config.IsFavorite then
-					FavBtn.Image = Fatality:GetIcon("minus")
-					Fatality:CreateAnimation(FavBtn, 0.3, { ImageColor3 = Color3.fromRGB(255, 220, 80) })
-				else
-					FavBtn.Image = Fatality:GetIcon("plus")
-					Fatality:CreateAnimation(FavBtn, 0.3, { ImageColor3 = Color3.fromRGB(100, 100, 100) })
-				end
+				FavBtn.ImageColor3 = Config.IsFavorite and Color3.fromRGB(255, 220, 80) or Color3.fromRGB(80, 80, 80)
 				Config.FavCallback(Config.IsFavorite)
 			end)
 
-			-- VISIBILITY TOGGLE (ANIMATION)
+			LikeBtn.MouseButton1Click:Connect(function()
+				local newVote = (Config.UserVote == 1) and 0 or 1
+				Config.VoteCallback(newVote)
+				-- Optimistic Update
+				if Config.UserVote == 1 then Config.Likes -= 1 elseif Config.UserVote == -1 then Config.Dislikes -= 1 end
+				if newVote == 1 then Config.Likes += 1 end
+				Config.UserVote = newVote
+				LikeCnt.Text = tostring(Config.Likes)
+				DislikeCnt.Text = tostring(Config.Dislikes)
+				LikeBtn.ImageColor3 = (newVote == 1) and Color3.fromRGB(100,255,100) or Color3.fromRGB(150,150,150)
+				DislikeBtn.ImageColor3 = Color3.fromRGB(150,150,150)
+			end)
+
+			DislikeBtn.MouseButton1Click:Connect(function()
+				local newVote = (Config.UserVote == -1) and 0 or -1
+				Config.VoteCallback(newVote)
+				if Config.UserVote == 1 then Config.Likes -= 1 elseif Config.UserVote == -1 then Config.Dislikes -= 1 end
+				if newVote == -1 then Config.Dislikes += 1 end
+				Config.UserVote = newVote
+				LikeCnt.Text = tostring(Config.Likes)
+				DislikeCnt.Text = tostring(Config.Dislikes)
+				DislikeBtn.ImageColor3 = (newVote == -1) and Color3.fromRGB(255,100,100) or Color3.fromRGB(150,150,150)
+				LikeBtn.ImageColor3 = Color3.fromRGB(150,150,150)
+			end)
+
+			-- SPACER
 			local Spacer = Instance.new("Frame", Product)
-			Spacer.LayoutOrder = 7
+			Spacer.LayoutOrder = 8
 			Spacer.BackgroundTransparency = 1
 			Spacer.Size = UDim2.new(1,0,0,2)
 
+			-- TOGGLE ANIM
 			local Toggle = function(v)
-				local target = v and 0 or 1
-				local visible = v
+				local t = v and 0 or 1
+				Fatality:CreateAnimation(Product, 0.5, { BackgroundTransparency = t })
+				Fatality:CreateAnimation(UIStroke, 0.5, { Transparency = t })
+				local list = {Title, Ver, ByLbl, AuthLbl, Desc, D1, D2, InstallBtn, LikeCnt, DislikeCnt, DLCnt}
+				for _, o in pairs(list) do Fatality:CreateAnimation(o, 0.5, { TextTransparency = t }) end
 				
-				Fatality:CreateAnimation(Product, 0.5, { BackgroundTransparency = target })
-				Fatality:CreateAnimation(UIStroke, 0.5, { Transparency = target })
+				Fatality:CreateAnimation(InstallBtn, 0.5, { BackgroundTransparency = t })
+				Fatality:CreateAnimation(IBStroke, 0.5, { Transparency = t })
+				Fatality:CreateAnimation(StatusDot, 0.5, { BackgroundTransparency = t })
 				
-				-- Fade Texts
-				local texts = {Title, Ver, ByLbl, AuthLbl, Desc, D1, D2, InstallBtn}
-				for _, obj in pairs(texts) do Fatality:CreateAnimation(obj, 0.5, { TextTransparency = v and (obj==ByLbl and 0.4 or 0) or 1 }) end
+				local imgs = {LikeBtn, DislikeBtn, DLIcon, FavBtn}
+				for _, o in pairs(imgs) do Fatality:CreateAnimation(o, 0.5, { ImageTransparency = t }) end
 				
-				-- Fade Backgrounds/Images
-				Fatality:CreateAnimation(InstallBtn, 0.5, { BackgroundTransparency = target })
-				Fatality:CreateAnimation(IBStroke, 0.5, { Transparency = target })
-				Fatality:CreateAnimation(FavBtn, 0.5, { ImageTransparency = v and 0.4 or 1 })
-				Fatality:CreateAnimation(StatusDot, 0.5, { BackgroundTransparency = target })
-				
-				-- Handle Tags
-				for _, t in pairs(TagsBox:GetChildren()) do
-					if t:IsA("Frame") then
-						Fatality:CreateAnimation(t, 0.5, { BackgroundTransparency = target })
-						if t:FindFirstChild("TextLabel") then Fatality:CreateAnimation(t.TextLabel, 0.5, { TextTransparency = target }) end
-						if t:FindFirstChild("UIStroke") then Fatality:CreateAnimation(t.UIStroke, 0.5, { Transparency = target }) end
+				for _, c in pairs(TagsBox:GetChildren()) do
+					if c:IsA("Frame") then
+						Fatality:CreateAnimation(c, 0.5, { BackgroundTransparency = t })
+						if c:FindFirstChild("TextLabel") then Fatality:CreateAnimation(c.TextLabel, 0.5, { TextTransparency = t }) end
+						if c:FindFirstChild("UIStroke") then Fatality:CreateAnimation(c.UIStroke, 0.5, { Transparency = t }) end
 					end
 				end
 			end
@@ -5860,22 +5927,20 @@ function Fatal:AddMenu(Menu : Menu) -- 1111111111111
 			BindEvent.Event:Connect(Toggle)
 
 			return {
-				SetStatus = function(self, newStatus)
-					if StatusColors[newStatus] then Fatality:CreateAnimation(StatusDot, 0.3, {BackgroundColor3 = StatusColors[newStatus]}) end
+				SetStatus = function(self, s) if StatusColors[s] then Fatality:CreateAnimation(StatusDot, 0.3, {BackgroundColor3 = StatusColors[s]}) end end,
+				SetButton = function(self, t, c, b)
+					InstallBtn.Text = t
+					if c then InstallBtn.TextColor3 = c end
+					ButtonOverride = b
+					if b then InstallBtn.BackgroundColor3 = b InstallBtn.TextColor3 = Color3.new(1,1,1)
+					else InstallBtn.BackgroundColor3 = Fatality.CurrentTheme.Element InstallBtn.TextColor3 = Fatality.CurrentTheme.Text end
 				end,
-				SetButton = function(self, text, color, bgColor)
-					InstallBtn.Text = text
-					if color then InstallBtn.TextColor3 = color end
-					ButtonOverride = bgColor
-					if bgColor then
-						InstallBtn.BackgroundColor3 = bgColor
-						InstallBtn.TextColor3 = Color3.new(1,1,1)
-					else
-						InstallBtn.BackgroundColor3 = Fatality.CurrentTheme.Element
-						InstallBtn.TextColor3 = Fatality.CurrentTheme.Text
-					end
+				UpdateStats = function(self, l, d, dl)
+					if l then LikeCnt.Text = tostring(l) end
+					if d then DislikeCnt.Text = tostring(d) end
+					if dl then DLCnt.Text = tostring(dl) end
 				end,
-				SetVisible = function(self, bool) Product.Visible = bool end,
+				SetVisible = function(self, b) Product.Visible = b end,
 				GetButton = function() return InstallBtn end
 			}
 		end;
@@ -6820,6 +6885,7 @@ Fatality.FATALITY_PID = Fatality:RandomString();
 
 
 return Fatality;
+
 
 
 
