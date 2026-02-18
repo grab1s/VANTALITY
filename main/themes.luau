@@ -3,6 +3,7 @@ local Env = getgenv and getgenv() or _G
 local ThemeManager = {}
 
 local Themes = {
+    -- [ ОРИГИНАЛЬНЫЕ ТЕМЫ ] --
     ["Fatality"] = {
         Main       = Color3.fromRGB(255, 106, 133), 
         Background = Color3.fromRGB(19, 19, 19),    
@@ -26,7 +27,7 @@ local Themes = {
         Stroke     = Color3.fromRGB(40, 50, 60),    
         Outline    = Color3.fromRGB(0, 0, 0),    
     },
-    ["Discord (Dark)"] = {
+    ["Discord (D)"] = {
         Main       = Color3.fromRGB(88, 101, 242), 
         Background = Color3.fromRGB(49, 51, 56),   
         Container  = Color3.fromRGB(43, 45, 49),   
@@ -36,7 +37,7 @@ local Themes = {
         Stroke     = Color3.fromRGB(30, 31, 34),    
         Outline    = Color3.fromRGB(0, 0, 0),    
     },
-    ["Twitch (Dark)"] = {
+    ["Twitch (D)"] = {
         Main       = Color3.fromRGB(145, 70, 255), 
         Background = Color3.fromRGB(24, 24, 27),   
         Container  = Color3.fromRGB(31, 31, 35),   
@@ -99,7 +100,6 @@ local Themes = {
         Stroke     = Color3.fromRGB(60, 60, 60),    
         Outline    = Color3.fromRGB(0, 0, 0),    
     },
-
     ["Deep Purple"] = { 
         Main       = ColorSequence.new{
             ColorSequenceKeypoint.new(0.0, Color3.fromRGB(140, 0, 255)),
@@ -113,7 +113,6 @@ local Themes = {
         Stroke     = Color3.fromRGB(40, 30, 60),    
         Outline    = Color3.fromRGB(0, 0, 0),    
     },
-
     ["Cherry"] = { 
         Main       = ColorSequence.new{
             ColorSequenceKeypoint.new(0.0, Color3.fromRGB(255, 183, 197)),
@@ -127,8 +126,7 @@ local Themes = {
         Stroke     = Color3.fromRGB(60, 40, 50),    
         Outline    = Color3.fromRGB(0, 0, 0),    
     },
-
-    ["Midnight"] = {
+    ["Midnight"] = { 
         Main       = ColorSequence.new{
             ColorSequenceKeypoint.new(0.0, Color3.fromRGB(0, 120, 255)),
             ColorSequenceKeypoint.new(1.0, Color3.fromRGB(0, 200, 255))
@@ -141,8 +139,7 @@ local Themes = {
         Stroke     = Color3.fromRGB(30, 45, 65),    
         Outline    = Color3.fromRGB(0, 0, 0),    
     },
-
-    ["Monochrome"] = {
+    ["Monochrome (Pro)"] = { 
         Main       = Color3.fromRGB(255, 255, 255), 
         Background = Color3.fromRGB(0, 0, 0),       
         Container  = Color3.fromRGB(20, 20, 20),    
@@ -152,11 +149,10 @@ local Themes = {
         Stroke     = Color3.fromRGB(40, 40, 40),    
         Outline    = Color3.fromRGB(255, 255, 255), 
     },
-
-    ["Vaporwave"] = {
+    ["Vaporwave"] = { 
         Main       = ColorSequence.new{
             ColorSequenceKeypoint.new(0.0, Color3.fromRGB(255, 113, 206)), 
-            ColorSequenceKeypoint.new(1.0, Color3.fromRGB(1, 205, 254))    
+            ColorSequenceKeypoint.new(1.0, Color3.fromRGB(1, 205, 254))  
         },
         Background = Color3.fromRGB(24, 18, 38),    
         Container  = Color3.fromRGB(44, 30, 70),    
@@ -166,7 +162,6 @@ local Themes = {
         Stroke     = Color3.fromRGB(60, 45, 90),    
         Outline    = Color3.fromRGB(0, 0, 0),    
     },
-    
     ["Acid Green"] = {
         Main       = Color3.fromRGB(57, 255, 20),   
         Background = Color3.fromRGB(5, 15, 5),      
@@ -177,40 +172,6 @@ local Themes = {
         Stroke     = Color3.fromRGB(30, 80, 30),    
         Outline    = Color3.fromRGB(0, 0, 0),    
     },
-
-    ["Polar Day"] = { 
-        Main       = Color3.fromRGB(37, 99, 235), 
-        Background = Color3.fromRGB(245, 247, 250),    
-        Container  = Color3.fromRGB(255, 255, 255),    
-        Element    = Color3.fromRGB(235, 239, 245),    
-        Text       = Color3.fromRGB(30, 41, 59),   
-        TextDark   = Color3.fromRGB(100, 116, 139),
-        Stroke     = Color3.fromRGB(203, 213, 225),    
-        Outline    = Color3.fromRGB(255, 255, 255),    
-    },
-
-    ["Ceramic"] = { 
-        Main       = Color3.fromRGB(50, 50, 50),   
-        Background = Color3.fromRGB(250, 250, 249),    
-        Container  = Color3.fromRGB(255, 255, 255),    
-        Element    = Color3.fromRGB(240, 240, 238),    
-        Text       = Color3.fromRGB(28, 25, 23),
-        TextDark   = Color3.fromRGB(120, 113, 108),
-        Stroke     = Color3.fromRGB(231, 229, 228),    
-        Outline    = Color3.fromRGB(255, 255, 255),    
-    },
-
-    ["Sakura Light"] = { -- Светлая версия сакуры, нежно-розовая.
-        Main       = Color3.fromRGB(255, 117, 160), 
-        Background = Color3.fromRGB(255, 240, 245),    
-        Container  = Color3.fromRGB(255, 255, 255),    
-        Element    = Color3.fromRGB(255, 235, 240),    
-        Text       = Color3.fromRGB(80, 20, 40),
-        TextDark   = Color3.fromRGB(160, 100, 120),
-        Stroke     = Color3.fromRGB(255, 200, 220),    
-        Outline    = Color3.fromRGB(255, 255, 255),    
-    },
-
     ["Sunset Gold"] = {
         Main       = ColorSequence.new{
             ColorSequenceKeypoint.new(0.0, Color3.fromRGB(255, 165, 0)),
@@ -243,6 +204,3 @@ function ThemeManager:Apply(Library, ThemeName)
 end
 
 return ThemeManager
-
-
-
