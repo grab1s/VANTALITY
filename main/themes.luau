@@ -150,13 +150,13 @@ local Themes = {
         Text       = Color3.fromRGB(255, 255, 255),
         TextDark   = Color3.fromRGB(100, 100, 100),
         Stroke     = Color3.fromRGB(40, 40, 40),    
-        Outline    = Color3.fromRGB(255, 255, 255), -- Белый контур для стиля
+        Outline    = Color3.fromRGB(255, 255, 255), 
     },
 
     ["Vaporwave"] = {
         Main       = ColorSequence.new{
-            ColorSequenceKeypoint.new(0.0, Color3.fromRGB(255, 113, 206)), -- Neon Pink
-            ColorSequenceKeypoint.new(1.0, Color3.fromRGB(1, 205, 254))    -- Neon Blue
+            ColorSequenceKeypoint.new(0.0, Color3.fromRGB(255, 113, 206)), 
+            ColorSequenceKeypoint.new(1.0, Color3.fromRGB(1, 205, 254))    
         },
         Background = Color3.fromRGB(24, 18, 38),    
         Container  = Color3.fromRGB(44, 30, 70),    
@@ -243,5 +243,6 @@ function ThemeManager:Apply(Library, ThemeName)
 end
 
 return ThemeManager
+
 
 
