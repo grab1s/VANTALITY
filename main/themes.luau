@@ -3,7 +3,6 @@ local Env = getgenv and getgenv() or _G
 local ThemeManager = {}
 
 local Themes = {
-    -- [ ОРИГИНАЛЬНЫЕ ТЕМЫ ] --
     ["Fatality"] = {
         Main       = Color3.fromRGB(255, 106, 133), 
         Background = Color3.fromRGB(19, 19, 19),    
@@ -204,3 +203,4 @@ function ThemeManager:Apply(Library, ThemeName)
 end
 
 return ThemeManager
+
