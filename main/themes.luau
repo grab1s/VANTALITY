@@ -26,7 +26,7 @@ local Themes = {
         Stroke     = Color3.fromRGB(40, 50, 60),    
         Outline    = Color3.fromRGB(0, 0, 0),    
     },
-    ["Discord (D)"] = {
+    ["Discord"] = {
         Main       = Color3.fromRGB(88, 101, 242), 
         Background = Color3.fromRGB(49, 51, 56),   
         Container  = Color3.fromRGB(43, 45, 49),   
@@ -36,7 +36,7 @@ local Themes = {
         Stroke     = Color3.fromRGB(30, 31, 34),    
         Outline    = Color3.fromRGB(0, 0, 0),    
     },
-    ["Twitch (D)"] = {
+    ["Twitch"] = {
         Main       = Color3.fromRGB(145, 70, 255), 
         Background = Color3.fromRGB(24, 24, 27),   
         Container  = Color3.fromRGB(31, 31, 35),   
@@ -138,7 +138,7 @@ local Themes = {
         Stroke     = Color3.fromRGB(30, 45, 65),    
         Outline    = Color3.fromRGB(0, 0, 0),    
     },
-    ["Monochrome (Pro)"] = { 
+    ["Monochrome"] = { 
         Main       = Color3.fromRGB(255, 255, 255), 
         Background = Color3.fromRGB(0, 0, 0),       
         Container  = Color3.fromRGB(20, 20, 20),    
@@ -203,4 +203,3 @@ function ThemeManager:Apply(Library, ThemeName)
 end
 
 return ThemeManager
-
