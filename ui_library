@@ -279,6 +279,7 @@ end);
 -- Fatality --
 local Fatality = {};
 
+Fatality.Scale = 1
 Fatality.Ascii = "qwertyuiopasdfghjklzxcvbnmQWRTYUIOPASDFGHJKLZXCVBNM";
 Fatality.GLOBAL_ENVIRONMENT = {};
 Fatality.Windows = {};
@@ -1357,11 +1358,13 @@ end;
 function Fatality:ScrollSignal(Scroll: ScrollingFrame,UIListLayout: UIListLayout,Type:string)
 	if Type == 'X' then
 		UIListLayout:GetPropertyChangedSignal('AbsoluteContentSize'):Connect(function()
-			Scroll.CanvasSize = UDim2.fromOffset(UIListLayout.AbsoluteContentSize.X,0)
+			-- Fix: Divide by Scale to prevent double-scaling gap
+			Scroll.CanvasSize = UDim2.fromOffset(UIListLayout.AbsoluteContentSize.X / Fatality.Scale, 0)
 		end)
 	else
 		UIListLayout:GetPropertyChangedSignal('AbsoluteContentSize'):Connect(function()
-			Scroll.CanvasSize = UDim2.fromOffset(0,UIListLayout.AbsoluteContentSize.Y)
+			-- Fix: Divide by Scale to prevent double-scaling gap
+			Scroll.CanvasSize = UDim2.fromOffset(0, UIListLayout.AbsoluteContentSize.Y / Fatality.Scale)
 		end)
 	end;
 end;
@@ -4953,7 +4956,12 @@ function Fatality.new(Window: Window)
 	function Fatal:SetUsername(name: string) User_name.Text = name or Client.DisplayName; end;
 	function Fatal:SetProfile(icon: string) UserIcon.Image = icon or Players:GetUserThumbnailAsync(Client.UserId,Enum.ThumbnailType.HeadShot,Enum.ThumbnailSize.Size180x180); end;
 	function Fatal:SetExpire(str: string) expire_days.Text = string.format("<font transparency=\"0.5\">expires:</font> <font color=\"#f53174\">%s</font>",str) end;
-	function Fatal:SetScale(percent: number) MainScale.Scale = percent / 100 end
+	
+	function Fatal:SetScale(percent: number) 
+		Fatality.Scale = percent / 100 
+		MainScale.Scale = Fatality.Scale 
+	end
+	
 	function Fatal:SetKeybind(key) CurrentKeybind = key end
 	function Fatal:GetFlags() return Fatality.WindowFlags[Fatalitywin]; end;
 
@@ -5009,9 +5017,9 @@ function Fatality.new(Window: Window)
 		return ConfigElement;
 	end;
 
-function Fatal:AddMenu(Menu : Menu) -- 1111111111111
+function Fatal:AddMenu(Menu : Menu) 
 		Menu = Menu or {};
-        if not Fatality:CanShow(Menu) then return { AddSection = function() return Fatality.Dummy end, AddPreview = function() return Fatality.Dummy end } end
+        if not Fatality:CanShow(Menu) then return { AddSection = function() return Fatality.Dummy end, AddPreview = function() return Fatality.Dummy end, AddProduct = function() return {SetButton=function()end, SetStatus=function()end, SetVisible=function()end, GetButton=function() return Instance.new("TextButton") end} end, AddColumnTitle = function() end } end
 		Menu.Name = Menu.Name or "EXAMPLE";
 		Menu.Icon = Menu.Icon or "eye";
 		Menu.AutoFill = false; 
@@ -5197,6 +5205,51 @@ function Fatal:AddMenu(Menu : Menu) -- 1111111111111
 		end)
 		Fatality:NewInput(MenuButton,function() for i,v in next , Fatal.Menus do if v.Root == MenuLiber then Fatal.MenuSelected = v; v.ValueSelect(true) else v.ValueSelect(false) end; end; end);
 		
+		-- >> AddColumnTitle (NEW: Minimalist Column Headers)
+		function MenuLib:AddColumnTitle(Config)
+			Config = Config or {}
+			Config.Text = Config.Text or "TITLE"
+			Config.Position = Config.Position or "center"
+
+			-- Determine Parent
+			local Parent = (Config.Position == 'left' and Left) or (Config.Position == 'center' and Center) or Right
+
+			-- Container
+			local Container = Instance.new("Frame")
+			Container.Name = "ColTitle_" .. Config.Text
+			Container.Parent = Parent
+			Container.BackgroundTransparency = 1
+			Container.Size = UDim2.new(1, 0, 0, 25) -- Compact height
+			Container.LayoutOrder = -999 -- FORCE TOP PRIORITY
+			Container.ZIndex = 10
+
+			-- Text
+			local Label = Instance.new("TextLabel")
+			Label.Parent = Container
+			Label.BackgroundTransparency = 1
+			Label.Size = UDim2.new(1, 0, 1, -5) -- Slight padding bottom
+			Label.Position = UDim2.new(0, 0, 0, 5) -- Slight padding top
+			Label.Font = Enum.Font.GothamBold
+			Label.TextColor3 = Color3.fromRGB(90, 90, 90) -- Dark Gray
+			Label.TextSize = 11
+			Label.Text = string.upper(Config.Text)
+			Label.TextXAlignment = Enum.TextXAlignment.Center
+			Label.ZIndex = 11
+
+			-- Animation Sync
+			local Toggle = function(v)
+				if v then
+					Fatality:CreateAnimation(Label, 0.5, {TextTransparency = 0})
+				else
+					Fatality:CreateAnimation(Label, 0.5, {TextTransparency = 1})
+				end
+			end
+			Toggle(BindEvent:GetAttribute('V'))
+			BindEvent.Event:Connect(Toggle)
+
+			return Container
+		end
+
 		function MenuLib:AddPreview(Config: Preview)
 			Config = Config or {}; Config.Name = Config.Name or "PREVIEW"; Config.Position = Config.Position or "left"; Config.Height = Config.Height or 0;
 			local Preview = Instance.new("Frame")
@@ -5371,8 +5424,16 @@ function Fatal:AddMenu(Menu : Menu) -- 1111111111111
 			UIListLayout:GetPropertyChangedSignal('AbsoluteContentSize'):Connect(function()
 				local all = (#ScrollingFrame:GetChildren() - 1);
 				local scale = math.clamp((all * (10 + UIListLayout.Padding.Offset)) + (Config.Height + UIListLayout.Padding.Offset),25,400);
-				if Menu.AutoFill then ListBox.Size = UDim2.new(1,0,0,scale / 2.5); else ListBox.Size = UDim2.new(1,0,0,scale); end;
-				ScrollingFrame.CanvasSize = UDim2.fromOffset(0,UIListLayout.AbsoluteContentSize.Y);
+				
+				-- FIX: Scaled Height Division
+				if Menu.AutoFill then 
+					ListBox.Size = UDim2.new(1,0,0, (scale / 2.5) / Fatality.Scale); 
+				else 
+					ListBox.Size = UDim2.new(1,0,0, scale / Fatality.Scale); 
+				end;
+				
+				-- FIX: Scaled Canvas Division
+				ScrollingFrame.CanvasSize = UDim2.fromOffset(0, UIListLayout.AbsoluteContentSize.Y / Fatality.Scale);
 			end)
 			SpaceBox.Name = Fatality:RandomString()
 			SpaceBox.Parent = ScrollingFrame
@@ -5524,7 +5585,12 @@ function Fatal:AddMenu(Menu : Menu) -- 1111111111111
 			SectionName.TextXAlignment = Enum.TextXAlignment.Left
 			UIListLayout:GetPropertyChangedSignal('AbsoluteContentSize'):Connect(function()
 				local MainScale = UIListLayout.AbsoluteContentSize.Y + 20 + Config.Height;
-				if not Menu.AutoFill then Fatality:CreateAnimation(Section,0.25,{ Size = UDim2.new(1, 0, 0, MainScale) }) else Section.Size = UDim2.new(1,0,0,MainScale / 2.5); end;
+				-- FIX: Scaled Size Division
+				if not Menu.AutoFill then 
+					Fatality:CreateAnimation(Section,0.25,{ Size = UDim2.new(1, 0, 0, MainScale / Fatality.Scale) }) 
+				else 
+					Section.Size = UDim2.new(1,0,0, (MainScale / 2.5) / Fatality.Scale); 
+				end;
 			end);
 			Toggle(BindEvent:GetAttribute('V'));
 			BindEvent.Event:Connect(Toggle);
@@ -5534,7 +5600,7 @@ function Fatal:AddMenu(Menu : Menu) -- 1111111111111
 			});
 		end;
 
-		return MenuLib; -- 1111111111111
+		return MenuLib; 
 	end;
 
 	do
