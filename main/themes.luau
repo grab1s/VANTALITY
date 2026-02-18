@@ -3,7 +3,6 @@ local Env = getgenv and getgenv() or _G
 local ThemeManager = {}
 
 local Themes = {
-    -- [ ОРИГИНАЛЬНЫЕ ТЕМЫ ] --
     ["Fatality"] = {
         Main       = Color3.fromRGB(255, 106, 133), 
         Background = Color3.fromRGB(19, 19, 19),    
@@ -90,7 +89,7 @@ local Themes = {
         Stroke     = Color3.fromRGB(45, 45, 45),    
         Outline    = Color3.fromRGB(0, 0, 0),    
     },
-    ["Onetap V4"] = {
+    ["Onetap"] = {
         Main       = Color3.fromRGB(219, 166, 73), 
         Background = Color3.fromRGB(26, 26, 26),    
         Container  = Color3.fromRGB(45, 45, 45), 
@@ -101,23 +100,7 @@ local Themes = {
         Outline    = Color3.fromRGB(0, 0, 0),    
     },
 
-    -- [ НОВЫЕ ДИЗАЙНЕРСКИЕ ТЕМЫ ОТ VANTALITY ] --
-
-    ["TSB: Saitama"] = { -- Градиент от желтого к красному (костюм/перчатки)
-        Main       = ColorSequence.new{
-            ColorSequenceKeypoint.new(0.0, Color3.fromRGB(255, 215, 0)),
-            ColorSequenceKeypoint.new(1.0, Color3.fromRGB(220, 20, 60))
-        },
-        Background = Color3.fromRGB(20, 20, 20),    
-        Container  = Color3.fromRGB(30, 30, 30),    
-        Element    = Color3.fromRGB(15, 15, 15),    
-        Text       = Color3.fromRGB(255, 255, 255),
-        TextDark   = Color3.fromRGB(180, 180, 180),
-        Stroke     = Color3.fromRGB(50, 50, 50),    
-        Outline    = Color3.fromRGB(0, 0, 0),    
-    },
-
-    ["TSB: Cosmic Garou"] = { -- Космический фиолетовый
+    ["Deep Purple"] = { 
         Main       = ColorSequence.new{
             ColorSequenceKeypoint.new(0.0, Color3.fromRGB(140, 0, 255)),
             ColorSequenceKeypoint.new(1.0, Color3.fromRGB(80, 0, 180))
@@ -131,7 +114,7 @@ local Themes = {
         Outline    = Color3.fromRGB(0, 0, 0),    
     },
 
-    ["Cherry Blossom"] = { -- Нежный розовый (Сакура)
+    ["Cherry"] = { 
         Main       = ColorSequence.new{
             ColorSequenceKeypoint.new(0.0, Color3.fromRGB(255, 183, 197)),
             ColorSequenceKeypoint.new(1.0, Color3.fromRGB(255, 105, 180))
@@ -145,18 +128,7 @@ local Themes = {
         Outline    = Color3.fromRGB(0, 0, 0),    
     },
 
-    ["Cyberpunk 2077"] = { -- Высокий контраст, желтый
-        Main       = Color3.fromRGB(252, 238, 10), 
-        Background = Color3.fromRGB(8, 10, 12),     
-        Container  = Color3.fromRGB(20, 22, 25),    
-        Element    = Color3.fromRGB(5, 5, 5),      
-        Text       = Color3.fromRGB(10, 240, 255), -- Голубой текст для контраста
-        TextDark   = Color3.fromRGB(100, 110, 115),
-        Stroke     = Color3.fromRGB(60, 65, 70),    
-        Outline    = Color3.fromRGB(0, 0, 0),    
-    },
-
-    ["Midnight Storm"] = { -- Электрический синий
+    ["Midnight"] = {
         Main       = ColorSequence.new{
             ColorSequenceKeypoint.new(0.0, Color3.fromRGB(0, 120, 255)),
             ColorSequenceKeypoint.new(1.0, Color3.fromRGB(0, 200, 255))
@@ -170,7 +142,7 @@ local Themes = {
         Outline    = Color3.fromRGB(0, 0, 0),    
     },
 
-    ["Monochrome (Pro)"] = { -- Ч/Б, очень строгая
+    ["Monochrome"] = {
         Main       = Color3.fromRGB(255, 255, 255), 
         Background = Color3.fromRGB(0, 0, 0),       
         Container  = Color3.fromRGB(20, 20, 20),    
@@ -181,7 +153,7 @@ local Themes = {
         Outline    = Color3.fromRGB(255, 255, 255), -- Белый контур для стиля
     },
 
-    ["Vaporwave"] = { -- Ретро градиент
+    ["Vaporwave"] = {
         Main       = ColorSequence.new{
             ColorSequenceKeypoint.new(0.0, Color3.fromRGB(255, 113, 206)), -- Neon Pink
             ColorSequenceKeypoint.new(1.0, Color3.fromRGB(1, 205, 254))    -- Neon Blue
@@ -194,19 +166,8 @@ local Themes = {
         Stroke     = Color3.fromRGB(60, 45, 90),    
         Outline    = Color3.fromRGB(0, 0, 0),    
     },
-
-    ["Dracula"] = { -- Знаменитая тема для IDE
-        Main       = Color3.fromRGB(189, 147, 249), -- Purple
-        Background = Color3.fromRGB(40, 42, 54),    
-        Container  = Color3.fromRGB(68, 71, 90),    
-        Element    = Color3.fromRGB(30, 32, 40),    
-        Text       = Color3.fromRGB(248, 248, 242),
-        TextDark   = Color3.fromRGB(98, 114, 164),
-        Stroke     = Color3.fromRGB(98, 114, 164),    
-        Outline    = Color3.fromRGB(0, 0, 0),    
-    },
     
-    ["Acid Green"] = { -- Матрица
+    ["Acid Green"] = {
         Main       = Color3.fromRGB(57, 255, 20),   
         Background = Color3.fromRGB(5, 15, 5),      
         Container  = Color3.fromRGB(10, 25, 10),    
@@ -217,7 +178,7 @@ local Themes = {
         Outline    = Color3.fromRGB(0, 0, 0),    
     },
 
-    ["Sunset Gold"] = { -- Премиальный вид
+    ["Sunset Gold"] = {
         Main       = ColorSequence.new{
             ColorSequenceKeypoint.new(0.0, Color3.fromRGB(255, 165, 0)),
             ColorSequenceKeypoint.new(1.0, Color3.fromRGB(255, 215, 0))
@@ -249,3 +210,4 @@ function ThemeManager:Apply(Library, ThemeName)
 end
 
 return ThemeManager
+
