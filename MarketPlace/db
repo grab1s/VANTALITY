@@ -6,7 +6,7 @@
       "version": "1.0",
       "author": "grabis",
       "official": true,
-      "status": "Woking",
+      "status": "Working",
       "description": "Luau API example and docs (check source code)",
       "tags": ["misc"],
       "date_create": "18.02.2026",
@@ -32,7 +32,7 @@
   "configs": [
     {
       "id": "VT3",
-      "name": "My cfg :D",
+      "name": "cfg by grabis",
       "version": "1.0",
       "author": "grabis",
       "official": true,
