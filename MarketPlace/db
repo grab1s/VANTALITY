@@ -13,8 +13,9 @@
       "date_update": "18.02.2026 20:30",
       "url": "https://raw.githubusercontent.com/grab1s/VT-market/refs/heads/main/scripts/Example"
     },
+
     {
-      "id": "VT1",
+      "id": "VT2",
       "name": "Extra emote slots",
       "version": "1.0",
       "author": "grabis",
@@ -27,9 +28,10 @@
       "url": "https://raw.githubusercontent.com/grab1s/VT-market/refs/heads/main/scripts/ExtraSlots.luau"
     }
   ],
+
   "configs": [
     {
-      "id": "VT2",
+      "id": "VT3",
       "name": "My cfg :D",
       "version": "1.0",
       "author": "grabis",
