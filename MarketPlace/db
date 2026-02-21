@@ -12,6 +12,19 @@
       "date_create": "18.02.2026",
       "date_update": "18.02.2026 20:30",
       "url": "https://raw.githubusercontent.com/grab1s/VT-market/refs/heads/main/scripts/ExtraSlots.luau"
+    },
+    {
+      "id": "VT1",
+      "name": "API example",
+      "version": "1.0",
+      "author": "grabis",
+      "official": true,
+      "status": "Updating",
+      "description": "Luau API example and docs",
+      "tags": ["misc"],
+      "date_create": "18.02.2026",
+      "date_update": "18.02.2026 20:30",
+      "url": "https://raw.githubusercontent.com/grab1s/VT-market/refs/heads/main/scripts/ExtraSlots.luau"
     }
   ],
   "configs": [
