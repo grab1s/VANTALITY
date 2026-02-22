@@ -1358,12 +1358,10 @@ end;
 function Fatality:ScrollSignal(Scroll: ScrollingFrame,UIListLayout: UIListLayout,Type:string)
 	if Type == 'X' then
 		UIListLayout:GetPropertyChangedSignal('AbsoluteContentSize'):Connect(function()
-			-- Fix: Divide by Scale to prevent double-scaling gap
 			Scroll.CanvasSize = UDim2.fromOffset(UIListLayout.AbsoluteContentSize.X / Fatality.Scale, 0)
 		end)
 	else
 		UIListLayout:GetPropertyChangedSignal('AbsoluteContentSize'):Connect(function()
-			-- Fix: Divide by Scale to prevent double-scaling gap
 			Scroll.CanvasSize = UDim2.fromOffset(0, UIListLayout.AbsoluteContentSize.Y / Fatality.Scale)
 		end)
 	end;
@@ -5155,38 +5153,34 @@ function Fatal:AddMenu(Menu : Menu)
 		end)
 		Fatality:NewInput(MenuButton,function() for i,v in next , Fatal.Menus do if v.Root == MenuLiber then Fatal.MenuSelected = v; v.ValueSelect(true) else v.ValueSelect(false) end; end; end);
 		
-		-- >> AddColumnTitle (NEW: Minimalist Column Headers)
+		-- AddColumnTitle
 		function MenuLib:AddColumnTitle(Config)
 			Config = Config or {}
 			Config.Text = Config.Text or "TITLE"
 			Config.Position = Config.Position or "center"
 
-			-- Determine Parent
 			local Parent = (Config.Position == 'left' and Left) or (Config.Position == 'center' and Center) or Right
 
-			-- Container
 			local Container = Instance.new("Frame")
 			Container.Name = "ColTitle_" .. Config.Text
 			Container.Parent = Parent
 			Container.BackgroundTransparency = 1
-			Container.Size = UDim2.new(1, 0, 0, 25) -- Compact height
-			Container.LayoutOrder = -999 -- FORCE TOP PRIORITY
+			Container.Size = UDim2.new(1, 0, 0, 25) 
+			Container.LayoutOrder = -999 
 			Container.ZIndex = 10
 
-			-- Text
 			local Label = Instance.new("TextLabel")
 			Label.Parent = Container
 			Label.BackgroundTransparency = 1
-			Label.Size = UDim2.new(1, 0, 1, -5) -- Slight padding bottom
-			Label.Position = UDim2.new(0, 0, 0, 5) -- Slight padding top
+			Label.Size = UDim2.new(1, 0, 1, -5) 
+			Label.Position = UDim2.new(0, 0, 0, 5) 
 			Label.Font = Enum.Font.GothamBold
-			Label.TextColor3 = Color3.fromRGB(90, 90, 90) -- Dark Gray
+			Label.TextColor3 = Color3.fromRGB(90, 90, 90) 
 			Label.TextSize = 11
 			Label.Text = string.upper(Config.Text)
 			Label.TextXAlignment = Enum.TextXAlignment.Center
 			Label.ZIndex = 11
 
-			-- Animation Sync
 			local Toggle = function(v)
 				if v then
 					Fatality:CreateAnimation(Label, 0.5, {TextTransparency = 0})
@@ -5375,14 +5369,12 @@ function Fatal:AddMenu(Menu : Menu)
 				local all = (#ScrollingFrame:GetChildren() - 1);
 				local scale = math.clamp((all * (10 + UIListLayout.Padding.Offset)) + (Config.Height + UIListLayout.Padding.Offset),25,400);
 				
-				-- FIX: Scaled Height Division
 				if Menu.AutoFill then 
 					ListBox.Size = UDim2.new(1,0,0, (scale / 2.5) / Fatality.Scale); 
 				else 
 					ListBox.Size = UDim2.new(1,0,0, scale / Fatality.Scale); 
 				end;
 				
-				-- FIX: Scaled Canvas Division
 				ScrollingFrame.CanvasSize = UDim2.fromOffset(0, UIListLayout.AbsoluteContentSize.Y / Fatality.Scale);
 			end)
 			SpaceBox.Name = Fatality:RandomString()
@@ -5535,7 +5527,6 @@ function Fatal:AddMenu(Menu : Menu)
 			SectionName.TextXAlignment = Enum.TextXAlignment.Left
 			UIListLayout:GetPropertyChangedSignal('AbsoluteContentSize'):Connect(function()
 				local MainScale = UIListLayout.AbsoluteContentSize.Y + 20 + Config.Height;
-				-- FIX: Scaled Size Division
 				if not Menu.AutoFill then 
 					Fatality:CreateAnimation(Section,0.25,{ Size = UDim2.new(1, 0, 0, MainScale / Fatality.Scale) }) 
 				else 
@@ -5550,12 +5541,21 @@ function Fatal:AddMenu(Menu : Menu)
 			});
 		end;
 
--- >> AddProduct (FIXED: Stats layout, Crown position, Tight downloads)
+-- AddProduct
 		function MenuLib:AddProduct(Config)
 			Config = Config or {};
 			if not Fatality:CanShow(Config) then return Fatality.Dummy end
 			
-			-- Data Defaults
+			local function GetSafeColor(val)
+				if typeof(val) == "ColorSequence" then
+					if val.Keypoints and val.Keypoints[1] then
+						return val.Keypoints[1].Value
+					end
+					return Color3.fromRGB(255, 255, 255)
+				end
+				return val
+			end
+			
 			Config.Name = Config.Name or "SCRIPT";
 			Config.Version = Config.Version or "1.0";
 			Config.Author = Config.Author or "Unknown";
@@ -5565,7 +5565,6 @@ function Fatal:AddMenu(Menu : Menu)
 			Config.DateCreate = Config.DateCreate or "-";
 			Config.DateUpdate = Config.DateUpdate or "-";
 			
-			-- Stats
 			Config.Likes = Config.Likes or 0
 			Config.Dislikes = Config.Dislikes or 0
 			Config.Downloads = Config.Downloads or 0
@@ -5573,20 +5572,17 @@ function Fatal:AddMenu(Menu : Menu)
 			Config.IsFavorite = Config.IsFavorite or false
 			Config.IsOfficial = Config.IsOfficial or false
 			
-			-- Callbacks
 			Config.ButtonText = Config.ButtonText or "Install";
 			Config.Callback = Config.Callback or function() end;
 			Config.FavCallback = Config.FavCallback or function(v) end;
 			Config.VoteCallback = Config.VoteCallback or function(v) end;
 			Config.Position = Config.Position or "center";
 
-			-- REGISTER SEARCH
 			table.insert(Fatal.ElementContents, {
 				Name = Config.Name, Path = Menu.Name.." > "..Config.Name, _TAB = _B,
 				MenuName = Menu.Name, Author = Config.Author, Description = Config.Description, Tags = table.concat(Config.Tags," "), IsProduct = true
 			});
 
-			-- HELPER: Time
 			local function GetTimeAgo(d)
 				if not d or d=="-" or d=="N/A" then return d end
 				local D,M,Y,H,Min = d:match("(%d+)%.(%d+)%.(%d+)%s+(%d+):(%d+)")
@@ -5602,7 +5598,6 @@ function Fatal:AddMenu(Menu : Menu)
 
 			local StatusColors = { Working=Color3.fromRGB(100,255,100), Updating=Color3.fromRGB(255,220,80), Patched=Color3.fromRGB(255,80,80) }
 
-			-- >> UI CONSTRUCTION
 			local Product = Instance.new("Frame")
 			local P_Corner = Instance.new("UICorner")
 			local P_Stroke = Instance.new("UIStroke")
@@ -5623,88 +5618,64 @@ function Fatal:AddMenu(Menu : Menu)
 			P_Pad.PaddingTop = UDim.new(0,8); P_Pad.PaddingBottom = UDim.new(0,8); P_Pad.PaddingLeft = UDim.new(0,8); P_Pad.PaddingRight = UDim.new(0,8); P_Pad.Parent = Product
 			P_List.SortOrder = Enum.SortOrder.LayoutOrder; P_List.Padding = UDim.new(0,4); P_List.Parent = Product
 
-			-- 1. HEADER
 			local Head = Instance.new("Frame", Product); Head.BackgroundTransparency=1; Head.Size=UDim2.new(1,0,0,16); Head.LayoutOrder=1; Head.ZIndex=20
-			local Title = Instance.new("TextLabel", Head); Title.BackgroundTransparency=1; Title.Size=UDim2.new(0.7,0,1,0); Title.Font=Enum.Font.GothamBold; Title.Text=Config.Name; Title.TextColor3=Fatality.CurrentTheme.Text; Title.TextSize=13; Title.TextXAlignment=Enum.TextXAlignment.Left; Title.TextTruncate=Enum.TextTruncate.AtEnd; Title.ZIndex=20; Fatality:Register(Title,"Text","TextColor3")
-			local Ver = Instance.new("TextLabel", Head); Ver.BackgroundTransparency=1; Ver.Size=UDim2.new(0.3,0,1,0); Ver.Position=UDim2.new(0.7,0,0,0); Ver.Font=Enum.Font.Gotham; Ver.Text=Config.Version; Ver.TextColor3=Fatality.CurrentTheme.TextDark; Ver.TextSize=11; Ver.TextXAlignment=Enum.TextXAlignment.Right; Ver.ZIndex=20; Fatality:Register(Ver,"TextDark","TextColor3")
-			
-			-- STATUS DOT
+			local Title = Instance.new("TextLabel", Head); Title.BackgroundTransparency=1; Title.Size=UDim2.new(0.7,0,1,0); Title.Font=Enum.Font.GothamBold; Title.Text=Config.Name; Title.TextColor3=GetSafeColor(Fatality.CurrentTheme.Text); Title.TextSize=13; Title.TextXAlignment=Enum.TextXAlignment.Left; Title.TextTruncate=Enum.TextTruncate.AtEnd; Title.ZIndex=20; Fatality:Register(Title,"Text","TextColor3")
+			local Ver = Instance.new("TextLabel", Head); Ver.BackgroundTransparency=1; Ver.Size=UDim2.new(0.3,0,1,0); Ver.Position=UDim2.new(0.7,0,0,0); Ver.Font=Enum.Font.Gotham; Ver.Text=Config.Version; Ver.TextColor3=GetSafeColor(Fatality.CurrentTheme.TextDark); Ver.TextSize=11; Ver.TextXAlignment=Enum.TextXAlignment.Right; Ver.ZIndex=20; Fatality:Register(Ver,"TextDark","TextColor3")
 			local StatDot = Instance.new("Frame", Head); 
+
 			StatDot.BackgroundTransparency=0; 
 			StatDot.Size=UDim2.new(0,6,0,6); 
 			StatDot.AnchorPoint = Vector2.new(1, 0)
 			StatDot.Position=UDim2.new(1, 0, 1, 2); 
 			StatDot.BackgroundColor3=StatusColors[Config.Status] or StatusColors.Working; 
 			StatDot.ZIndex=21
+
 			Instance.new("UICorner", StatDot).CornerRadius = UDim.new(1,0)
 
-			-- 2. SUBHEADER (Crown Fix: LayoutOrder enforced)
 			local Sub = Instance.new("Frame", Product); Sub.BackgroundTransparency=1; Sub.Size=UDim2.new(1,0,0,14); Sub.LayoutOrder=2; Sub.ZIndex=20
 			local SL = Instance.new("UIListLayout", Sub); SL.SortOrder=Enum.SortOrder.LayoutOrder; SL.FillDirection=Enum.FillDirection.Horizontal; SL.Padding=UDim.new(0,4); SL.VerticalAlignment=Enum.VerticalAlignment.Center
-			
-			-- BY (Order 1)
-			local By = Instance.new("TextLabel", Sub); By.LayoutOrder=1; By.BackgroundTransparency=1; By.AutomaticSize=Enum.AutomaticSize.X; By.Size=UDim2.new(0,0,1,0); By.Font=Enum.Font.Gotham; By.Text="by"; By.TextColor3=Fatality.CurrentTheme.TextDark; By.TextSize=10; By.ZIndex=20; Fatality:Register(By,"TextDark","TextColor3")
-			-- AUTHOR (Order 2)
-			local Auth = Instance.new("TextLabel", Sub); Auth.LayoutOrder=2; Auth.BackgroundTransparency=1; Auth.AutomaticSize=Enum.AutomaticSize.X; Auth.Size=UDim2.new(0,0,1,0); Auth.Font=Enum.Font.Gotham; Auth.Text=Config.Author; Auth.TextColor3=Fatality.CurrentTheme.Main; Auth.TextSize=10; Auth.ZIndex=20; Fatality:Register(Auth,"Main","TextColor3")
-			
-			-- CROWN (Order 3 - Forces right side)
+			local By = Instance.new("TextLabel", Sub); By.LayoutOrder=1; By.BackgroundTransparency=1; By.AutomaticSize=Enum.AutomaticSize.X; By.Size=UDim2.new(0,0,1,0); By.Font=Enum.Font.Gotham; By.Text="by"; By.TextColor3=GetSafeColor(Fatality.CurrentTheme.TextDark); By.TextSize=10; By.ZIndex=20; Fatality:Register(By,"TextDark","TextColor3")
+			local Auth = Instance.new("TextLabel", Sub); Auth.LayoutOrder=2; Auth.BackgroundTransparency=1; Auth.AutomaticSize=Enum.AutomaticSize.X; Auth.Size=UDim2.new(0,0,1,0); Auth.Font=Enum.Font.Gotham; Auth.Text=Config.Author; Auth.TextSize=10; Auth.ZIndex=20
+
+			Auth.TextColor3 = GetSafeColor(Fatality.CurrentTheme.Main)
+			Fatality:Register(Auth,"Main","TextColor3")	
 			if Config.IsOfficial then
 				local Crown = Instance.new("ImageLabel", Sub); Crown.LayoutOrder=3; Crown.BackgroundTransparency=1; Crown.Size=UDim2.new(0,10,0,10); Crown.Image=Fatality:GetIcon("crown"); Crown.ImageColor3=Color3.fromRGB(255,215,0); Crown.ZIndex=20
 			end
 
-			-- 3. DESC
 			local Desc = Instance.new("TextLabel", Product); Desc.BackgroundTransparency=1; Desc.Size=UDim2.new(1,0,0,0); Desc.AutomaticSize=Enum.AutomaticSize.Y; Desc.Font=Enum.Font.GothamMedium; Desc.Text=Config.Description; Desc.TextColor3=Color3.fromRGB(200,200,200); Desc.TextSize=11; Desc.TextWrapped=true; Desc.TextXAlignment=Enum.TextXAlignment.Left; Desc.LayoutOrder=3; Desc.ZIndex=20
-
-			-- 4. TAGS
 			local TagBox = Instance.new("Frame", Product); TagBox.BackgroundTransparency=1; TagBox.Size=UDim2.new(1,0,0,16); TagBox.AutomaticSize=Enum.AutomaticSize.Y; TagBox.LayoutOrder=4; TagBox.ZIndex=20
 			local TL = Instance.new("UIListLayout", TagBox); TL.FillDirection=Enum.FillDirection.Horizontal; TL.Padding=UDim.new(0,4); TL.Wraps=true
 			for _, t in ipairs(Config.Tags) do
 				local Ch = Instance.new("Frame", TagBox); Ch.BackgroundColor3=Color3.fromRGB(35,35,35); Ch.Size=UDim2.new(0,0,0,14); Ch.AutomaticSize=Enum.AutomaticSize.X; Ch.ZIndex=21; Instance.new("UICorner", Ch).CornerRadius=UDim.new(0,3); local S=Instance.new("UIStroke", Ch); S.Color=Color3.fromRGB(50,50,50); local P=Instance.new("UIPadding", Ch); P.PaddingLeft=UDim.new(0,4); P.PaddingRight=UDim.new(0,4)
 				local L = Instance.new("TextLabel", Ch); L.BackgroundTransparency=1; L.Size=UDim2.new(1,0,1,0); L.Font=Enum.Font.Gotham; L.TextSize=9; L.TextColor3=Color3.fromRGB(180,180,180); L.Text=string.lower(t); L.ZIndex=22
 			end
-			if #Config.Tags == 0 then TagBox.Visible=false end
 
-			-- 5. STATS ROW (Updated: Less width)
+			if #Config.Tags == 0 then TagBox.Visible=false end
 			local StatRow = Instance.new("Frame", Product); StatRow.BackgroundTransparency=1; StatRow.Size=UDim2.new(1,0,0,16); StatRow.LayoutOrder=5; StatRow.ZIndex=20
-			
 			local LkBtn = Instance.new("ImageButton", StatRow); LkBtn.BackgroundTransparency=1; LkBtn.Size=UDim2.new(0,14,0,14); LkBtn.Position=UDim2.new(0,0,0.5,-7); LkBtn.Image=Fatality:GetIcon("chevron-up"); LkBtn.ImageColor3=(Config.UserVote==1 and Color3.fromRGB(100,255,100) or Color3.fromRGB(150,150,150)); LkBtn.ZIndex=21
 			local LkCnt = Instance.new("TextLabel", StatRow); LkCnt.BackgroundTransparency=1; LkCnt.Position=UDim2.new(0,16,0,0); LkCnt.Size=UDim2.new(0,20,1,0); LkCnt.Font=Enum.Font.GothamBold; LkCnt.TextSize=10; LkCnt.TextColor3=Color3.fromRGB(100,255,100); LkCnt.TextXAlignment=Enum.TextXAlignment.Left; LkCnt.Text=tostring(Config.Likes); LkCnt.ZIndex=21
-			
 			local DkBtn = Instance.new("ImageButton", StatRow); DkBtn.BackgroundTransparency=1; DkBtn.Size=UDim2.new(0,14,0,14); DkBtn.Position=UDim2.new(0,35,0.5,-7); DkBtn.Image=Fatality:GetIcon("chevron-down"); DkBtn.ImageColor3=(Config.UserVote==-1 and Color3.fromRGB(255,100,100) or Color3.fromRGB(150,150,150)); DkBtn.ZIndex=21
 			local DkCnt = Instance.new("TextLabel", StatRow); DkCnt.BackgroundTransparency=1; DkCnt.Position=UDim2.new(0,51,0,0); DkCnt.Size=UDim2.new(0,20,1,0); DkCnt.Font=Enum.Font.GothamBold; DkCnt.TextSize=10; DkCnt.TextColor3=Color3.fromRGB(255,100,100); DkCnt.TextXAlignment=Enum.TextXAlignment.Left; DkCnt.Text=tostring(Config.Dislikes); DkCnt.ZIndex=21
-
 			local FavBtn = Instance.new("ImageButton", StatRow); FavBtn.BackgroundTransparency=1; FavBtn.Size=UDim2.new(0,16,0,16); FavBtn.AnchorPoint=Vector2.new(1,0.5); FavBtn.Position=UDim2.new(1,0,0.5,0); FavBtn.Image=Fatality:GetIcon("star"); FavBtn.ImageColor3=(Config.IsFavorite and Color3.fromRGB(255,220,80) or Color3.fromRGB(80,80,80)); FavBtn.ZIndex=21
-
-			-- 6. BUTTON ROW (Updated: Tighter downloads layout)
 			local BtnCont = Instance.new("Frame", Product); BtnCont.BackgroundTransparency=1; BtnCont.Size=UDim2.new(1,0,0,22); BtnCont.LayoutOrder=6; BtnCont.ZIndex=20
-			
-			-- Button takes available width minus 35px for downloads
-			local InstBtn = Instance.new("TextButton", BtnCont); InstBtn.BackgroundColor3=Fatality.CurrentTheme.Element; InstBtn.Size=UDim2.new(1,-35,1,0); InstBtn.Font=Enum.Font.GothamBold; InstBtn.Text=Config.ButtonText; InstBtn.TextColor3=Fatality.CurrentTheme.Text; InstBtn.TextSize=11; InstBtn.AutoButtonColor=false; InstBtn.ZIndex=25; Fatality:Register(InstBtn,"Element"); Fatality:Register(InstBtn,"Text","TextColor3"); Instance.new("UICorner", InstBtn).CornerRadius=UDim.new(0,4); local IBS=Instance.new("UIStroke", InstBtn); IBS.Color=Fatality.CurrentTheme.Stroke; Fatality:Register(IBS,"Stroke","Color")
-			
-			-- Download Count Container (Width reduced from 45 -> 30)
+			local InstBtn = Instance.new("TextButton", BtnCont); InstBtn.BackgroundColor3=GetSafeColor(Fatality.CurrentTheme.Element); InstBtn.Size=UDim2.new(1,-35,1,0); InstBtn.Font=Enum.Font.GothamBold; InstBtn.Text=Config.ButtonText; InstBtn.TextColor3=GetSafeColor(Fatality.CurrentTheme.Text); InstBtn.TextSize=11; InstBtn.AutoButtonColor=false; InstBtn.ZIndex=25; Fatality:Register(InstBtn,"Element"); Fatality:Register(InstBtn,"Text","TextColor3"); Instance.new("UICorner", InstBtn).CornerRadius=UDim.new(0,4); local IBS=Instance.new("UIStroke", InstBtn); IBS.Color=GetSafeColor(Fatality.CurrentTheme.Stroke); Fatality:Register(IBS,"Stroke","Color")
 			local DLCont = Instance.new("Frame", BtnCont); DLCont.BackgroundTransparency=1; DLCont.Size=UDim2.new(0,30,1,0); DLCont.Position=UDim2.new(1,-30,0,0); DLCont.ZIndex=21
-			-- Use ListLayout to pack icon and text tightly
 			local DLL = Instance.new("UIListLayout", DLCont); DLL.FillDirection=Enum.FillDirection.Horizontal; DLL.HorizontalAlignment=Enum.HorizontalAlignment.Right; DLL.VerticalAlignment=Enum.VerticalAlignment.Center; DLL.Padding=UDim.new(0,3)
-			
-			local DLCnt = Instance.new("TextLabel", DLCont); DLCnt.BackgroundTransparency=1; DLCnt.AutomaticSize=Enum.AutomaticSize.X; DLCnt.Size=UDim2.new(0,0,1,0); DLCnt.Font=Enum.Font.Gotham; DLCnt.TextSize=10; DLCnt.TextColor3=Fatality.CurrentTheme.TextDark; DLCnt.LayoutOrder=2; DLCnt.Text=tostring(Config.Downloads); DLCnt.ZIndex=21; Fatality:Register(DLCnt,"TextDark","TextColor3")
-			local DLIcon = Instance.new("ImageLabel", DLCont); DLIcon.BackgroundTransparency=1; DLIcon.Size=UDim2.new(0,12,0,12); DLIcon.Image=Fatality:GetIcon("download"); DLIcon.ImageColor3=Fatality.CurrentTheme.TextDark; DLIcon.LayoutOrder=1; DLIcon.ZIndex=21; Fatality:Register(DLIcon,"TextDark","ImageColor3")
-
-			-- 7. DATES ROW
+			local DLCnt = Instance.new("TextLabel", DLCont); DLCnt.BackgroundTransparency=1; DLCnt.AutomaticSize=Enum.AutomaticSize.X; DLCnt.Size=UDim2.new(0,0,1,0); DLCnt.Font=Enum.Font.Gotham; DLCnt.TextSize=10; DLCnt.TextColor3=GetSafeColor(Fatality.CurrentTheme.TextDark); DLCnt.LayoutOrder=2; DLCnt.Text=tostring(Config.Downloads); DLCnt.ZIndex=21; Fatality:Register(DLCnt,"TextDark","TextColor3")
+			local DLIcon = Instance.new("ImageLabel", DLCont); DLIcon.BackgroundTransparency=1; DLIcon.Size=UDim2.new(0,12,0,12); DLIcon.Image=Fatality:GetIcon("download"); DLIcon.ImageColor3=GetSafeColor(Fatality.CurrentTheme.TextDark); DLIcon.LayoutOrder=1; DLIcon.ZIndex=21; Fatality:Register(DLIcon,"TextDark","ImageColor3")
 			local DateRow = Instance.new("Frame", Product); DateRow.BackgroundTransparency=1; DateRow.Size=UDim2.new(1,0,0,12); DateRow.LayoutOrder=7; DateRow.ZIndex=20
 			local D1 = Instance.new("TextLabel", DateRow); D1.BackgroundTransparency=1; D1.Size=UDim2.new(0.5,0,1,0); D1.Font=Enum.Font.Gotham; D1.TextColor3=Color3.fromRGB(80,80,80); D1.TextSize=9; D1.TextXAlignment=Enum.TextXAlignment.Left; D1.Text="added: "..GetTimeAgo(Config.DateCreate); D1.ZIndex=20
 			local D2 = Instance.new("TextLabel", DateRow); D2.BackgroundTransparency=1; D2.Size=UDim2.new(0.5,0,1,0); D2.Position=UDim2.new(0.5,0,0,0); D2.Font=Enum.Font.Gotham; D2.TextColor3=Color3.fromRGB(80,80,80); D2.TextSize=9; D2.TextXAlignment=Enum.TextXAlignment.Right; D2.Text="updated: "..GetTimeAgo(Config.DateUpdate); D2.ZIndex=20
-
-			-- SPACER
 			local Sp = Instance.new("Frame", Product); Sp.BackgroundTransparency=1; Sp.Size=UDim2.new(1,0,0,2); Sp.LayoutOrder=8
 
-			-- LOGIC
 			Fatality:CreateHover(InstBtn, function(h)
 				if h then 
 					local c = InstBtn.BackgroundColor3
 					local h, s, v = c:ToHSV()
 					Fatality:CreateAnimation(InstBtn, 0.2, {BackgroundColor3 = Color3.fromHSV(h, s, math.clamp(v + 0.15, 0, 1))})
 				else
-					Fatality:CreateAnimation(InstBtn, 0.2, {BackgroundColor3 = Fatality.CurrentTheme.Element})
+					Fatality:CreateAnimation(InstBtn, 0.2, {BackgroundColor3 = GetSafeColor(Fatality.CurrentTheme.Element)})
 				end
 			end)
 			
@@ -5724,7 +5695,6 @@ function Fatal:AddMenu(Menu : Menu)
 			LkBtn.MouseButton1Click:Connect(function() Vote(1) end)
 			DkBtn.MouseButton1Click:Connect(function() Vote(-1) end)
 
-			-- ANIMATION TOGGLE
 			local Toggle = function(v)
 				local t = v and 0 or 1
 				Fatality:CreateAnimation(Product, 0.5, {BackgroundTransparency=t})
@@ -5753,8 +5723,8 @@ function Fatal:AddMenu(Menu : Menu)
 				SetStatus = function(self, s) if StatusColors[s] then Fatality:CreateAnimation(StatDot, 0.3, {BackgroundColor3=StatusColors[s]}) end end,
 				SetButton = function(self, t) 
 					InstBtn.Text = t
-					InstBtn.TextColor3 = Fatality.CurrentTheme.Text
-					InstBtn.BackgroundColor3 = Fatality.CurrentTheme.Element
+					InstBtn.TextColor3 = GetSafeColor(Fatality.CurrentTheme.Text)
+					InstBtn.BackgroundColor3 = GetSafeColor(Fatality.CurrentTheme.Element)
 				end,
 				SetVisuals = function(self, data)
 					if data.Likes ~= nil then LkCnt.Text=tostring(data.Likes) end
@@ -5778,54 +5748,6 @@ function Fatal:AddMenu(Menu : Menu)
 			}
 		end;
 
--- >> AddColumnTitle (NEW: Minimalist Column Headers)
-		function MenuLib:AddColumnTitle(Config)
-			Config = Config or {}
-			Config.Text = Config.Text or "TITLE"
-			Config.Position = Config.Position or "center"
-
-			-- Determine Parent
-			local Parent = (Config.Position == 'left' and Left) or (Config.Position == 'center' and Center) or Right
-
-			-- Container
-			local Container = Instance.new("Frame")
-			Container.Name = "ColTitle_" .. Config.Text
-			Container.Parent = Parent
-			Container.BackgroundTransparency = 1
-			Container.Size = UDim2.new(1, 0, 0, 25) -- Compact height
-			Container.LayoutOrder = -999 -- FORCE TOP PRIORITY
-			Container.ZIndex = 10
-
-			-- Text
-			local Label = Instance.new("TextLabel")
-			Label.Parent = Container
-			Label.BackgroundTransparency = 1
-			Label.Size = UDim2.new(1, 0, 1, -5) -- Slight padding bottom
-			Label.Position = UDim2.new(0, 0, 0, 5) -- Slight padding top
-			Label.Font = Enum.Font.GothamBold
-			Label.TextColor3 = Color3.fromRGB(90, 90, 90) -- Dark Gray (Not too dark, not too bright)
-			Label.TextSize = 11
-			Label.Text = string.upper(Config.Text)
-			Label.TextXAlignment = Enum.TextXAlignment.Center
-			Label.ZIndex = 11
-
-			-- Animation Sync
-			local Toggle = function(v)
-				if v then
-					Fatality:CreateAnimation(Label, 0.5, {TextTransparency = 0})
-				else
-					Fatality:CreateAnimation(Label, 0.5, {TextTransparency = 1})
-				end
-			end
-			Toggle(BindEvent:GetAttribute('V'))
-			BindEvent.Event:Connect(Toggle)
-
-			return Container
-		end
-
-		return MenuLib; 
-	end;
-
 do
 		local SearchFrame = Instance.new("Frame")
 		local UIStroke = Instance.new("UIStroke")
@@ -5837,7 +5759,7 @@ do
 		local TextBox = Instance.new("TextBox")
 		local ScrollingFrame = Instance.new("ScrollingFrame")
 		local UIListLayout = Instance.new("UIListLayout")
-		local EmptyLabel = Instance.new("TextLabel") -- NEW: Empty state
+		local EmptyLabel = Instance.new("TextLabel") 
 		local searchScale = UDim2.new(0, 295, 0, 295);
 		
 		Fatality:AddDragBlacklist(SearchFrame);
@@ -5858,7 +5780,6 @@ do
 				Fatality:CreateAnimation(SearchBox,0.5,{ BackgroundTransparency = 1 }) 
 				Fatality:CreateAnimation(UIStroke_2,0.5,{ Transparency = 1 }) 
 				Fatality:CreateAnimation(TextBox,0.5,{ TextTransparency = 1 }) 
-				-- Clear list on close
 				for i,v in next , ScrollingFrame:GetChildren() do 
 					if v:IsA('Frame') then v:Destroy(); end; 
 				end;
@@ -5944,7 +5865,6 @@ do
 		ScrollingFrame.ZIndex = 102
 		ScrollingFrame.ScrollBarThickness = 0
 		
-		-- Empty State Label
 		EmptyLabel.Name = "EmptyLabel"
 		EmptyLabel.Parent = SearchFrame
 		EmptyLabel.BackgroundTransparency = 1
@@ -5968,17 +5888,16 @@ do
 		
 		local SearchInformation = {};
 		
-		-- Helper to get icon based on Type
 		local function GetTypeIcon(tabName)
-			if tabName == "SCRIPTS" then return "rbxassetid://10709810463" end -- Code icon
-			if tabName == "CONFIGS" then return "rbxassetid://10734950309" end -- Settings icon
-			return "rbxassetid://10709752906" -- Default album icon
+			if tabName == "SCRIPTS" then return "rbxassetid://10709810463" end 
+			if tabName == "CONFIGS" then return "rbxassetid://10734950309" end 
+			return "rbxassetid://10709752906" 
 		end
 		
 		local get_button = function(Name, Path, TAB_WARP, TabType)
 			local ResultFrame = Instance.new("Frame")
 			local UICorner = Instance.new("UICorner")
-			local TypeIcon = Instance.new("ImageLabel") -- NEW ICON
+			local TypeIcon = Instance.new("ImageLabel") 
 			local FeatureName = Instance.new("TextLabel")
 			local FeaturePath = Instance.new("TextLabel")
 			
@@ -5994,10 +5913,9 @@ do
 			UICorner.CornerRadius = UDim.new(0, 4)
 			UICorner.Parent = ResultFrame
 			
-			-- Type Icon
 			TypeIcon.Parent = ResultFrame
 			TypeIcon.BackgroundTransparency = 1
-			TypeIcon.Position = UDim2.new(0, 8, 0.5, -8) -- Centered Vertically
+			TypeIcon.Position = UDim2.new(0, 8, 0.5, -8) 
 			TypeIcon.Size = UDim2.new(0, 16, 0, 16)
 			TypeIcon.Image = GetTypeIcon(TabType)
 			TypeIcon.ImageColor3 = Fatality.CurrentTheme.TextDark
@@ -6010,7 +5928,7 @@ do
 			FeatureName.BackgroundTransparency = 1.000
 			FeatureName.BorderColor3 = Color3.fromRGB(0, 0, 0)
 			FeatureName.BorderSizePixel = 0
-			FeatureName.Position = UDim2.new(0, 32, 0, 5) -- Shifted right for icon
+			FeatureName.Position = UDim2.new(0, 32, 0, 5) 
 			FeatureName.Size = UDim2.new(1, -35, 0, 15)
 			FeatureName.ZIndex = 104
 			FeatureName.FontFace = Fatality.FontSemiBold
@@ -6026,7 +5944,7 @@ do
 			FeaturePath.BackgroundTransparency = 1.000
 			FeaturePath.BorderColor3 = Color3.fromRGB(0, 0, 0)
 			FeaturePath.BorderSizePixel = 0
-			FeaturePath.Position = UDim2.new(0, 32, 0, 22) -- Shifted right
+			FeaturePath.Position = UDim2.new(0, 32, 0, 22)
 			FeaturePath.Size = UDim2.new(1, -35, 0, 15)
 			FeaturePath.ZIndex = 104
 			FeaturePath.FontFace = Fatality.FontSemiBold
@@ -6094,7 +6012,6 @@ do
 				local displayPath = v.Path
 				if v.IsProduct then displayPath = "Click to view product page" end
 				
-				-- Pass rootTab to get_button for icon selection
 				local button = get_button(v.Name, displayPath, v._TAB, rootTab);
 				
 				table.insert(SearchInformation, {
@@ -6122,7 +6039,6 @@ do
 					
 					for i, v in next, SearchInformation do 
 						local match = true
-						-- Multi-word check (AND logic)
 						for _, word in ipairs(queryParts) do
 							if word ~= "" and not string.find(v.searchData, word, 1, true) then
 								match = false
@@ -6760,6 +6676,7 @@ function Fatality:CreateNotifier(): Notifier
 end;
 
 Fatality.FATALITY_PID = Fatality:RandomString();
+
 
 
 return Fatality;
