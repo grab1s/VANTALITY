@@ -42,6 +42,18 @@
       "date_create": "18.02.2026",
       "date_update": "18.02.2026 20:30", 
       "url": "https://raw.githubusercontent.com/grab1s/VT-market/refs/heads/main/cfgs/main"
+    },
+    {
+      "id": "VT4",
+      "name": "test cfg",
+      "version": "1.0",
+      "author": "femboycuteq",
+      "status": "Working",
+      "description": "black, light red and white config, just test",
+      "tags": ["Black", "Light Red", "White"],
+      "date_create": "18.02.2026",
+      "date_update": "18.02.2026 20:30", 
+      "url": "https://pastebin.com/raw/MZpYtgsq"
     }
   ]
 }
