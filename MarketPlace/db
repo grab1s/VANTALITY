@@ -9,22 +9,22 @@
       "status": "Working",
       "description": "Luau API example and docs (check source code)",
       "tags": ["misc"],
-      "date_create": "18.02.2026",
-      "date_update": "18.02.2026 20:30",
+      "date_create": "22.02.2026",
+      "date_update": "22.02.2026 15:30",
       "url": "https://raw.githubusercontent.com/grab1s/VT-market/refs/heads/main/scripts/Example"
     },
 
     {
       "id": "VT2",
       "name": "Extra emote slots",
-      "version": "1.0",
+      "version": "1.1",
       "author": "grabis",
       "official": true,
       "status": "Working",
-      "description": "unlock extra emote slots without gamepass.",
+      "description": "unlock extra emote slots without gamepass. (WORKING)",
       "tags": ["gamepass", "hud", "misc"],
-      "date_create": "18.02.2026",
-      "date_update": "18.02.2026 20:30",
+      "date_create": "22.02.2026",
+      "date_update": "23.02.2026 19:54",
       "url": "https://raw.githubusercontent.com/grab1s/VT-market/refs/heads/main/scripts/ExtraSlots.luau"
     }
   ],
@@ -39,8 +39,8 @@
       "status": "Working",
       "description": "main cfg for vantality",
       "tags": ["dark","blue"],
-      "date_create": "18.02.2026",
-      "date_update": "18.02.2026 20:30", 
+      "date_create": "22.02.2026",
+      "date_update": "22.02.2026 15:30", 
       "url": "https://raw.githubusercontent.com/grab1s/VT-market/refs/heads/main/cfgs/main"
     },
     {
@@ -51,8 +51,8 @@
       "status": "Working",
       "description": "black, light red and white config, just test",
       "tags": ["Black", "Light Red", "White"],
-      "date_create": "18.02.2026",
-      "date_update": "18.02.2026 20:30", 
+      "date_create": "22.02.2026",
+      "date_update": "22.02.2026 18:00", 
       "url": "https://pastebin.com/raw/MZpYtgsq"
     }
   ]
