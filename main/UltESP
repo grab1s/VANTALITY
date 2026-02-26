@@ -12,23 +12,19 @@ local UltESP = Env.ExecutorUltESP
 UltESP.Settings = UltESP.Settings or {
     Enabled = false,
     RenderDistance = 300,
-    
-    BarPosition = "Right", 
+    BarPosition = "Right",
     BarWidth = 6,
     BarHeight = 4.5,
     BarOffset = 3.5,
-    
     ColorFill = Color3.fromRGB(255, 255, 255),
     ColorBackground = Color3.fromRGB(20, 20, 20),
     BackgroundTransparency = 0,
-    
     TextEnabled = true,
     TextPosition = "Top",
     TextSize = 12,
     TextColor = Color3.fromRGB(255, 255, 255),
     TextStrokeColor = Color3.fromRGB(0, 0, 0),
     TextStrokeTransparency = 0,
-    
     AttributeName = "Ultimate"
 }
 
@@ -36,29 +32,61 @@ local Settings = UltESP.Settings
 local Cache = {}
 local FolderName = "Vantality_Ult_ESP_Storage"
 
-local function GetOffsetVector()
+local function ApplyLayout(data)
+    local bb = data.GUI
+    local bg = data.BG
+    local fill = data.Fill
+    local txt = data.Text
     local off = Settings.BarOffset
-    if Settings.BarPosition == "Right" then return Vector3.new(off, 0, 0)
-    elseif Settings.BarPosition == "Left" then return Vector3.new(-off, 0, 0)
-    elseif Settings.BarPosition == "Top" then return Vector3.new(0, off, 0)
-    elseif Settings.BarPosition == "Bottom" then return Vector3.new(0, -off, 0)
-    end
-    return Vector3.new(off, 0, 0)
-end
 
-local function UpdateTextPosition(label)
-    label.AnchorPoint = Vector2.new(0.5, 0.5)
-    
+    if Settings.BarPosition == "Right" then bb.StudsOffset = Vector3.new(off, 0, 0)
+    elseif Settings.BarPosition == "Left" then bb.StudsOffset = Vector3.new(-off, 0, 0)
+    elseif Settings.BarPosition == "Top" then bb.StudsOffset = Vector3.new(0, off, 0)
+    elseif Settings.BarPosition == "Bottom" then bb.StudsOffset = Vector3.new(0, -off, 0)
+    end
+
+    local isHorizontal = (Settings.BarPosition == "Top" or Settings.BarPosition == "Bottom")
+
+    if isHorizontal then
+        bb.Size = UDim2.new(Settings.BarHeight, 100, 0, Settings.BarWidth + 100)
+        bg.Size = UDim2.new(1, -100, 0, Settings.BarWidth)
+        fill.AnchorPoint = Vector2.new(0, 0)
+        fill.Position = UDim2.new(0, 0, 0, 0)
+    else
+        bb.Size = UDim2.new(0, Settings.BarWidth + 100, Settings.BarHeight, 100)
+        bg.Size = UDim2.new(0, Settings.BarWidth, 1, -100)
+        fill.AnchorPoint = Vector2.new(0, 1)
+        fill.Position = UDim2.new(0, 0, 1, 0)
+    end
+
+    bg.AnchorPoint = Vector2.new(0.5, 0.5)
+    bg.Position = UDim2.new(0.5, 0, 0.5, 0)
+    bg.BackgroundColor3 = Settings.ColorBackground
+    bg.BackgroundTransparency = Settings.BackgroundTransparency
+
+    fill.BackgroundColor3 = Settings.ColorFill
+
+    txt.TextColor3 = Settings.TextColor
+    txt.TextSize = Settings.TextSize
+    txt.TextStrokeColor3 = Settings.TextStrokeColor
+    txt.TextStrokeTransparency = Settings.TextStrokeTransparency
+    txt.Visible = Settings.TextEnabled
+
     if Settings.TextPosition == "Inside" then
-        label.Position = UDim2.new(0.5, 0, 0.5, 0)
+        txt.AnchorPoint = Vector2.new(0.5, 0.5)
+        txt.Position = UDim2.new(0.5, 0, 0.5, 0)
     elseif Settings.TextPosition == "Top" then
-        label.Position = UDim2.new(0.5, 0, 0, -10)
+        txt.AnchorPoint = Vector2.new(0.5, 1)
+        txt.Position = UDim2.new(0.5, 0, 0, -5)
     elseif Settings.TextPosition == "Bottom" then
-        label.Position = UDim2.new(0.5, 0, 1, 10)
+        txt.AnchorPoint = Vector2.new(0.5, 0)
+        txt.Position = UDim2.new(0.5, 0, 1, 5)
     elseif Settings.TextPosition == "Left" then
-        label.Position = UDim2.new(0, -15, 0.5, 0)
+        txt.AnchorPoint = Vector2.new(1, 0.5)
+        txt.Position = UDim2.new(0, -5, 0.5, 0)
     elseif Settings.TextPosition == "Right" then
-        label.Position = UDim2.new(1, 15, 0.5, 0)
+        txt.AnchorPoint = Vector2.new(0, 0.5)
+        txt.Position = UDim2.new(1, 5, 0.5, 0)
     end
 end
 
@@ -80,16 +108,11 @@ local function CreateUI(player, char)
     bb.Name = "UltBar_" .. player.Name
     bb.Adornee = hrp
     bb.AlwaysOnTop = true
-    bb.Size = UDim2.new(0, Settings.BarWidth, Settings.BarHeight, 0)
-    bb.StudsOffset = GetOffsetVector()
     bb.Parent = container
 
     local bg = Instance.new("Frame")
     bg.Name = "BG"
     bg.Parent = bb
-    bg.Size = UDim2.new(1, 0, 1, 0)
-    bg.BackgroundColor3 = Settings.ColorBackground
-    bg.BackgroundTransparency = Settings.BackgroundTransparency
     bg.BorderSizePixel = 0
     
     local stroke = Instance.new("UIStroke")
@@ -100,28 +123,19 @@ local function CreateUI(player, char)
     local fill = Instance.new("Frame")
     fill.Name = "Fill"
     fill.Parent = bg
-    fill.BackgroundColor3 = Settings.ColorFill
     fill.BorderSizePixel = 0
-    fill.AnchorPoint = Vector2.new(0, 1)
-    fill.Position = UDim2.new(0, 0, 1, 0)
-    fill.Size = UDim2.new(1, 0, 0, 0)
 
     local txt = Instance.new("TextLabel")
     txt.Name = "Value"
     txt.Parent = bg
     txt.BackgroundTransparency = 1
-    txt.Size = UDim2.new(1, 0, 1, 0) 
+    txt.Size = UDim2.new(0, 0, 0, 0)
     txt.Font = Enum.Font.GothamBold
     txt.Text = "0%"
-    txt.TextColor3 = Settings.TextColor
-    txt.TextStrokeColor3 = Settings.TextStrokeColor
-    txt.TextStrokeTransparency = Settings.TextStrokeTransparency
-    txt.TextSize = Settings.TextSize
-    txt.Visible = Settings.TextEnabled
-    
-    UpdateTextPosition(txt)
 
     Cache[player] = { GUI = bb, Fill = fill, BG = bg, Text = txt, Adornee = hrp }
+    ApplyLayout(Cache[player])
+    
     return Cache[player]
 end
 
@@ -164,15 +178,15 @@ local function UpdateLoop()
                     local val = tonumber(rawVal) or 0
                     local percent = math.clamp(val, 0, 100) / 100
 
+                    local isHorizontal = (Settings.BarPosition == "Top" or Settings.BarPosition == "Bottom")
+                    local targetSize = isHorizontal and UDim2.new(percent, 0, 1, 0) or UDim2.new(1, 0, percent, 0)
+
                     TweenService:Create(uiData.Fill, TweenInfo.new(0.2, Enum.EasingStyle.Quad), {
-                        Size = UDim2.new(1, 0, percent, 0)
+                        Size = targetSize
                     }):Play()
 
                     if Settings.TextEnabled then
                         uiData.Text.Text = math.floor(val) .. "%"
-                        uiData.Text.Visible = true
-                    else
-                        uiData.Text.Visible = false
                     end
                 else
                     if Cache[player] then
@@ -213,24 +227,9 @@ end
 
 function UltESP:UpdateSetting(key, value)
     Settings[key] = value
-    
     if Settings.Enabled then
         for _, data in pairs(Cache) do
-            if data.GUI then
-                data.GUI.Size = UDim2.new(0, Settings.BarWidth, Settings.BarHeight, 0)
-                data.GUI.StudsOffset = GetOffsetVector()
-                
-                data.BG.BackgroundColor3 = Settings.ColorBackground
-                data.BG.BackgroundTransparency = Settings.BackgroundTransparency
-                
-                data.Fill.BackgroundColor3 = Settings.ColorFill
-                
-                data.Text.TextColor3 = Settings.TextColor
-                data.Text.TextSize = Settings.TextSize
-                data.Text.TextStrokeColor3 = Settings.TextStrokeColor
-                data.Text.TextStrokeTransparency = Settings.TextStrokeTransparency
-                UpdateTextPosition(data.Text)
-            end
+            ApplyLayout(data)
         end
     end
 end
