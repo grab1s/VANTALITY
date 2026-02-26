@@ -8,9 +8,9 @@
       "official": true,
       "status": "Working",
       "description": "Luau API example and docs (check source code)",
-      "tags": ["misc"],
+      "tags": ["misc", "info"],
       "date_create": "22.02.2026",
-      "date_update": "22.02.2026 15:30",
+      "date_update": "26.02.2026 6:28",
       "url": "https://raw.githubusercontent.com/grab1s/VT-market/refs/heads/main/scripts/Example"
     },
 
@@ -26,6 +26,20 @@
       "date_create": "22.02.2026",
       "date_update": "23.02.2026 19:54",
       "url": "https://raw.githubusercontent.com/grab1s/VT-market/refs/heads/main/scripts/ExtraSlots.luau"
+    },
+
+    {
+      "id": "VT5",
+      "name": "View Tracers",
+      "version": "1.0",
+      "author": "grabis",
+      "official": true,
+      "status": "Working",
+      "description": "backuped feature from Vantality",
+      "tags": ["visuals", "players", "esp"],
+      "date_create": "26.02.2026",
+      "date_update": "26.02.2026 6:28",
+      "url": "https://raw.githubusercontent.com/grab1s/VT-market/refs/heads/main/scripts/ViewTracers"
     }
   ],
 
