@@ -1,1 +1,243 @@
+local Env = getgenv and getgenv() or _G
 
+local Players = game:GetService("Players")
+local CoreGui = game:GetService("CoreGui")
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+local LocalPlayer = Players.LocalPlayer
+
+Env.ExecutorUltESP = Env.ExecutorUltESP or {}
+local UltESP = Env.ExecutorUltESP
+
+UltESP.Settings = UltESP.Settings or {
+    Enabled = false,
+    RenderDistance = 300,
+    
+    BarPosition = "Right", 
+    BarWidth = 6,
+    BarHeight = 4.5,
+    BarOffset = 3.5,
+    
+    ColorFill = Color3.fromRGB(255, 255, 255),
+    ColorBackground = Color3.fromRGB(20, 20, 20),
+    BackgroundTransparency = 0,
+    
+    TextEnabled = true,
+    TextPosition = "Top",
+    TextSize = 12,
+    TextColor = Color3.fromRGB(255, 255, 255),
+    TextStrokeColor = Color3.fromRGB(0, 0, 0),
+    TextStrokeTransparency = 0,
+    
+    AttributeName = "Ultimate"
+}
+
+local Settings = UltESP.Settings
+local Cache = {}
+local FolderName = "Vantality_Ult_ESP_Storage"
+
+local function GetOffsetVector()
+    local off = Settings.BarOffset
+    if Settings.BarPosition == "Right" then return Vector3.new(off, 0, 0)
+    elseif Settings.BarPosition == "Left" then return Vector3.new(-off, 0, 0)
+    elseif Settings.BarPosition == "Top" then return Vector3.new(0, off, 0)
+    elseif Settings.BarPosition == "Bottom" then return Vector3.new(0, -off, 0)
+    end
+    return Vector3.new(off, 0, 0)
+end
+
+local function UpdateTextPosition(label)
+    label.AnchorPoint = Vector2.new(0.5, 0.5)
+    
+    if Settings.TextPosition == "Inside" then
+        label.Position = UDim2.new(0.5, 0, 0.5, 0)
+    elseif Settings.TextPosition == "Top" then
+        label.Position = UDim2.new(0.5, 0, 0, -10)
+    elseif Settings.TextPosition == "Bottom" then
+        label.Position = UDim2.new(0.5, 0, 1, 10)
+    elseif Settings.TextPosition == "Left" then
+        label.Position = UDim2.new(0, -15, 0.5, 0)
+    elseif Settings.TextPosition == "Right" then
+        label.Position = UDim2.new(1, 15, 0.5, 0)
+    end
+end
+
+local function CreateUI(player, char)
+    if Cache[player] then return Cache[player] end
+    
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+
+    local container = CoreGui:FindFirstChild(FolderName)
+    if not container then
+        container = Instance.new("ScreenGui")
+        container.Name = FolderName
+        container.Parent = CoreGui
+        container.IgnoreGuiInset = true
+    end
+
+    local bb = Instance.new("BillboardGui")
+    bb.Name = "UltBar_" .. player.Name
+    bb.Adornee = hrp
+    bb.AlwaysOnTop = true
+    bb.Size = UDim2.new(0, Settings.BarWidth, Settings.BarHeight, 0)
+    bb.StudsOffset = GetOffsetVector()
+    bb.Parent = container
+
+    local bg = Instance.new("Frame")
+    bg.Name = "BG"
+    bg.Parent = bb
+    bg.Size = UDim2.new(1, 0, 1, 0)
+    bg.BackgroundColor3 = Settings.ColorBackground
+    bg.BackgroundTransparency = Settings.BackgroundTransparency
+    bg.BorderSizePixel = 0
+    
+    local stroke = Instance.new("UIStroke")
+    stroke.Parent = bg
+    stroke.Thickness = 1
+    stroke.Color = Color3.fromRGB(0, 0, 0)
+
+    local fill = Instance.new("Frame")
+    fill.Name = "Fill"
+    fill.Parent = bg
+    fill.BackgroundColor3 = Settings.ColorFill
+    fill.BorderSizePixel = 0
+    fill.AnchorPoint = Vector2.new(0, 1)
+    fill.Position = UDim2.new(0, 0, 1, 0)
+    fill.Size = UDim2.new(1, 0, 0, 0)
+
+    local txt = Instance.new("TextLabel")
+    txt.Name = "Value"
+    txt.Parent = bg
+    txt.BackgroundTransparency = 1
+    txt.Size = UDim2.new(1, 0, 1, 0) 
+    txt.Font = Enum.Font.GothamBold
+    txt.Text = "0%"
+    txt.TextColor3 = Settings.TextColor
+    txt.TextStrokeColor3 = Settings.TextStrokeColor
+    txt.TextStrokeTransparency = Settings.TextStrokeTransparency
+    txt.TextSize = Settings.TextSize
+    txt.Visible = Settings.TextEnabled
+    
+    UpdateTextPosition(txt)
+
+    Cache[player] = { GUI = bb, Fill = fill, BG = bg, Text = txt, Adornee = hrp }
+    return Cache[player]
+end
+
+local function FindUltValue(player, char)
+    local attrChar = char:GetAttribute(Settings.AttributeName)
+    if attrChar then return attrChar end
+
+    local attrPlr = player:GetAttribute(Settings.AttributeName)
+    if attrPlr then return attrPlr end
+
+    local valObj = char:FindFirstChild(Settings.AttributeName)
+    if valObj and valObj:IsA("ValueBase") then return valObj.Value end
+
+    return nil
+end
+
+local function UpdateLoop()
+    if not Settings.Enabled then return end
+
+    local myHRP = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+    local myPos = myHRP and myHRP.Position or Vector3.zero
+
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer then
+            local char = player.Character
+            local hrp = char and char:FindFirstChild("HumanoidRootPart")
+            
+            if char and hrp then
+                local dist = (hrp.Position - myPos).Magnitude
+                
+                if dist <= Settings.RenderDistance then
+                    local uiData = CreateUI(player, char)
+                    
+                    if uiData.Adornee ~= hrp then
+                        uiData.GUI.Adornee = hrp
+                        uiData.Adornee = hrp
+                    end
+
+                    local rawVal = FindUltValue(player, char)
+                    local val = tonumber(rawVal) or 0
+                    local percent = math.clamp(val, 0, 100) / 100
+
+                    TweenService:Create(uiData.Fill, TweenInfo.new(0.2, Enum.EasingStyle.Quad), {
+                        Size = UDim2.new(1, 0, percent, 0)
+                    }):Play()
+
+                    if Settings.TextEnabled then
+                        uiData.Text.Text = math.floor(val) .. "%"
+                        uiData.Text.Visible = true
+                    else
+                        uiData.Text.Visible = false
+                    end
+                else
+                    if Cache[player] then
+                        Cache[player].GUI:Destroy()
+                        Cache[player] = nil
+                    end
+                end
+            else
+                if Cache[player] then
+                    Cache[player].GUI:Destroy()
+                    Cache[player] = nil
+                end
+            end
+        end
+    end
+end
+
+function UltESP:Enable()
+    Settings.Enabled = true
+    if not UltESP.Connection then
+        UltESP.Connection = RunService.RenderStepped:Connect(UpdateLoop)
+    end
+end
+
+function UltESP:Disable()
+    Settings.Enabled = false
+    if UltESP.Connection then
+        UltESP.Connection:Disconnect()
+        UltESP.Connection = nil
+    end
+    for _, data in pairs(Cache) do
+        if data.GUI then data.GUI:Destroy() end
+    end
+    Cache = {}
+    local f = CoreGui:FindFirstChild(FolderName)
+    if f then f:Destroy() end
+end
+
+function UltESP:UpdateSetting(key, value)
+    Settings[key] = value
+    
+    if Settings.Enabled then
+        for _, data in pairs(Cache) do
+            if data.GUI then
+                data.GUI.Size = UDim2.new(0, Settings.BarWidth, Settings.BarHeight, 0)
+                data.GUI.StudsOffset = GetOffsetVector()
+                
+                data.BG.BackgroundColor3 = Settings.ColorBackground
+                data.BG.BackgroundTransparency = Settings.BackgroundTransparency
+                
+                data.Fill.BackgroundColor3 = Settings.ColorFill
+                
+                data.Text.TextColor3 = Settings.TextColor
+                data.Text.TextSize = Settings.TextSize
+                data.Text.TextStrokeColor3 = Settings.TextStrokeColor
+                data.Text.TextStrokeTransparency = Settings.TextStrokeTransparency
+                UpdateTextPosition(data.Text)
+            end
+        end
+    end
+end
+
+function UltESP:Destroy()
+    self:Disable()
+    Env.ExecutorUltESP = nil
+end
+
+return UltESP
