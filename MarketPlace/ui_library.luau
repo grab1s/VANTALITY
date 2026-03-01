@@ -6079,7 +6079,7 @@ do
 				if not Fatality:IsMouseOverFrame(SearchFrame) then SearchToggle(false); end 
 			end 
 		end)
-	end; -- 55555
+	end;
 
 	do
 		local AboutFrame = Instance.new("Frame")
@@ -6694,3 +6694,4 @@ Fatality.FATALITY_PID = Fatality:RandomString();
 
 
 return Fatality;
+
