@@ -5510,7 +5510,7 @@ function Fatal:AddMenu(Menu : Menu)
 			Label.Position = UDim2.new(0, 0, 0, 5) 
 			Label.Font = Enum.Font.GothamBold
 			Label.TextColor3 = Color3.fromRGB(90, 90, 90) 
-			Label.TextSize = 11
+			Label.TextSize = 15
 			Label.Text = string.upper(Config.Text)
 			Label.TextXAlignment = Enum.TextXAlignment.Center
 			Label.ZIndex = 11
