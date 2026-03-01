@@ -1358,12 +1358,10 @@ end;
 function Fatality:ScrollSignal(Scroll: ScrollingFrame,UIListLayout: UIListLayout,Type:string)
 	if Type == 'X' then
 		UIListLayout:GetPropertyChangedSignal('AbsoluteContentSize'):Connect(function()
-			-- Fix: Divide by Scale to prevent double-scaling gap
 			Scroll.CanvasSize = UDim2.fromOffset(UIListLayout.AbsoluteContentSize.X / Fatality.Scale, 0)
 		end)
 	else
 		UIListLayout:GetPropertyChangedSignal('AbsoluteContentSize'):Connect(function()
-			-- Fix: Divide by Scale to prevent double-scaling gap
 			Scroll.CanvasSize = UDim2.fromOffset(0, UIListLayout.AbsoluteContentSize.Y / Fatality.Scale)
 		end)
 	end;
@@ -5205,115 +5203,7 @@ function Fatal:AddMenu(Menu : Menu)
 		end)
 		Fatality:NewInput(MenuButton,function() for i,v in next , Fatal.Menus do if v.Root == MenuLiber then Fatal.MenuSelected = v; v.ValueSelect(true) else v.ValueSelect(false) end; end; end);
 		
-		-- >> AddColumnTitle (NEW: Minimalist Column Headers)
-		function MenuLib:AddColumnTitle(Config)
-			Config = Config or {}
-			Config.Text = Config.Text or "TITLE"
-			Config.Position = Config.Position or "center"
-
-			-- Determine Parent
-			local Parent = (Config.Position == 'left' and Left) or (Config.Position == 'center' and Center) or Right
-
-			-- Container
-			local Container = Instance.new("Frame")
-			Container.Name = "ColTitle_" .. Config.Text
-			Container.Parent = Parent
-			Container.BackgroundTransparency = 1
-			Container.Size = UDim2.new(1, 0, 0, 25) -- Compact height
-			Container.LayoutOrder = -999 -- FORCE TOP PRIORITY
-			Container.ZIndex = 10
-
-			-- Text
-			local Label = Instance.new("TextLabel")
-			Label.Parent = Container
-			Label.BackgroundTransparency = 1
-			Label.Size = UDim2.new(1, 0, 1, -5) -- Slight padding bottom
-			Label.Position = UDim2.new(0, 0, 0, 5) -- Slight padding top
-			Label.Font = Enum.Font.GothamBold
-			Label.TextColor3 = Color3.fromRGB(90, 90, 90) -- Dark Gray
-			Label.TextSize = 11
-			Label.Text = string.upper(Config.Text)
-			Label.TextXAlignment = Enum.TextXAlignment.Center
-			Label.ZIndex = 11
-
-			-- Animation Sync
-			local Toggle = function(v)
-				if v then
-					Fatality:CreateAnimation(Label, 0.5, {TextTransparency = 0})
-				else
-					Fatality:CreateAnimation(Label, 0.5, {TextTransparency = 1})
-				end
-			end
-			Toggle(BindEvent:GetAttribute('V'))
-			BindEvent.Event:Connect(Toggle)
-
-			return Container
-		end
-
-		function MenuLib:AddPreview(Config: Preview)
-			Config = Config or {}; Config.Name = Config.Name or "PREVIEW"; Config.Position = Config.Position or "left"; Config.Height = Config.Height or 0;
-			local Preview = Instance.new("Frame")
-			local PreviewName = Instance.new("TextLabel")
-			local Main = Instance.new("Frame")
-			local UIStroke = Instance.new("UIStroke")
-			local UICorner = Instance.new("UICorner")
-			local MainBlock = Instance.new("Frame")
-			Preview.Name = "Preview"
-			Preview.Parent = (string.lower(Config.Position) == 'left' and Left) or (string.lower(Config.Position) == 'center' and Center) or Right;
-			Fatality:Register(Preview, "Background")
-			Preview.BackgroundTransparency = 1
-			Preview.BorderColor3 = Color3.fromRGB(0, 0, 0)
-			Preview.BorderSizePixel = 0
-			Preview.ClipsDescendants = true
-			Preview.ZIndex = 15;
-			Preview.Size = UDim2.new(1, 0, 0, 25 + Config.Height)
-			PreviewName.Name = "PreviewName"
-			PreviewName.Parent = Preview
-			PreviewName.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-			PreviewName.BackgroundTransparency = 1.000
-			PreviewName.BorderColor3 = Color3.fromRGB(0, 0, 0)
-			PreviewName.BorderSizePixel = 0
-			PreviewName.Position = UDim2.new(0, 10, 0, 0)
-			PreviewName.Size = UDim2.new(1, 0, 0, 15)
-			PreviewName.ZIndex = 19
-			PreviewName.FontFace = Fatality.FontSemiBold
-			PreviewName.Text = Config.Name
-			Fatality:Register(PreviewName, "Text", "TextColor3")
-			PreviewName.TextSize = 15.000
-			PreviewName.TextStrokeTransparency = 0.750
-			PreviewName.TextXAlignment = Enum.TextXAlignment.Left
-			Main.Name = "Main"
-			Main.Parent = Preview
-			Main.AnchorPoint = Vector2.new(0.5, 1)
-			Fatality:Register(Main, "Container")
-			Main.BorderColor3 = Color3.fromRGB(0, 0, 0)
-			Main.BorderSizePixel = 0
-			Main.Position = UDim2.new(0.5, 0, 1, -1)
-			Main.Size = UDim2.new(1, -5, 1, -10)
-			Main.ZIndex = 17
-			UIStroke.Color = Color3.fromRGB(29, 29, 29)
-			Fatality:Register(UIStroke, "Stroke", "Color")
-			UIStroke.Parent = Main
-			UICorner.CornerRadius = UDim.new(0, 2)
-			UICorner.Parent = Main
-			MainBlock.Name = "MainBlock"
-			MainBlock.Parent = Main
-			MainBlock.AnchorPoint = Vector2.new(0.5, 0.5)
-			MainBlock.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-			MainBlock.BackgroundTransparency = 1.000
-			MainBlock.BorderColor3 = Color3.fromRGB(0, 0, 0)
-			MainBlock.BorderSizePixel = 0
-			MainBlock.Position = UDim2.new(0.5, 0, 0.5, 0)
-			MainBlock.Size = UDim2.new(1, -5, 1, -5)
-			MainBlock.ZIndex = 18
-			local Toggle = function(v)
-				if v then Fatality:CreateAnimation(Preview,0.5,{ BackgroundTransparency = 0 }) Fatality:CreateAnimation(PreviewName,0.5,{ TextStrokeTransparency = 0.750, TextTransparency = 0 }) Fatality:CreateAnimation(Main,0.5,{ BackgroundTransparency = 0 }) Fatality:CreateAnimation(UIStroke,0.5,{ Transparency = 0 }) Fatality:CreateAnimation(MainBlock,0.5,{ Size = UDim2.new(1, -5, 1, -5) })
-				else Fatality:CreateAnimation(Preview,0.5,{ BackgroundTransparency = 1 }) Fatality:CreateAnimation(PreviewName,0.5,{ TextStrokeTransparency = 1, TextTransparency = 1 }) Fatality:CreateAnimation(Main,0.5,{ BackgroundTransparency = 1 }) Fatality:CreateAnimation(UIStroke,0.5,{ Transparency = 1 }) Fatality:CreateAnimation(MainBlock,0.5,{ Size = UDim2.new(0,0,0,0) }) end
-			end;
-			Toggle(BindEvent:GetAttribute('V'));
-			BindEvent.Event:Connect(Toggle);
-			return MainBlock;
-		end;
+-- 111111111111111111111
 
 		function MenuLib:AddListBox(Config : Listbox)
 			Config = Config or {}; Config.Name = Config.Name or "LIST BOX"; Config.Position = Config.Position or "left"; Config.Height = Config.Height or 0; Config.Values = Config.Values or {}; Config.Multi = Config.Multi or false; Config.Default = Config.Default or ((Config.Multi and nil) or {}); Config.Callback = Config.Callback or function() end;
@@ -5425,14 +5315,12 @@ function Fatal:AddMenu(Menu : Menu)
 				local all = (#ScrollingFrame:GetChildren() - 1);
 				local scale = math.clamp((all * (10 + UIListLayout.Padding.Offset)) + (Config.Height + UIListLayout.Padding.Offset),25,400);
 				
-				-- FIX: Scaled Height Division
 				if Menu.AutoFill then 
 					ListBox.Size = UDim2.new(1,0,0, (scale / 2.5) / Fatality.Scale); 
 				else 
 					ListBox.Size = UDim2.new(1,0,0, scale / Fatality.Scale); 
 				end;
 				
-				-- FIX: Scaled Canvas Division
 				ScrollingFrame.CanvasSize = UDim2.fromOffset(0, UIListLayout.AbsoluteContentSize.Y / Fatality.Scale);
 			end)
 			SpaceBox.Name = Fatality:RandomString()
@@ -5585,7 +5473,6 @@ function Fatal:AddMenu(Menu : Menu)
 			SectionName.TextXAlignment = Enum.TextXAlignment.Left
 			UIListLayout:GetPropertyChangedSignal('AbsoluteContentSize'):Connect(function()
 				local MainScale = UIListLayout.AbsoluteContentSize.Y + 20 + Config.Height;
-				-- FIX: Scaled Size Division
 				if not Menu.AutoFill then 
 					Fatality:CreateAnimation(Section,0.25,{ Size = UDim2.new(1, 0, 0, MainScale / Fatality.Scale) }) 
 				else 
@@ -5599,6 +5486,47 @@ function Fatal:AddMenu(Menu : Menu)
 				Memory = function(Name) table.insert(Fatal.ElementContents,{ Name = Name, Path = Menu.Name .. " > ".. Config.Name .. " > " .. Name, _TAB = _B }); end,
 			});
 		end;
+
+-- AddColumnTitle
+		function MenuLib:AddColumnTitle(Config)
+			Config = Config or {}
+			Config.Text = Config.Text or "TITLE"
+			Config.Position = Config.Position or "center"
+
+			local Parent = (Config.Position == 'left' and Left) or (Config.Position == 'center' and Center) or Right
+
+			local Container = Instance.new("Frame")
+			Container.Name = "ColTitle_" .. Config.Text
+			Container.Parent = Parent
+			Container.BackgroundTransparency = 1
+			Container.Size = UDim2.new(1, 0, 0, 25) 
+			Container.LayoutOrder = -999 
+			Container.ZIndex = 10
+
+			local Label = Instance.new("TextLabel")
+			Label.Parent = Container
+			Label.BackgroundTransparency = 1
+			Label.Size = UDim2.new(1, 0, 1, -5) 
+			Label.Position = UDim2.new(0, 0, 0, 5) 
+			Label.Font = Enum.Font.GothamBold
+			Label.TextColor3 = Color3.fromRGB(90, 90, 90) 
+			Label.TextSize = 11
+			Label.Text = string.upper(Config.Text)
+			Label.TextXAlignment = Enum.TextXAlignment.Center
+			Label.ZIndex = 11
+
+			local Toggle = function(v)
+				if v then
+					Fatality:CreateAnimation(Label, 0.5, {TextTransparency = 0})
+				else
+					Fatality:CreateAnimation(Label, 0.5, {TextTransparency = 1})
+				end
+			end
+			Toggle(BindEvent:GetAttribute('V'))
+			BindEvent.Event:Connect(Toggle)
+
+			return Container
+		end
 
 		return MenuLib; 
 	end;
