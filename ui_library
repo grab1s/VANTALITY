@@ -4335,226 +4335,240 @@ local res;
 
 res = Fatality:CreateResponse({
 
-	SetFiles = function(configs,bypass)
-		print("[DEBUG] SetFiles called")
-		local OldLen = #Configs;
-		print("[DEBUG] OldLen:", OldLen)
+	SetFiles = function(configs, bypass)
+		local oldLen = #Configs
+		Configs = configs
 
-		Configs = configs;
-		print("[DEBUG] NewLen:", #configs)
-
-		if OldLen ~= #configs and not bypass then
-			print("[DEBUG] Length changed -> ReloadConfig()")
-			res:ReloadConfig();
-		end;
+		if oldLen ~= #configs and not bypass then
+			res:ReloadConfig()
+		end
 	end,
 
 	Refresh = function()
-		print("[DEBUG] Refresh() called")
+		for _, v in next, ScrollingFrame:GetChildren() do
+			if v:IsA("TextButton") then
+				v:Destroy()
+			end
+		end
 
-		for i,v in next , ScrollingFrame:GetChildren() do
-			if v:IsA('TextButton') then
-				print("[DEBUG] Destroying button:", v.Name)
-				v:Destroy();
-			end;
-		end;
+		for _, v in next, Configs do
+			local button = new_button()
+			button.Parent = ScrollingFrame
+			button.Text = " " .. tostring(v)
 
-		print("[DEBUG] Rendering configs:", #Configs)
-
-		for i,v in next, Configs do
-			print("[DEBUG] Adding config button:", v)
-
-			local button = new_button();
-			button.Parent = ScrollingFrame;
-			button.Text = " "..tostring(v);
-
-			if tostring(import.Name) == tostring(v) or import.Name == v then
-				print("[DEBUG] Marking as selected:", v)
-
-				import.Element = button;
-				import.Name = v;
-				button.TextColor3 = GetSafeColor(Fatality.CurrentTheme.Main);
-				button.Text = "  "..tostring(v);
-			end;
+			if tostring(import.Name) == tostring(v) then
+				import.Element = button
+				import.Name = v
+				button.TextColor3 = GetSafeColor(Fatality.CurrentTheme.Main)
+				button.Text = "  " .. tostring(v)
+			end
 
 			button.MouseButton1Click:Connect(function()
-				print("[DEBUG] Clicked config:", v)
-
 				if import.Element then
-					import.Element.TextColor3 = GetSafeColor(Fatality.CurrentTheme.TextDark);
-					import.Element.Text = " "..import.Name;
-				end;
+					import.Element.TextColor3 = GetSafeColor(Fatality.CurrentTheme.TextDark)
+					import.Element.Text = " " .. import.Name
+				end
 
-				import.Element = button;
-				import.Name = v;
-				button.TextColor3 = GetSafeColor(Fatality.CurrentTheme.Main);
-				button.Text = "  "..tostring(v);
-			end);
-		end;
+				import.Element = button
+				import.Name = v
+				button.TextColor3 = GetSafeColor(Fatality.CurrentTheme.Main)
+				button.Text = "  " .. tostring(v)
+			end)
+		end
 	end,
 
 	ReloadConfig = function()
-		print("\n[DEBUG] ReloadConfig()")
-		assert(res.ConfigDirectory, "Config directory not found");
+		assert(res.ConfigDirectory, "Config directory not found")
 
-		print("[DEBUG] Directory:", res.ConfigDirectory)
+		local files = {}
 
-		local files = {};
-
-		local s, list = pcall(listfiles, res.ConfigDirectory)
-
-		print("[DEBUG] listfiles success:", s)
-		print("[DEBUG] listfiles raw result:", list)
-
-		if not s then
-			warn("[DEBUG] listfiles error:", list)
-		end
-
-		if s and type(list) == "table" then
-			print("[DEBUG] listfiles returned", #list, "entries")
-
-			for _, v in pairs(list) do
-				print("[DEBUG] Raw file entry:", v)
-
-				local name = string.gsub(tostring(v), "\\", "/")
-				name = string.match(name, "([^/]+)$") or name
-
-				print("[DEBUG] Extracted name:", name)
+		local success, list = pcall(listfiles, res.ConfigDirectory)
+		if success and type(list) == "table" then
+			for _, path in ipairs(list) do
+				local name = tostring(path):gsub("\\", "/")
+				name = name:match("([^/]+)$")
 
 				if name and name ~= "" and name ~= "." and name ~= ".." then
 					table.insert(files, name)
 				end
 			end
-		else
-			warn("[DEBUG] listfiles returned invalid type:", typeof(list))
 		end
 
-		print("[DEBUG] Final parsed files:", #files)
-		for _, f in pairs(files) do
-			print("[DEBUG] Parsed file:", f)
-		end
-
-		res:SetFiles(files, true);
-		res:Refresh();
+		res:SetFiles(files, true)
+		res:Refresh()
 	end,
 
 	DeleteConfig = function(name)
-		assert(res.ConfigDirectory , "Config directory not found");
+		assert(res.ConfigDirectory, "Config directory not found")
 
-		local path = res.ConfigDirectory..'/'..tostring(name)
-		print("[DEBUG] DeleteConfig:", path)
+		local path = res.ConfigDirectory .. "/" .. tostring(name)
+		pcall(delfile, path)
 
-		local s, err = pcall(delfile, path)
-		print("[DEBUG] delfile success:", s)
-
-		if not s then
-			warn("[DEBUG] delfile error:", err)
-		end
+		res:ReloadConfig()
 	end,
 
-	SaveConfig = function(name,content)
-		if string.find(name,'/',1,true) or string.find(name,'\\',1,true) or string.find(name,':',1,true) then
-			warn("[DEBUG] Invalid config name:", name)
-			return;
-		end;
-
-		assert(res.ConfigDirectory , "Config directory not found");
-
-		local path = res.ConfigDirectory..'/'..tostring(name)
-		print("[DEBUG] SaveConfig path:", path)
-
-		local s, err = pcall(writefile, path, content)
-		print("[DEBUG] writefile success:", s)
-
-		if not s then
-			warn("[DEBUG] writefile error:", err)
+	SaveConfig = function(name, content)
+		if string.find(name, "/", 1, true)
+		or string.find(name, "\\", 1, true)
+		or string.find(name, ":", 1, true) then
+			return
 		end
+
+		assert(res.ConfigDirectory, "Config directory not found")
+
+		local path = res.ConfigDirectory .. "/" .. tostring(name)
+		pcall(writefile, path, content)
+
+		res:ReloadConfig()
 	end,
 
 	LoadConfig = function(name)
-		assert(res.ConfigDirectory , "Config directory not found");
+		assert(res.ConfigDirectory, "Config directory not found")
 
-		local path = res.ConfigDirectory..'/'..tostring(name);
-		print("[DEBUG] LoadConfig path:", path)
+		local path = res.ConfigDirectory .. "/" .. tostring(name)
 
-		local s, content = pcall(readfile, path)
-		print("[DEBUG] readfile success:", s)
-
-		if not s then
-			warn("[DEBUG] readfile error:", content)
-		end
-
-		if s and content then
-			print("[DEBUG] readfile content length:", #content)
-
-			local s2, decoded = pcall(function()
-				return game:GetService('HttpService'):JSONDecode(content)
+		local success, content = pcall(readfile, path)
+		if success and content then
+			local ok, decoded = pcall(function()
+				return game:GetService("HttpService"):JSONDecode(content)
 			end)
 
-			print("[DEBUG] JSON decode success:", s2)
-
-			if not s2 then
-				warn("[DEBUG] JSON decode error:", decoded)
-			end
-
-			if s2 and type(decoded) == "table" then
+			if ok and type(decoded) == "table" then
 				Fatal.Notifier:Notify({
 					Title = "Config",
-					Content = "Loaded config '"..tostring(name).."'",
+					Content = "Loaded config '" .. tostring(name) .. "'",
 					Icon = "settings",
 					Duration = 4
-				});
+				})
 
-				Fatal:LoadConfig(decoded);
+				Fatal:LoadConfig(decoded)
 			end
 		end
 	end,
 
 	Init = function(Name: string, Folder: string)
-		print("\n[DEBUG] Init() called")
-
 		local rootFolder = Folder or "Fatality"
-		print("[DEBUG] RootFolder:", rootFolder)
+		local configFolder = rootFolder .. "/Config"
+		local profileFolder = configFolder .. "/" .. tostring(Name)
 
-		local function SafeMakeFolder(path)
-			print("[DEBUG] SafeMakeFolder:", path)
+		-- Универсальная функция проверки папки
+		local function ensureFolder(path)
+			local exists = false
 
-			local s, resList = pcall(listfiles, path)
-			print("[DEBUG] listfiles in SafeMakeFolder success:", s)
-
-			if not s or type(resList) ~= "table" then
-				print("[DEBUG] Creating folder:", path)
-				local s2, err = pcall(makefolder, path)
-				print("[DEBUG] makefolder success:", s2)
-
-				if not s2 then
-					warn("[DEBUG] makefolder error:", err)
+			if isfolder then
+				local ok, result = pcall(isfolder, path)
+				if ok then
+					exists = result
 				end
 			else
-				print("[DEBUG] Folder already exists:", path)
+				local ok = pcall(listfiles, path)
+				exists = ok
+			end
+
+			if not exists then
+				pcall(makefolder, path)
 			end
 		end
 
-		SafeMakeFolder(rootFolder)
-		SafeMakeFolder(rootFolder .. "/Config")
+		ensureFolder(rootFolder)
+		ensureFolder(configFolder)
+		ensureFolder(profileFolder)
 
-		local cfgPath = rootFolder .. "/Config/" .. tostring(Name)
-		SafeMakeFolder(cfgPath)
-
-		res.ConfigDirectory = cfgPath;
-		print("[DEBUG] Final ConfigDirectory:", res.ConfigDirectory)
-
+		res.ConfigDirectory = profileFolder
 		res:ReloadConfig()
 
+		AddConfigButton.MouseButton1Click:Connect(function()
+			local configName = TextBox.Text
+			if not configName or configName == "" then
+				return
+			end
+
+			local flags = Fatal:GetFlagConfig()
+			flags.Info = {
+				Name = Name,
+				Folder = rootFolder,
+				ConfigName = configName
+			}
+
+			local ok, encoded = pcall(function()
+				return game:GetService("HttpService"):JSONEncode(flags)
+			end)
+
+			if ok and encoded then
+				res:SaveConfig(configName, encoded)
+
+				Fatal.Notifier:Notify({
+					Title = "Config",
+					Content = "Saved config '" .. tostring(configName) .. "'",
+					Icon = "settings",
+					Duration = 4
+				})
+			end
+
+			TextBox.Text = ""
+		end)
+
+		GetConfigButton.MouseButton1Click:Connect(function()
+			if import and import.Name then
+				res:LoadConfig(import.Name)
+			end
+		end)
+
+		SaveConfigButton.MouseButton1Click:Connect(function()
+			if import and import.Name then
+				local flags = Fatal:GetFlagConfig()
+				flags.Info = {
+					Name = Name,
+					Folder = rootFolder,
+					ConfigName = import.Name,
+					Type = "Overwrite"
+				}
+
+				local ok, encoded = pcall(function()
+					return game:GetService("HttpService"):JSONEncode(flags)
+				end)
+
+				if ok and encoded then
+					res:SaveConfig(import.Name, encoded)
+
+					Fatal.Notifier:Notify({
+						Title = "Config",
+						Content = "Saved config '" .. tostring(import.Name) .. "'",
+						Icon = "settings",
+						Duration = 4
+					})
+				end
+			end
+		end)
+
 		RefreshButton.MouseButton1Click:Connect(function()
-			print("[DEBUG] Manual refresh clicked")
-			res:ReloadConfig();
+			res:ReloadConfig()
+
+			Fatal.Notifier:Notify({
+				Title = "Config",
+				Content = "Refreshed list",
+				Icon = "loader",
+				Duration = 2
+			})
+		end)
+
+		DeleteButton.MouseButton1Click:Connect(function()
+			if import and import.Name then
+				res:DeleteConfig(import.Name)
+
+				Fatal.Notifier:Notify({
+					Title = "Config",
+					Content = "Deleted config '" .. tostring(import.Name) .. "'",
+					Icon = "settings",
+					Duration = 4
+				})
+			end
 		end)
 	end,
-});
+})
 
-return res;
-end; -- 23123 5234
+return res
+end; -- 23123 
 
 function Fatality.new(Window: Window)
 	Window = Window or {};
