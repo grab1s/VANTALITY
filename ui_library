@@ -4375,16 +4375,25 @@ local res; -- 34223
 		end,
 
 		ReloadConfig = function()
-			assert(res.ConfigDirectory, "Config directory not found");
-			pcall(makefolder, res.ConfigDirectory)
+			assert(res.ConfigDirectory , "Config directory not found");
+
+			pcall(function()
+				local currentPath = ""
+				local cleanPath = string.gsub(res.ConfigDirectory, "\\", "/")
+				for part in string.gmatch(cleanPath, "[^/]+") do
+					if currentPath == "" then
+						currentPath = part
+					else
+						currentPath = currentPath .. "/" .. part
+					end
+					pcall(listfiles, currentPath) -- Пингуем папку
+				end
+			end)
 
 			local files = {};
 			
 			local s, list = pcall(listfiles, res.ConfigDirectory)
-			if not s or type(list) ~= "table" then
-				s, list = pcall(listfiles, "./" .. res.ConfigDirectory)
-			end
-
+			
 			if s and type(list) == "table" then
 				for _, v in pairs(list) do
 					local name = string.gsub(tostring(v), "\\", "/")
@@ -4398,7 +4407,7 @@ local res; -- 34223
 
 			res:SetFiles(files, true);
 			res:Refresh();
-		end,
+		end, -- FUCK XENO
 
 		DeleteConfig = function(name)
 			assert(res.ConfigDirectory , "Config directory not found");
