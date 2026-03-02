@@ -4377,35 +4377,30 @@ function Fatality:CreateConfigWindow(Root: ScreenGui , Fatal , Button: ImageButt
 			end;
 		end,
 
-ReloadConfig = function() -- 3333
-			assert(res.ConfigDirectory , "Config directory not found");
+ReloadConfig = function()
+			assert(res.ConfigDirectory, "Config directory not found");
+			pcall(makefolder, res.ConfigDirectory)
 
 			local files = {};
 
-			local success, list = pcall(listfiles, res.ConfigDirectory)
-			if success and type(list) == "table" then
-				for _, v in pairs(list) do
-					local name = string.match(v, "[^/\\]+$")
+			local list = {}
+			local s, result = pcall(listfiles, res.ConfigDirectory)
+			if s and type(result) == "table" then 
+				list = result 
+			else
+				s, result = pcall(listfiles, "./" .. res.ConfigDirectory)
+				if s and type(result) == "table" then list = result end
+			end
+
+			for _, v in pairs(list) do
+				local name = string.match(tostring(v), "[^/\\]+$") or tostring(v)
+				
+				if name and name ~= "" then
+					local is_dir = false
+					pcall(function() is_dir = isfolder(v) end)
 					
-					if name then
-						local safePath = res.ConfigDirectory .. "/" .. name
-						
-						local is_file = false
-						pcall(function()
-							is_file = isfile(safePath) or isfile(v)
-						end)
-
-						if not is_file then
-							pcall(function()
-								if not isfolder(safePath) then
-									is_file = true
-								end
-							end)
-						end
-
-						if is_file then
-							table.insert(files, name)
-						end
+					if not is_dir then
+						table.insert(files, name)
 					end
 				end
 			end
