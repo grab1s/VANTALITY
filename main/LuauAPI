@@ -13,7 +13,7 @@ local HttpService = game:GetService("HttpService")
 local FileSystem = {
     Root = "Vantality",
     Scripts = "Vantality/scripts",
-    Configs = "Vantality/scripts/configs"
+    Configs = "Vantality/Config/Main"
 }
 
 if not isfolder(FileSystem.Root) then makefolder(FileSystem.Root) end
