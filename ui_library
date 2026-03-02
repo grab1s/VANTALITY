@@ -4331,13 +4331,11 @@ function Fatality:CreateConfigWindow(Root: ScreenGui , Fatal , Button: ImageButt
 		Element = nil;
 	};
 
-	local res;
+local res; -- 34223
 	res = Fatality:CreateResponse({
 		SetFiles = function(configs,bypass)
 			local OldLen = #Configs;
-
 			Configs = configs;
-
 			if OldLen ~= #configs and not bypass then
 				res:ReloadConfig();
 			end;
@@ -4352,7 +4350,6 @@ function Fatality:CreateConfigWindow(Root: ScreenGui , Fatal , Button: ImageButt
 
 			for i,v in next, Configs do
 				local button = new_button();
-
 				button.Parent = ScrollingFrame;
 				button.Text = " "..tostring(v);
 
@@ -4377,13 +4374,17 @@ function Fatality:CreateConfigWindow(Root: ScreenGui , Fatal , Button: ImageButt
 			end;
 		end,
 
-ReloadConfig = function() -- 9988
-			assert(res.ConfigDirectory , "Config directory not found");
+		ReloadConfig = function()
+			assert(res.ConfigDirectory, "Config directory not found");
 			pcall(makefolder, res.ConfigDirectory)
 
 			local files = {};
-			local s, list = pcall(listfiles, res.ConfigDirectory)
 			
+			local s, list = pcall(listfiles, res.ConfigDirectory)
+			if not s or type(list) ~= "table" then
+				s, list = pcall(listfiles, "./" .. res.ConfigDirectory)
+			end
+
 			if s and type(list) == "table" then
 				for _, v in pairs(list) do
 					local name = string.gsub(tostring(v), "\\", "/")
@@ -4402,7 +4403,7 @@ ReloadConfig = function() -- 9988
 		DeleteConfig = function(name)
 			assert(res.ConfigDirectory , "Config directory not found");
 			local path = res.ConfigDirectory..'/'..tostring(name);
-			pcall(delfile, path) 
+			pcall(delfile, path)
 		end,
 
 		SaveConfig = function(name,content)
@@ -4433,50 +4434,41 @@ ReloadConfig = function() -- 9988
 			end
 		end,
 
-		Init = function(Name: string,Folder: string)
-			if not isfolder(Folder or "Fatality") then
-				makefolder(Folder or "Fatality");	
-			end;
-
-			if not isfolder((Folder or "Fatality").."/Config") then
-				makefolder((Folder or "Fatality").."/Config");	
-			end;
-
-			local cfgPath = (Folder or "Fatality").."/Config/"..tostring(Name);
-
-			if not isfolder(cfgPath) then
-				makefolder(cfgPath)
-			end;
+		Init = function(Name: string, Folder: string)
+			local rootFolder = Folder or "Fatality"
+			
+			pcall(makefolder, rootFolder)
+			pcall(makefolder, rootFolder .. "/Config")
+			
+			local cfgPath = rootFolder .. "/Config/" .. tostring(Name)
+			pcall(makefolder, cfgPath)
 
 			res.ConfigDirectory = cfgPath;
-
-            res:ReloadConfig()
+			res:ReloadConfig()
 
 			AddConfigButton.MouseButton1Click:Connect(function()
 				local configName = TextBox.Text;
-
-				if not configName:byte() then return end;
+				if not configName or configName == "" then return end;
 
 				local flags = Fatal:GetFlagConfig();
-
 				flags.Info = {
 					Name = Name,
-					Folder = Folder,
+					Folder = rootFolder,
 					ConfigName = configName,
 				};
 
-				local code = game:GetService('HttpService'):JSONEncode(flags);
+				local s, code = pcall(function() return game:GetService('HttpService'):JSONEncode(flags) end)
+				if s and code then
+					res:SaveConfig(configName, code);
+					res:ReloadConfig();
 
-				res:SaveConfig(configName , code);
-				res:ReloadConfig();
-
-				Fatal.Notifier:Notify({
-					Title = "Config",
-					Content = "Saved config '"..tostring(configName).."'",
-					Icon = "settings",
-					Duration = 4,
-				});
-
+					Fatal.Notifier:Notify({
+						Title = "Config",
+						Content = "Saved config '"..tostring(configName).."'",
+						Icon = "settings",
+						Duration = 4,
+					});
+				end
 				TextBox.Text = "";
 			end);
 
@@ -4493,22 +4485,23 @@ ReloadConfig = function() -- 9988
 
 					flags.Info = {
 						Name = Name,
-						Folder = Folder,
+						Folder = rootFolder,
 						ConfigName = configName,
 						Type = "Overwrite"
 					};
 
-					Fatal.Notifier:Notify({
-						Title = "Config",
-						Content = "Saved config '"..tostring(configName).."'",
-						Icon = "settings",
-						Duration = 4,
-					});
+					local s, code = pcall(function() return game:GetService('HttpService'):JSONEncode(flags) end)
+					if s and code then
+						res:SaveConfig(configName, code);
+						res:ReloadConfig();
 
-					local code = game:GetService('HttpService'):JSONEncode(flags);
-
-					res:SaveConfig(configName , code);
-					res:ReloadConfig();
+						Fatal.Notifier:Notify({
+							Title = "Config",
+							Content = "Saved config '"..tostring(configName).."'",
+							Icon = "settings",
+							Duration = 4,
+						});
+					end
 				end;
 			end);
 			
@@ -4524,23 +4517,22 @@ ReloadConfig = function() -- 9988
 
 			DeleteButton.MouseButton1Click:Connect(function()
 				if import and import.Name then
-
+					res:DeleteConfig(import.Name);
+					res:ReloadConfig();
+					
 					Fatal.Notifier:Notify({
 						Title = "Config",
 						Content = "Deleted config '"..tostring(import.Name).."'",
 						Icon = "settings",
 						Duration = 4,
 					});
-
-					res:DeleteConfig(import.Name);
-					res:ReloadConfig();
 				end;
 			end)
 		end,
 	});
 
 	return res;
-end;
+emd;
 
 function Fatality.new(Window: Window)
 	Window = Window or {};
@@ -5201,7 +5193,7 @@ function Fatal:AddMenu(Menu : Menu)
 		end)
 		Fatality:NewInput(MenuButton,function() for i,v in next , Fatal.Menus do if v.Root == MenuLiber then Fatal.MenuSelected = v; v.ValueSelect(true) else v.ValueSelect(false) end; end; end);
 		
--- 111111111111111111111
+-- 16468
 
 		function MenuLib:AddListBox(Config : Listbox)
 			Config = Config or {}; Config.Name = Config.Name or "LIST BOX"; Config.Position = Config.Position or "left"; Config.Height = Config.Height or 0; Config.Values = Config.Values or {}; Config.Multi = Config.Multi or false; Config.Default = Config.Default or ((Config.Multi and nil) or {}); Config.Callback = Config.Callback or function() end;
