@@ -4531,8 +4531,7 @@ local res; -- 34223
 		end,
 	});
 
-	return res;
-emd;
+	return res; -- 534345
 
 function Fatality.new(Window: Window)
 	Window = Window or {};
