@@ -4331,15 +4331,131 @@ function Fatality:CreateConfigWindow(Root: ScreenGui , Fatal , Button: ImageButt
 		Element = nil;
 	};
 
-local res;
+local res
 
 res = Fatality:CreateResponse({
 
+	-- внутренняя утилита: безопасный join пути
+	_PathJoin = function(_, a, b)
+		a = tostring(a or ""):gsub("\\", "/"):gsub("/+$", "")
+		b = tostring(b or ""):gsub("\\", "/"):gsub("^/+", "")
+		if a == "" then return b end
+		if b == "" then return a end
+		return a .. "/" .. b
+	end,
+
+	-- имя файла индекса
+	_IndexFileName = "__index.json",
+
+	-- прочитать индекс (table<string>)
+	_ReadIndex = function()
+		assert(res.ConfigDirectory, "Config directory not found")
+
+		local indexPath = res:_PathJoin(res.ConfigDirectory, res._IndexFileName)
+		local HttpService = game:GetService("HttpService")
+
+		if isfile then
+			local ok, exists = pcall(isfile, indexPath)
+			if ok and not exists then
+				return {}
+			end
+		end
+
+		local okRead, raw = pcall(readfile, indexPath)
+		if not okRead or type(raw) ~= "string" or raw == "" then
+			return {}
+		end
+
+		local okJson, decoded = pcall(function()
+			return HttpService:JSONDecode(raw)
+		end)
+
+		if okJson and type(decoded) == "table" then
+			local out = {}
+			local seen = {}
+			for _, name in ipairs(decoded) do
+				name = tostring(name)
+				if name ~= "" and name ~= "." and name ~= ".." and not seen[name] then
+					seen[name] = true
+					table.insert(out, name)
+				end
+			end
+			return out
+		end
+
+		return {}
+	end,
+
+	-- записать индекс
+	_WriteIndex = function(_, list)
+		assert(res.ConfigDirectory, "Config directory not found")
+		local indexPath = res:_PathJoin(res.ConfigDirectory, res._IndexFileName)
+		local HttpService = game:GetService("HttpService")
+
+		-- чистим/дедуп
+		local out = {}
+		local seen = {}
+		for _, name in ipairs(list or {}) do
+			name = tostring(name)
+			if name ~= "" and name ~= "." and name ~= ".." and not seen[name] then
+				seen[name] = true
+				table.insert(out, name)
+			end
+		end
+		table.sort(out)
+
+		local okEnc, encoded = pcall(function()
+			return HttpService:JSONEncode(out)
+		end)
+		if okEnc and encoded then
+			pcall(writefile, indexPath, encoded)
+		end
+	end,
+
+	-- “мягкая” попытка получить список файлов через listfiles (НЕ обязательна)
+	_TryListFiles = function()
+		local files = {}
+		if not listfiles then
+			return files
+		end
+
+		local ok, list = pcall(listfiles, res.ConfigDirectory)
+		if ok and type(list) == "table" then
+			for _, path in ipairs(list) do
+				local name = tostring(path):gsub("\\", "/")
+				name = name:match("([^/]+)$")
+				if name and name ~= "" and name ~= "." and name ~= ".." and name ~= res._IndexFileName then
+					table.insert(files, name)
+				end
+			end
+		end
+		return files
+	end,
+
+	-- объединить индекс + listfiles (если он работает) и сохранить обновлённый индекс
+	_SyncIndex = function()
+		local index = res:_ReadIndex()
+		local listed = res:_TryListFiles()
+
+		local set = {}
+		for _, n in ipairs(index) do set[n] = true end
+		for _, n in ipairs(listed) do set[n] = true end
+
+		local merged = {}
+		for n, _ in pairs(set) do
+			table.insert(merged, n)
+		end
+		table.sort(merged)
+
+		res:_WriteIndex(merged)
+		return merged
+	end,
+
 	SetFiles = function(configs, bypass)
 		local oldLen = #Configs
-		Configs = configs
+		Configs = configs or {}
 
-		if oldLen ~= #configs and not bypass then
+		if oldLen ~= #Configs and not bypass then
 			res:ReloadConfig()
 		end
 	end,
@@ -4380,19 +4496,8 @@ res = Fatality:CreateResponse({
 	ReloadConfig = function()
 		assert(res.ConfigDirectory, "Config directory not found")
 
-		local files = {}
-
-		local success, list = pcall(listfiles, res.ConfigDirectory)
-		if success and type(list) == "table" then
-			for _, path in ipairs(list) do
-				local name = tostring(path):gsub("\\", "/")
-				name = name:match("([^/]+)$")
-
-				if name and name ~= "" and name ~= "." and name ~= ".." then
-					table.insert(files, name)
-				end
-			end
-		end
+		-- главное отличие: мы не зависим от listfiles
+		local files = res:_SyncIndex()
 
 		res:SetFiles(files, true)
 		res:Refresh()
@@ -4401,23 +4506,62 @@ res = Fatality:CreateResponse({
 	DeleteConfig = function(name)
 		assert(res.ConfigDirectory, "Config directory not found")
 
-		local path = res.ConfigDirectory .. "/" .. tostring(name)
+		name = tostring(name or "")
+		if name == "" or name == "." or name == ".." or name == res._IndexFileName then
+			return
+		end
+
+		local path = res:_PathJoin(res.ConfigDirectory, name)
 		pcall(delfile, path)
+
+		-- обновляем индекс
+		local idx = res:_ReadIndex()
+		local out = {}
+		for _, n in ipairs(idx) do
+			if tostring(n) ~= name then
+				table.insert(out, tostring(n))
+			end
+		end
+		res:_WriteIndex(out)
 
 		res:ReloadConfig()
 	end,
 
 	SaveConfig = function(name, content)
+		name = tostring(name or "")
+
+		-- защита от путей/инъекций имени
+		if name == "" then return end
 		if string.find(name, "/", 1, true)
 		or string.find(name, "\\", 1, true)
 		or string.find(name, ":", 1, true) then
 			return
 		end
+		if name == "." or name == ".." or name == res._IndexFileName then
+			return
+		end
 
 		assert(res.ConfigDirectory, "Config directory not found")
 
-		local path = res.ConfigDirectory .. "/" .. tostring(name)
-		pcall(writefile, path, content)
+		local path = res:_PathJoin(res.ConfigDirectory, name)
+		local ok = pcall(writefile, path, content)
+		if not ok then
+			return
+		end
+
+		-- добавляем в индекс
+		local idx = res:_ReadIndex()
+		local exists = false
+		for _, n in ipairs(idx) do
+			if tostring(n) == name then
+				exists = true
+				break
+			end
+		end
+		if not exists then
+			table.insert(idx, name)
+			res:_WriteIndex(idx)
+		end
 
 		res:ReloadConfig()
 	end,
@@ -4425,9 +4569,9 @@ res = Fatality:CreateResponse({
 	LoadConfig = function(name)
 		assert(res.ConfigDirectory, "Config directory not found")
 
-		local path = res.ConfigDirectory .. "/" .. tostring(name)
-
+		local path = res:_PathJoin(res.ConfigDirectory, tostring(name))
 		local success, content = pcall(readfile, path)
+
 		if success and content then
 			local ok, decoded = pcall(function()
 				return game:GetService("HttpService"):JSONDecode(content)
@@ -4440,7 +4584,6 @@ res = Fatality:CreateResponse({
 					Icon = "settings",
 					Duration = 4
 				})
-
 				Fatal:LoadConfig(decoded)
 			end
 		end
@@ -4451,21 +4594,18 @@ res = Fatality:CreateResponse({
 		local configFolder = rootFolder .. "/Config"
 		local profileFolder = configFolder .. "/" .. tostring(Name)
 
-		-- Универсальная функция проверки папки
 		local function ensureFolder(path)
 			local exists = false
 
 			if isfolder then
 				local ok, result = pcall(isfolder, path)
-				if ok then
-					exists = result
-				end
-			else
+				if ok then exists = result end
+			elseif listfiles then
 				local ok = pcall(listfiles, path)
 				exists = ok
 			end
 
-			if not exists then
+			if not exists and makefolder then
 				pcall(makefolder, path)
 			end
 		end
@@ -4475,6 +4615,11 @@ res = Fatality:CreateResponse({
 		ensureFolder(profileFolder)
 
 		res.ConfigDirectory = profileFolder
+
+		-- гарантируем индекс-файл
+		local idx = res:_ReadIndex()
+		res:_WriteIndex(idx)
+
 		res:ReloadConfig()
 
 		AddConfigButton.MouseButton1Click:Connect(function()
@@ -4543,7 +4688,6 @@ res = Fatality:CreateResponse({
 
 		RefreshButton.MouseButton1Click:Connect(function()
 			res:ReloadConfig()
-
 			Fatal.Notifier:Notify({
 				Title = "Config",
 				Content = "Refreshed list",
@@ -4555,7 +4699,6 @@ res = Fatality:CreateResponse({
 		DeleteButton.MouseButton1Click:Connect(function()
 			if import and import.Name then
 				res:DeleteConfig(import.Name)
-
 				Fatal.Notifier:Notify({
 					Title = "Config",
 					Content = "Deleted config '" .. tostring(import.Name) .. "'",
@@ -4568,7 +4711,7 @@ res = Fatality:CreateResponse({
 })
 
 return res
-end; -- 23123 
+end; -- 23123423 
 
 function Fatality.new(Window: Window)
 	Window = Window or {};
