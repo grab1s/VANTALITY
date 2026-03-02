@@ -4433,52 +4433,6 @@ ReloadConfig = function() -- 9988
 			end
 		end,
 
-			res:SetFiles(files, true);
-			res:Refresh();
-		end,
-
-		DeleteConfig = function(name)
-			assert(res.ConfigDirectory , "Config directory not found");
-
-			local path = res.ConfigDirectory..'/'..tostring(name);
-
-			if isfile(path) then
-				delfile(path)
-			end;
-		end,
-
-		SaveConfig = function(name,content)
-			if string.find(name,'/',1,true) or string.find(name,'\\',1,true) or string.find(name,':',1,true) then
-				return;	
-			end;
-
-			assert(res.ConfigDirectory , "Config directory not found");
-
-			local path = res.ConfigDirectory..'/'..tostring(name);
-
-			writefile(path , content);
-		end,
-
-		LoadConfig = function(name)
-
-			assert(res.ConfigDirectory , "Config directory not found");
-
-			local path = res.ConfigDirectory..'/'..tostring(name);
-
-			if isfile(path) then
-				local decoded = game:GetService('HttpService'):JSONDecode(readfile(path));
-
-				Fatal.Notifier:Notify({
-					Title = "Config",
-					Content = "Loaded config '"..tostring(name).."'",
-					Icon = "settings",
-					Duration = 4,
-				});
-
-				Fatal:LoadConfig(decoded);
-			end;
-		end,
-
 		Init = function(Name: string,Folder: string)
 			if not isfolder(Folder or "Fatality") then
 				makefolder(Folder or "Fatality");	
