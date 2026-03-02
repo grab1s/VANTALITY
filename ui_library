@@ -4377,33 +4377,61 @@ function Fatality:CreateConfigWindow(Root: ScreenGui , Fatal , Button: ImageButt
 			end;
 		end,
 
-ReloadConfig = function()
-			assert(res.ConfigDirectory, "Config directory not found");
+ReloadConfig = function() -- 9988
+			assert(res.ConfigDirectory , "Config directory not found");
 			pcall(makefolder, res.ConfigDirectory)
 
 			local files = {};
-
-			local list = {}
-			local s, result = pcall(listfiles, res.ConfigDirectory)
-			if s and type(result) == "table" then 
-				list = result 
-			else
-				s, result = pcall(listfiles, "./" .. res.ConfigDirectory)
-				if s and type(result) == "table" then list = result end
-			end
-
-			for _, v in pairs(list) do
-				local name = string.match(tostring(v), "[^/\\]+$") or tostring(v)
-				
-				if name and name ~= "" then
-					local is_dir = false
-					pcall(function() is_dir = isfolder(v) end)
+			local s, list = pcall(listfiles, res.ConfigDirectory)
+			
+			if s and type(list) == "table" then
+				for _, v in pairs(list) do
+					local name = string.gsub(tostring(v), "\\", "/")
+					name = string.match(name, "([^/]+)$") or name
 					
-					if not is_dir then
+					if name and name ~= "" then
 						table.insert(files, name)
 					end
 				end
 			end
+
+			res:SetFiles(files, true);
+			res:Refresh();
+		end,
+
+		DeleteConfig = function(name)
+			assert(res.ConfigDirectory , "Config directory not found");
+			local path = res.ConfigDirectory..'/'..tostring(name);
+			pcall(delfile, path) 
+		end,
+
+		SaveConfig = function(name,content)
+			if string.find(name,'/',1,true) or string.find(name,'\\',1,true) or string.find(name,':',1,true) then
+				return;	
+			end;
+			assert(res.ConfigDirectory , "Config directory not found");
+			local path = res.ConfigDirectory..'/'..tostring(name);
+			pcall(writefile, path, content);
+		end,
+
+		LoadConfig = function(name)
+			assert(res.ConfigDirectory , "Config directory not found");
+			local path = res.ConfigDirectory..'/'..tostring(name);
+			
+			local s, content = pcall(readfile, path)
+			if s and content then
+				local s2, decoded = pcall(function() return game:GetService('HttpService'):JSONDecode(content) end)
+				if s2 and type(decoded) == "table" then
+					Fatal.Notifier:Notify({
+						Title = "Config",
+						Content = "Loaded config '"..tostring(name).."'",
+						Icon = "settings",
+						Duration = 4,
+					});
+					Fatal:LoadConfig(decoded);
+				end
+			end
+		end,
 
 			res:SetFiles(files, true);
 			res:Refresh();
