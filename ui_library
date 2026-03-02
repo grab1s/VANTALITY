@@ -4377,17 +4377,27 @@ function Fatality:CreateConfigWindow(Root: ScreenGui , Fatal , Button: ImageButt
 			end;
 		end,
 
-		ReloadConfig = function()
+ReloadConfig = function() -- 52435
 			assert(res.ConfigDirectory , "Config directory not found");
 
 			local files = {};
-
-			for i,v in next , listfiles(res.ConfigDirectory) do
-				local spl = (string.find(v,'/',1,true) and string.split(v,'/')) or (string.find(v,'\\',1,true) and string.split(v,'\\'));
-				local name = spl[#spl];
-
-				table.insert(files,name);
-			end;
+            
+			local success, list = pcall(listfiles, res.ConfigDirectory)
+			if success and type(list) == "table" then
+				for _, v in pairs(list) do
+					local fullPath = v
+					if not string.find(fullPath, "/") and not string.find(fullPath, "\\") then
+						fullPath = res.ConfigDirectory .. "/" .. v
+					end
+                    
+					if isfile(fullPath) then
+						local name = string.match(v, "[^/\\]+$")
+						if name then
+							table.insert(files, name)
+						end
+					end
+				end
+			end
 
 			res:SetFiles(files,true);
 			res:Refresh();
