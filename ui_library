@@ -4331,12 +4331,9 @@ function Fatality:CreateConfigWindow(Root: ScreenGui , Fatal , Button: ImageButt
 		Element = nil;
 	};
 
-local execName = identifyexecutor and identifyexecutor() or "Unknown"
-	local isXeno = string.find(string.lower(execName), "xeno") ~= nil
-
-	local res;
+local res;
 	res = Fatality:CreateResponse({
-		SetFiles = function(configs, bypass)
+		SetFiles = function(configs,bypass)
 			local OldLen = #Configs;
 			Configs = configs;
 			if OldLen ~= #configs and not bypass then
@@ -4346,7 +4343,9 @@ local execName = identifyexecutor and identifyexecutor() or "Unknown"
 
 		Refresh = function()
 			for i,v in next , ScrollingFrame:GetChildren() do
-				if v:IsA('TextButton') then v:Destroy(); end;
+				if v:IsA('TextButton') then
+					v:Destroy();
+				end;
 			end;
 
 			for i,v in next, Configs do
@@ -4375,41 +4374,31 @@ local execName = identifyexecutor and identifyexecutor() or "Unknown"
 			end;
 		end,
 
-		GetRegistry = function(menuName)
-			local regPath = "Vantality_Registry_" .. tostring(menuName) .. ".json"
-			local s, content = pcall(readfile, regPath)
-			if s and content then
-				local s2, decoded = pcall(function() return game:GetService('HttpService'):JSONDecode(content) end)
-				if s2 and type(decoded) == "table" then return decoded end
-			end
-			return {}
-		end,
-
-		SaveRegistry = function(menuName, regTable)
-			local regPath = "Vantality_Registry_" .. tostring(menuName) .. ".json"
-			pcall(function()
-				local encoded = game:GetService('HttpService'):JSONEncode(regTable)
-				writefile(regPath, encoded)
-			end)
-		end,
-
 		ReloadConfig = function()
 			assert(res.ConfigDirectory , "Config directory not found");
-
 			local files = {};
 
-			local success, list = pcall(listfiles, res.ConfigDirectory)
-			if success and type(list) == "table" then
-				for i,v in next , list do
+			-- 1. Пытаемся прочитать папку. Если Xeno не нравится формат, пробуем обратные слеши.
+			-- Мы НЕ используем makefolder здесь, чтобы не сбросить кэш Xeno!
+			local s, list = pcall(listfiles, res.ConfigDirectory)
+			if not s or type(list) ~= "table" then
+				s, list = pcall(listfiles, string.gsub(res.ConfigDirectory, "/", "\\"))
+			end
+
+			if s and type(list) == "table" then
+				for i,v in next, list do
+					-- 2. Нормализация пути: превращаем все слеши в прямые "/"
 					local normalized = string.gsub(tostring(v), "\\", "/")
 					
+					-- 3. Разбиваем путь и берем последнее значение (имя файла)
 					local spl = string.split(normalized, "/")
 					local name = spl[#spl]
 
-					if name and name ~= "" then
-						table.insert(files, name);
+					-- 4. Фильтруем мусор (текущую/родительскую папку и пустоту)
+					if name and name ~= "" and name ~= "." and name ~= ".." then
+						table.insert(files, name)
 					end
-				end;
+				end
 			end
 
 			res:SetFiles(files,true);
@@ -4420,43 +4409,32 @@ local execName = identifyexecutor and identifyexecutor() or "Unknown"
 			assert(res.ConfigDirectory , "Config directory not found");
 			local path = res.ConfigDirectory..'/'..tostring(name);
 			pcall(delfile, path)
-
-			if isXeno then
-				local reg = res.GetRegistry(res.MenuName)
-				local newReg = {}
-				for _, v in ipairs(reg) do
-					if v ~= name then table.insert(newReg, v) end
-				end
-				res.SaveRegistry(res.MenuName, newReg)
-			end
 		end,
 
-		SaveConfig = function(name, content)
-			if string.find(name,'/',1,true) or string.find(name,'\\',1,true) or string.find(name,':',1,true) then return; end;
+		SaveConfig = function(name,content)
+			if string.find(name,'/',1,true) or string.find(name,'\\',1,true) or string.find(name,':',1,true) then
+				return;	
+			end;
 			assert(res.ConfigDirectory , "Config directory not found");
 			local path = res.ConfigDirectory..'/'..tostring(name);
-			pcall(writefile, path, content)
-
-			if isXeno then
-				local reg = res.GetRegistry(res.MenuName)
-				local exists = false
-				for _, v in ipairs(reg) do if v == name then exists = true break end end
-				if not exists then
-					table.insert(reg, name)
-					res.SaveRegistry(res.MenuName, reg)
-				end
-			end
+			pcall(writefile, path, content);
 		end,
 
 		LoadConfig = function(name)
 			assert(res.ConfigDirectory , "Config directory not found");
 			local path = res.ConfigDirectory..'/'..tostring(name);
 			
+			-- Просто читаем. Если это файл - ок. Если папка - pcall проглотит ошибку.
 			local s, content = pcall(readfile, path)
 			if s and content then
 				local s2, decoded = pcall(function() return game:GetService('HttpService'):JSONDecode(content) end)
 				if s2 and type(decoded) == "table" then
-					Fatal.Notifier:Notify({ Title = "Config", Content = "Loaded config '"..tostring(name).."'", Icon = "settings", Duration = 4 });
+					Fatal.Notifier:Notify({
+						Title = "Config",
+						Content = "Loaded config '"..tostring(name).."'",
+						Icon = "settings",
+						Duration = 4,
+					});
 					Fatal:LoadConfig(decoded);
 				end
 			end
@@ -4465,64 +4443,111 @@ local execName = identifyexecutor and identifyexecutor() or "Unknown"
 		Init = function(Name: string, Folder: string)
 			local rootFolder = Folder or "Fatality"
 			
-			pcall(makefolder, rootFolder)
-			pcall(makefolder, rootFolder .. "/Config")
+			-- === XENO FIX: Мягкое создание папок ===
+			-- Мы проверяем существование папки через listfiles.
+			-- Если папка читается, мы НЕ вызываем makefolder, чтобы не стереть кэш Xeno.
+			local function EnsureFolder(path)
+				local s = pcall(listfiles, path)
+				if not s then 
+					pcall(makefolder, path) 
+				end
+			end
+
+			EnsureFolder(rootFolder)
+			EnsureFolder(rootFolder .. "/Config")
+			
 			local cfgPath = rootFolder .. "/Config/" .. tostring(Name)
-			pcall(makefolder, cfgPath)
+			EnsureFolder(cfgPath)
 
 			res.ConfigDirectory = cfgPath;
-			res.MenuName = Name; -- Сохраняем имя ("Main") для файла реестра
-
 			res:ReloadConfig()
 
 			AddConfigButton.MouseButton1Click:Connect(function()
 				local configName = TextBox.Text;
 				if not configName or configName == "" then return end;
+
 				local flags = Fatal:GetFlagConfig();
-				flags.Info = { Name = Name, Folder = rootFolder, ConfigName = configName };
+				flags.Info = {
+					Name = Name,
+					Folder = rootFolder,
+					ConfigName = configName,
+				};
+
 				local s, code = pcall(function() return game:GetService('HttpService'):JSONEncode(flags) end)
 				if s and code then
-					res:SaveConfig(configName, code);
+					res:SaveConfig(configName , code);
 					res:ReloadConfig();
-					Fatal.Notifier:Notify({ Title = "Config", Content = "Saved config '"..tostring(configName).."'", Icon = "settings", Duration = 4 });
+
+					Fatal.Notifier:Notify({
+						Title = "Config",
+						Content = "Saved config '"..tostring(configName).."'",
+						Icon = "settings",
+						Duration = 4,
+					});
 				end
 				TextBox.Text = "";
 			end);
 
 			GetConfigButton.MouseButton1Click:Connect(function()
-				if import and import.Name then res:LoadConfig(import.Name); end;
+				if import and import.Name then
+					res:LoadConfig(import.Name);
+				end;
 			end);
 
 			SaveConfigButton.MouseButton1Click:Connect(function()
 				if import and import.Name then
 					local flags = Fatal:GetFlagConfig();
-					flags.Info = { Name = Name, Folder = rootFolder, ConfigName = import.Name, Type = "Overwrite" };
+					local configName = import.Name;
+
+					flags.Info = {
+						Name = Name,
+						Folder = rootFolder,
+						ConfigName = configName,
+						Type = "Overwrite"
+					};
+
 					local s, code = pcall(function() return game:GetService('HttpService'):JSONEncode(flags) end)
 					if s and code then
-						res:SaveConfig(import.Name, code);
+						res:SaveConfig(configName , code);
 						res:ReloadConfig();
-						Fatal.Notifier:Notify({ Title = "Config", Content = "Saved config '"..tostring(import.Name).."'", Icon = "settings", Duration = 4 });
+
+						Fatal.Notifier:Notify({
+							Title = "Config",
+							Content = "Saved config '"..tostring(configName).."'",
+							Icon = "settings",
+							Duration = 4,
+						});
 					end
 				end;
 			end);
 			
 			RefreshButton.MouseButton1Click:Connect(function()
 				res:ReloadConfig();
-				Fatal.Notifier:Notify({ Title = "Config", Content = "Refreshed list", Icon = "loader", Duration = 2 });
+				Fatal.Notifier:Notify({
+					Title = "Config",
+					Content = "Refreshed list",
+					Icon = "loader",
+					Duration = 2,
+				});
 			end);
 
 			DeleteButton.MouseButton1Click:Connect(function()
 				if import and import.Name then
 					res:DeleteConfig(import.Name);
 					res:ReloadConfig();
-					Fatal.Notifier:Notify({ Title = "Config", Content = "Deleted config '"..tostring(import.Name).."'", Icon = "settings", Duration = 4 });
+					
+					Fatal.Notifier:Notify({
+						Title = "Config",
+						Content = "Deleted config '"..tostring(import.Name).."'",
+						Icon = "settings",
+						Duration = 4,
+					});
 				end;
 			end)
 		end,
 	});
 
-	return res; -- 534534
-end;
+	return res;
 
 function Fatality.new(Window: Window)
 	Window = Window or {};
