@@ -4375,17 +4375,14 @@ local res;
 		end,
 
 		ReloadConfig = function()
-			assert(res.ConfigDirectory , "Config directory not found");
+			if not res.ConfigDirectory then return end
+			
 			local files = {};
-			local s, list = pcall(listfiles, res.ConfigDirectory)
-			if not s or type(list) ~= "table" then
-				s, list = pcall(listfiles, string.gsub(res.ConfigDirectory, "/", "\\"))
-			end
-
-			if s and type(list) == "table" then
+			local success, list = pcall(listfiles, res.ConfigDirectory)
+			
+			if success and type(list) == "table" then
 				for i,v in next, list do
 					local normalized = string.gsub(tostring(v), "\\", "/")
-					
 					local spl = string.split(normalized, "/")
 					local name = spl[#spl]
 
@@ -4400,28 +4397,31 @@ local res;
 		end,
 
 		DeleteConfig = function(name)
-			assert(res.ConfigDirectory , "Config directory not found");
+			if not res.ConfigDirectory then return end
 			local path = res.ConfigDirectory..'/'..tostring(name);
-			pcall(delfile, path)
+			if isfile(path) then
+				delfile(path)
+			end;
 		end,
 
 		SaveConfig = function(name,content)
 			if string.find(name,'/',1,true) or string.find(name,'\\',1,true) or string.find(name,':',1,true) then
 				return;	
 			end;
-			assert(res.ConfigDirectory , "Config directory not found");
+			if not res.ConfigDirectory then return end
 			local path = res.ConfigDirectory..'/'..tostring(name);
-			pcall(writefile, path, content);
+			writefile(path , content);
 		end,
 
 		LoadConfig = function(name)
-			assert(res.ConfigDirectory , "Config directory not found");
+			if not res.ConfigDirectory then return end
 			local path = res.ConfigDirectory..'/'..tostring(name);
-			
-			local s, content = pcall(readfile, path)
-			if s and content then
-				local s2, decoded = pcall(function() return game:GetService('HttpService'):JSONDecode(content) end)
-				if s2 and type(decoded) == "table" then
+
+			if isfile(path) then
+				local content = readfile(path)
+				local success, decoded = pcall(function() return game:GetService('HttpService'):JSONDecode(content) end)
+				
+				if success and type(decoded) == "table" then
 					Fatal.Notifier:Notify({
 						Title = "Config",
 						Content = "Loaded config '"..tostring(name).."'",
@@ -4430,24 +4430,17 @@ local res;
 					});
 					Fatal:LoadConfig(decoded);
 				end
-			end
+			end;
 		end,
 
-		Init = function(Name: string, Folder: string)
-			local rootFolder = Folder or "Fatality"
+		Init = function(Name: string,Folder: string)
+			local root = Folder or "Fatality"
 			
-			local function EnsureFolder(path)
-				local s = pcall(listfiles, path)
-				if not s then 
-					pcall(makefolder, path) 
-				end
-			end
+			if not isfolder(root) then makefolder(root) end
+			if not isfolder(root.."/Config") then makefolder(root.."/Config") end
 
-			EnsureFolder(rootFolder)
-			EnsureFolder(rootFolder .. "/Config")
-			
-			local cfgPath = rootFolder .. "/Config/" .. tostring(Name)
-			EnsureFolder(cfgPath)
+			local cfgPath = root.."/Config/"..tostring(Name);
+			if not isfolder(cfgPath) then makefolder(cfgPath) end
 
 			res.ConfigDirectory = cfgPath;
 			res:ReloadConfig()
@@ -4459,22 +4452,23 @@ local res;
 				local flags = Fatal:GetFlagConfig();
 				flags.Info = {
 					Name = Name,
-					Folder = rootFolder,
+					Folder = root,
 					ConfigName = configName,
 				};
 
-				local s, code = pcall(function() return game:GetService('HttpService'):JSONEncode(flags) end)
-				if s and code then
-					res:SaveConfig(configName , code);
-					res:ReloadConfig();
+				local code = game:GetService('HttpService'):JSONEncode(flags);
+				res:SaveConfig(configName , code);
+				
+				task.wait(0.1)
+				res:ReloadConfig();
 
-					Fatal.Notifier:Notify({
-						Title = "Config",
-						Content = "Saved config '"..tostring(configName).."'",
-						Icon = "settings",
-						Duration = 4,
-					});
-				end
+				Fatal.Notifier:Notify({
+					Title = "Config",
+					Content = "Saved config '"..tostring(configName).."'",
+					Icon = "settings",
+					Duration = 4,
+				});
+
 				TextBox.Text = "";
 			end);
 
@@ -4491,23 +4485,23 @@ local res;
 
 					flags.Info = {
 						Name = Name,
-						Folder = rootFolder,
+						Folder = root,
 						ConfigName = configName,
 						Type = "Overwrite"
 					};
 
-					local s, code = pcall(function() return game:GetService('HttpService'):JSONEncode(flags) end)
-					if s and code then
-						res:SaveConfig(configName , code);
-						res:ReloadConfig();
+					Fatal.Notifier:Notify({
+						Title = "Config",
+						Content = "Saved config '"..tostring(configName).."'",
+						Icon = "settings",
+						Duration = 4,
+					});
 
-						Fatal.Notifier:Notify({
-							Title = "Config",
-							Content = "Saved config '"..tostring(configName).."'",
-							Icon = "settings",
-							Duration = 4,
-						});
-					end
+					local code = game:GetService('HttpService'):JSONEncode(flags);
+					res:SaveConfig(configName , code);
+					
+					task.wait(0.1)
+					res:ReloadConfig();
 				end;
 			end);
 			
@@ -4523,15 +4517,17 @@ local res;
 
 			DeleteButton.MouseButton1Click:Connect(function()
 				if import and import.Name then
-					res:DeleteConfig(import.Name);
-					res:ReloadConfig();
-					
 					Fatal.Notifier:Notify({
 						Title = "Config",
 						Content = "Deleted config '"..tostring(import.Name).."'",
 						Icon = "settings",
 						Duration = 4,
 					});
+
+					res:DeleteConfig(import.Name);
+					
+					task.wait(0.1)
+					res:ReloadConfig();
 				end;
 			end)
 		end,
