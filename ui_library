@@ -4375,7 +4375,6 @@ local execName = identifyexecutor and identifyexecutor() or "Unknown"
 			end;
 		end,
 
-		-- XENO FIX: Храним файл-реестр В КОРНЕ (Root), чтобы makefolder не стирал его из кэша Xeno
 		GetRegistry = function(menuName)
 			local regPath = "Vantality_Registry_" .. tostring(menuName) .. ".json"
 			local s, content = pcall(readfile, regPath)
@@ -4396,34 +4395,24 @@ local execName = identifyexecutor and identifyexecutor() or "Unknown"
 
 		ReloadConfig = function()
 			assert(res.ConfigDirectory , "Config directory not found");
+
 			local files = {};
 
-			if isXeno then
-				-- XENO: Читаем независимый корневой реестр (Вариант 2)
-				local reg = res.GetRegistry(res.MenuName)
-				for _, name in ipairs(reg) do
-					table.insert(files, name)
-				end
-			else
-				-- SOLARA/ДРУГИЕ: Стандартный надежный listfiles
-				local s, list = pcall(listfiles, res.ConfigDirectory)
-				if not s or type(list) ~= "table" then
-					s, list = pcall(listfiles, "./" .. res.ConfigDirectory)
-				end
+			local success, list = pcall(listfiles, res.ConfigDirectory)
+			if success and type(list) == "table" then
+				for i,v in next , list do
+					local normalized = string.gsub(tostring(v), "\\", "/")
+					
+					local spl = string.split(normalized, "/")
+					local name = spl[#spl]
 
-				if s and type(list) == "table" then
-					for _, v in pairs(list) do
-						local name = string.gsub(tostring(v), "\\", "/")
-						name = string.match(name, "([^/]+)$") or name
-						
-						if name and name ~= "" then
-							table.insert(files, name)
-						end
+					if name and name ~= "" then
+						table.insert(files, name);
 					end
-				end
+				end;
 			end
 
-			res:SetFiles(files, true);
+			res:SetFiles(files,true);
 			res:Refresh();
 		end,
 
@@ -4433,7 +4422,6 @@ local execName = identifyexecutor and identifyexecutor() or "Unknown"
 			pcall(delfile, path)
 
 			if isXeno then
-				-- Удаляем из реестра
 				local reg = res.GetRegistry(res.MenuName)
 				local newReg = {}
 				for _, v in ipairs(reg) do
@@ -4450,7 +4438,6 @@ local execName = identifyexecutor and identifyexecutor() or "Unknown"
 			pcall(writefile, path, content)
 
 			if isXeno then
-				-- Добавляем в корневой реестр
 				local reg = res.GetRegistry(res.MenuName)
 				local exists = false
 				for _, v in ipairs(reg) do if v == name then exists = true break end end
@@ -4478,7 +4465,6 @@ local execName = identifyexecutor and identifyexecutor() or "Unknown"
 		Init = function(Name: string, Folder: string)
 			local rootFolder = Folder or "Fatality"
 			
-			-- Создаем папки
 			pcall(makefolder, rootFolder)
 			pcall(makefolder, rootFolder .. "/Config")
 			local cfgPath = rootFolder .. "/Config/" .. tostring(Name)
@@ -4535,7 +4521,7 @@ local execName = identifyexecutor and identifyexecutor() or "Unknown"
 		end,
 	});
 
-	return res; -- 53453
+	return res; -- 534534
 end;
 
 function Fatality.new(Window: Window)
