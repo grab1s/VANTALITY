@@ -4375,9 +4375,9 @@ local execName = identifyexecutor and identifyexecutor() or "Unknown"
 			end;
 		end,
 
-		-- Вспомогательные функции для Xeno Реестра
-		GetXenoRegistry = function()
-			local regPath = res.ConfigDirectory .. "/_vantality_registry.json"
+		-- XENO FIX: Храним файл-реестр В КОРНЕ (Root), чтобы makefolder не стирал его из кэша Xeno
+		GetRegistry = function(menuName)
+			local regPath = "Vantality_Registry_" .. tostring(menuName) .. ".json"
 			local s, content = pcall(readfile, regPath)
 			if s and content then
 				local s2, decoded = pcall(function() return game:GetService('HttpService'):JSONDecode(content) end)
@@ -4386,8 +4386,8 @@ local execName = identifyexecutor and identifyexecutor() or "Unknown"
 			return {}
 		end,
 
-		SaveXenoRegistry = function(regTable)
-			local regPath = res.ConfigDirectory .. "/_vantality_registry.json"
+		SaveRegistry = function(menuName, regTable)
+			local regPath = "Vantality_Registry_" .. tostring(menuName) .. ".json"
 			pcall(function()
 				local encoded = game:GetService('HttpService'):JSONEncode(regTable)
 				writefile(regPath, encoded)
@@ -4399,13 +4399,13 @@ local execName = identifyexecutor and identifyexecutor() or "Unknown"
 			local files = {};
 
 			if isXeno then
-				-- XENO: Читаем наш собственный файл-реестр, игнорируя сломанный listfiles
-				local reg = res.GetXenoRegistry()
+				-- XENO: Читаем независимый корневой реестр (Вариант 2)
+				local reg = res.GetRegistry(res.MenuName)
 				for _, name in ipairs(reg) do
 					table.insert(files, name)
 				end
 			else
-				-- SOLARA И ОСТАЛЬНЫЕ: Обычный стабильный listfiles
+				-- SOLARA/ДРУГИЕ: Стандартный надежный listfiles
 				local s, list = pcall(listfiles, res.ConfigDirectory)
 				if not s or type(list) ~= "table" then
 					s, list = pcall(listfiles, "./" .. res.ConfigDirectory)
@@ -4416,7 +4416,7 @@ local execName = identifyexecutor and identifyexecutor() or "Unknown"
 						local name = string.gsub(tostring(v), "\\", "/")
 						name = string.match(name, "([^/]+)$") or name
 						
-						if name and name ~= "" and name ~= "_vantality_registry.json" then
+						if name and name ~= "" then
 							table.insert(files, name)
 						end
 					end
@@ -4433,12 +4433,13 @@ local execName = identifyexecutor and identifyexecutor() or "Unknown"
 			pcall(delfile, path)
 
 			if isXeno then
-				local reg = res.GetXenoRegistry()
+				-- Удаляем из реестра
+				local reg = res.GetRegistry(res.MenuName)
 				local newReg = {}
 				for _, v in ipairs(reg) do
 					if v ~= name then table.insert(newReg, v) end
 				end
-				res.SaveXenoRegistry(newReg)
+				res.SaveRegistry(res.MenuName, newReg)
 			end
 		end,
 
@@ -4449,12 +4450,13 @@ local execName = identifyexecutor and identifyexecutor() or "Unknown"
 			pcall(writefile, path, content)
 
 			if isXeno then
-				local reg = res.GetXenoRegistry()
+				-- Добавляем в корневой реестр
+				local reg = res.GetRegistry(res.MenuName)
 				local exists = false
 				for _, v in ipairs(reg) do if v == name then exists = true break end end
 				if not exists then
 					table.insert(reg, name)
-					res.SaveXenoRegistry(reg)
+					res.SaveRegistry(res.MenuName, reg)
 				end
 			end
 		end,
@@ -4476,12 +4478,15 @@ local execName = identifyexecutor and identifyexecutor() or "Unknown"
 		Init = function(Name: string, Folder: string)
 			local rootFolder = Folder or "Fatality"
 			
+			-- Создаем папки
 			pcall(makefolder, rootFolder)
 			pcall(makefolder, rootFolder .. "/Config")
 			local cfgPath = rootFolder .. "/Config/" .. tostring(Name)
 			pcall(makefolder, cfgPath)
 
 			res.ConfigDirectory = cfgPath;
+			res.MenuName = Name; -- Сохраняем имя ("Main") для файла реестра
+
 			res:ReloadConfig()
 
 			AddConfigButton.MouseButton1Click:Connect(function()
@@ -4530,7 +4535,7 @@ local execName = identifyexecutor and identifyexecutor() or "Unknown"
 		end,
 	});
 
-	return res;
+	return res; -- 53453
 end;
 
 function Fatality.new(Window: Window)
