@@ -4335,7 +4335,9 @@ local res;
 	res = Fatality:CreateResponse({
 		SetFiles = function(configs,bypass)
 			local OldLen = #Configs;
+
 			Configs = configs;
+
 			if OldLen ~= #configs and not bypass then
 				res:ReloadConfig();
 			end;
@@ -4350,6 +4352,7 @@ local res;
 
 			for i,v in next, Configs do
 				local button = new_button();
+
 				button.Parent = ScrollingFrame;
 				button.Text = " "..tostring(v);
 
@@ -4375,124 +4378,170 @@ local res;
 		end,
 
 		ReloadConfig = function()
-			if res.CustomHandlers and res.CustomHandlers.List then
-				local files = res.CustomHandlers.List() or {}
-				res:SetFiles(files, true)
-				res:Refresh()
-				return
-			end
-			
-			if not res.ConfigDirectory then return end
-			local files = {};
-			local success, list = pcall(listfiles, res.ConfigDirectory)
-			
-			if not success or type(list) ~= "table" then
-				success, list = pcall(listfiles, string.gsub(res.ConfigDirectory, "/", "\\"))
-			end
+			assert(res.ConfigDirectory , "Config directory not found");
 
-			if success and list then
-				for i,v in next, list do
-					local normalized = string.gsub(tostring(v), "\\", "/")
-					local spl = string.split(normalized, "/")
-					local name = spl[#spl]
-					if name and name ~= "" then table.insert(files, name) end
-				end
-			end
+			local files = {};
+
+			for i,v in next , listfiles(res.ConfigDirectory) do
+				local spl = (string.find(v,'/',1,true) and string.split(v,'/')) or (string.find(v,'\\',1,true) and string.split(v,'\\'));
+				local name = spl[#spl];
+
+				table.insert(files,name);
+			end;
+
 			res:SetFiles(files,true);
 			res:Refresh();
 		end,
 
-		Init = function(Name: string, Folder: string, CustomHandlers)
-			res.CustomHandlers = CustomHandlers
-			
-			if not CustomHandlers then
-				local root = Folder or "Fatality"
-				pcall(makefolder, root)
-				pcall(makefolder, root.."/Config")
-				local cfgPath = root.."/Config/"..tostring(Name)
-				pcall(makefolder, cfgPath)
-				res.ConfigDirectory = cfgPath
-			end
+		DeleteConfig = function(name)
+			assert(res.ConfigDirectory , "Config directory not found");
 
-			res:ReloadConfig()
+			local path = res.ConfigDirectory..'/'..tostring(name);
+
+			if isfile(path) then
+				delfile(path)
+			end;
+		end,
+
+		SaveConfig = function(name,content)
+			if string.find(name,'/',1,true) or string.find(name,'\\',1,true) or string.find(name,':',1,true) then
+				return;	
+			end;
+
+			assert(res.ConfigDirectory , "Config directory not found");
+
+			local path = res.ConfigDirectory..'/'..tostring(name);
+
+			writefile(path , content);
+		end,
+
+		LoadConfig = function(name)
+
+			assert(res.ConfigDirectory , "Config directory not found");
+
+			local path = res.ConfigDirectory..'/'..tostring(name);
+
+			if isfile(path) then
+				local decoded = game:GetService('HttpService'):JSONDecode(readfile(path));
+
+				Fatal.Notifier:Notify({
+					Title = "Config",
+					Content = "Loaded config '"..tostring(name).."'",
+					Icon = "settings",
+					Duration = 4,
+				});
+
+				Fatal:LoadConfig(decoded);
+			end;
+		end,
+
+		Init = function(Name: string,Folder: string)
+			if not isfolder(Folder or "Fatality") then
+				makefolder(Folder or "Fatality");	
+			end;
+
+			if not isfolder((Folder or "Fatality").."/Config") then
+				makefolder((Folder or "Fatality").."/Config");	
+			end;
+
+			local cfgPath = (Folder or "Fatality").."/Config/"..tostring(Name);
+
+			if not isfolder(cfgPath) then
+				makefolder(cfgPath)
+			end;
+
+			res.ConfigDirectory = cfgPath;
+
+            res:ReloadConfig()
 
 			AddConfigButton.MouseButton1Click:Connect(function()
 				local configName = TextBox.Text;
-				if not configName or configName == "" then return end;
+
+				if not configName:byte() then return end;
 
 				local flags = Fatal:GetFlagConfig();
-				flags.Info = { Name = Name, Folder = Folder, ConfigName = configName };
+
+				flags.Info = {
+					Name = Name,
+					Folder = Folder,
+					ConfigName = configName,
+				};
+
 				local code = game:GetService('HttpService'):JSONEncode(flags);
 
-				if CustomHandlers and CustomHandlers.Save then
-					CustomHandlers.Save(configName, code)
-				elseif res.ConfigDirectory then
-					writefile(res.ConfigDirectory..'/'..tostring(configName), code)
-				end
-				
+				res:SaveConfig(configName , code);
 				res:ReloadConfig();
-				Fatal.Notifier:Notify({ Title = "Config", Content = "Saved config: "..tostring(configName), Icon = "settings", Duration = 4 });
+
+				Fatal.Notifier:Notify({
+					Title = "Config",
+					Content = "Saved config '"..tostring(configName).."'",
+					Icon = "settings",
+					Duration = 4,
+				});
+
 				TextBox.Text = "";
 			end);
 
 			GetConfigButton.MouseButton1Click:Connect(function()
 				if import and import.Name then
-					local content = nil
-					
-					if CustomHandlers and CustomHandlers.Load then
-						content = CustomHandlers.Load(import.Name)
-					elseif res.ConfigDirectory and isfile(res.ConfigDirectory..'/'..tostring(import.Name)) then
-						content = readfile(res.ConfigDirectory..'/'..tostring(import.Name))
-					end
-
-					if content then
-						local s, decoded = pcall(function() return game:GetService('HttpService'):JSONDecode(content) end)
-						if s and type(decoded) == "table" then
-							Fatal.Notifier:Notify({ Title = "Config", Content = "Loaded config: "..tostring(import.Name), Icon = "settings", Duration = 4 });
-							Fatal:LoadConfig(decoded);
-						end
-					end
+					res:LoadConfig(import.Name);
 				end;
 			end);
 
 			SaveConfigButton.MouseButton1Click:Connect(function()
 				if import and import.Name then
 					local flags = Fatal:GetFlagConfig();
-					flags.Info = { Name = Name, Folder = Folder, ConfigName = import.Name, Type = "Overwrite" };
+					local configName = import.Name;
+
+					flags.Info = {
+						Name = Name,
+						Folder = Folder,
+						ConfigName = configName,
+						Type = "Overwrite"
+					};
+
+					Fatal.Notifier:Notify({
+						Title = "Config",
+						Content = "Saved config '"..tostring(configName).."'",
+						Icon = "settings",
+						Duration = 4,
+					});
+
 					local code = game:GetService('HttpService'):JSONEncode(flags);
 
-					if CustomHandlers and CustomHandlers.Save then
-						CustomHandlers.Save(import.Name, code)
-					elseif res.ConfigDirectory then
-						writefile(res.ConfigDirectory..'/'..tostring(import.Name), code)
-					end
-					
+					res:SaveConfig(configName , code);
 					res:ReloadConfig();
-					Fatal.Notifier:Notify({ Title = "Config", Content = "Overwritten config: "..tostring(import.Name), Icon = "settings", Duration = 4 });
 				end;
 			end);
 			
 			RefreshButton.MouseButton1Click:Connect(function()
 				res:ReloadConfig();
-				Fatal.Notifier:Notify({ Title = "Config", Content = "Refreshed list", Icon = "loader", Duration = 2 });
+				Fatal.Notifier:Notify({
+					Title = "Config",
+					Content = "Refreshed list",
+					Icon = "loader",
+					Duration = 2,
+				});
 			end);
 
 			DeleteButton.MouseButton1Click:Connect(function()
 				if import and import.Name then
-					if CustomHandlers and CustomHandlers.Delete then
-						CustomHandlers.Delete(import.Name)
-					elseif res.ConfigDirectory then
-						delfile(res.ConfigDirectory..'/'..tostring(import.Name))
-					end
-					
+
+					Fatal.Notifier:Notify({
+						Title = "Config",
+						Content = "Deleted config '"..tostring(import.Name).."'",
+						Icon = "settings",
+						Duration = 4,
+					});
+
+					res:DeleteConfig(import.Name);
 					res:ReloadConfig();
-					Fatal.Notifier:Notify({ Title = "Config", Content = "Deleted config: "..tostring(import.Name), Icon = "settings", Duration = 4 });
 				end;
 			end)
 		end,
 	});
 
-	return res; -- 2342534
+	return res;
 end;
 
 function Fatality.new(Window: Window)
