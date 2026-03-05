@@ -4375,41 +4375,40 @@ local res;
 		end,
 
 		ReloadConfig = function()
-			warn("[DEBUG] Starting ReloadConfig...")
-			if not res.ConfigDirectory then 
-				warn("[DEBUG] ConfigDirectory is nil!")
-				return 
-			end
-			
-			warn("[DEBUG] Checking directory: " .. tostring(res.ConfigDirectory))
-			
+			if not res.ConfigDirectory then return end
 			local files = {};
-			
-			-- Прямой вызов без pcall для отладки
-			if isfolder(res.ConfigDirectory) then
-				warn("[DEBUG] Folder exists. Listing files...")
-				local list = listfiles(res.ConfigDirectory)
-				
-				for i,v in next, list do
-					warn("[DEBUG] Found raw file: " .. tostring(v))
-					
-					-- Нормализация для обоих типов слешей
-					local normalized = string.gsub(tostring(v), "\\", "/")
-					local spl = string.split(normalized, "/")
-					local name = spl[#spl]
 
-					if name and name ~= "" and name ~= "." and name ~= ".." then
-						table.insert(files, name)
+			local executor = identifyexecutor and tostring(identifyexecutor()) or "Unknown"
+			
+			if string.find(executor, "Xeno") then
+				if isfolder(res.ConfigDirectory) then
+					local list = listfiles(res.ConfigDirectory)
+					for i,v in next, list do
+						local spl = string.split(v, "/")
+						local name = spl[#spl]
+						if name and name ~= "" then
+							table.insert(files, name)
+						end
 					end
 				end
 			else
-				warn("[DEBUG] CRITICAL: isfolder returned FALSE for " .. tostring(res.ConfigDirectory))
-				-- Пытаемся создать, раз ее нет
-				warn("[DEBUG] Attempting to force create missing folder...")
-				makefolder(res.ConfigDirectory)
+				local success, list = pcall(listfiles, res.ConfigDirectory)
+				if not success or type(list) ~= "table" then
+					success, list = pcall(listfiles, string.gsub(res.ConfigDirectory, "/", "\\"))
+				end
+				
+				if success and list then
+					for i,v in next, list do
+						local normalized = string.gsub(tostring(v), "\\", "/")
+						local spl = string.split(normalized, "/")
+						local name = spl[#spl]
+						if name and name ~= "" and name ~= "." and name ~= ".." then
+							table.insert(files, name)
+						end
+					end
+				end
 			end
 
-			warn("[DEBUG] ReloadConfig finished. Files found: " .. #files)
 			res:SetFiles(files,true);
 			res:Refresh();
 		end,
@@ -4417,62 +4416,32 @@ local res;
 		DeleteConfig = function(name)
 			if not res.ConfigDirectory then return end
 			local path = res.ConfigDirectory..'/'..tostring(name);
-			warn("[DEBUG] Deleting: " .. path)
-			
 			if isfile(path) then
 				delfile(path)
-				warn("[DEBUG] File deleted.")
-			else
-				warn("[DEBUG] File not found to delete.")
 			end;
 		end,
 
 		SaveConfig = function(name,content)
-			warn("[DEBUG] SaveConfig called for: " .. tostring(name))
-			
 			if string.find(name,'/',1,true) or string.find(name,'\\',1,true) or string.find(name,':',1,true) then
-				warn("[DEBUG] Invalid characters in config name")
 				return;	
 			end;
+			if not res.ConfigDirectory then return end
 			
-			if not res.ConfigDirectory then 
-				warn("[DEBUG] ConfigDirectory is nil!")
-				return 
-			end
-			
-			-- ДЛЯ XENO: Явная проверка существования папки перед записью
-			if not isfolder(res.ConfigDirectory) then
-				warn("[DEBUG] Target directory missing! Creating: " .. res.ConfigDirectory)
-				makefolder(res.ConfigDirectory)
-			end
+			pcall(makefolder, res.ConfigDirectory)
 			
 			local path = res.ConfigDirectory..'/'..tostring(name);
-			warn("[DEBUG] Writing to path: " .. path)
-			
-			-- Убираем pcall, чтобы видеть ошибку в консоли
 			writefile(path , content);
-			warn("[DEBUG] Writefile executed.")
-			
-			-- Проверка записалось ли
-			if isfile(path) then
-				warn("[DEBUG] Verification: File exists on disk.")
-			else
-				warn("[DEBUG] Verification FAILED: File does not exist after write!")
-			end
 		end,
 
 		LoadConfig = function(name)
 			if not res.ConfigDirectory then return end
 			local path = res.ConfigDirectory..'/'..tostring(name);
-			warn("[DEBUG] Loading from: " .. path)
 
 			if isfile(path) then
 				local content = readfile(path)
-				warn("[DEBUG] File read. Content length: " .. #content)
+				local success, decoded = pcall(function() return game:GetService('HttpService'):JSONDecode(content) end)
 				
-				local decoded = game:GetService('HttpService'):JSONDecode(content)
-				
-				if type(decoded) == "table" then
+				if success and type(decoded) == "table" then
 					Fatal.Notifier:Notify({
 						Title = "Config",
 						Content = "Loaded config '"..tostring(name).."'",
@@ -4480,42 +4449,20 @@ local res;
 						Duration = 4,
 					});
 					Fatal:LoadConfig(decoded);
-				else
-					warn("[DEBUG] JSON Decode failed or not a table")
 				end
-			else
-				warn("[DEBUG] Load failed: File does not exist.")
 			end;
 		end,
 
 		Init = function(Name: string,Folder: string)
 			local root = Folder or "Fatality"
 			
-			warn("------------------------------------------------")
-			warn("[DEBUG] Init Config System. Executor: " .. (identifyexecutor and identifyexecutor() or "Unknown"))
-			warn("[DEBUG] Root: " .. root)
-			warn("[DEBUG] Name: " .. Name)
+			pcall(makefolder, root)
+			pcall(makefolder, root.."/Config")
 			
-			-- Прямое создание папок без pcall для отладки
-			if not isfolder(root) then 
-				warn("[DEBUG] Creating root folder: " .. root)
-				makefolder(root) 
-			end
+			local cfgPath = root.."/Config/"..tostring(Name);
+			pcall(makefolder, cfgPath)
 			
-			local confFolder = root.."/Config"
-			if not isfolder(confFolder) then 
-				warn("[DEBUG] Creating Config folder: " .. confFolder)
-				makefolder(confFolder) 
-			end
-
-			local cfgPath = confFolder.."/"..tostring(Name);
-			if not isfolder(cfgPath) then 
-				warn("[DEBUG] Creating Game Config folder: " .. cfgPath)
-				makefolder(cfgPath) 
-			end
-
 			res.ConfigDirectory = cfgPath;
-			warn("[DEBUG] ConfigDirectory set to: " .. res.ConfigDirectory)
 
 			res:ReloadConfig()
 
@@ -4533,7 +4480,6 @@ local res;
 				local code = game:GetService('HttpService'):JSONEncode(flags);
 				res:SaveConfig(configName , code);
 				
-				task.wait(0.1)
 				res:ReloadConfig();
 
 				Fatal.Notifier:Notify({
@@ -4573,14 +4519,11 @@ local res;
 
 					local code = game:GetService('HttpService'):JSONEncode(flags);
 					res:SaveConfig(configName , code);
-					
-					task.wait(0.1)
 					res:ReloadConfig();
 				end;
 			end);
 			
 			RefreshButton.MouseButton1Click:Connect(function()
-				warn("[DEBUG] Refresh button pressed")
 				res:ReloadConfig();
 				Fatal.Notifier:Notify({
 					Title = "Config",
@@ -4600,15 +4543,13 @@ local res;
 					});
 
 					res:DeleteConfig(import.Name);
-					
-					task.wait(0.1)
 					res:ReloadConfig();
 				end;
 			end)
 		end,
 	});
 
-	return res; -- 222232
+	return res;
 end;
 
 function Fatality.new(Window: Window)
