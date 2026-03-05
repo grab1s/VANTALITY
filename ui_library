@@ -4359,19 +4359,19 @@ function Fatality:CreateConfigWindow(Root: ScreenGui , Fatal , Button: ImageButt
 				if tostring(import.Name) == tostring(v) or import.Name == v then
 					import.Element = button;
 					import.Name = v;
-					button.TextColor3 = GetSafeColor(Fatality.CurrentTheme.Main);
+					import.Element.TextColor3 = Fatality.Colors.Main;
 					button.Text = "  "..tostring(v);
 				end;
 
 				button.MouseButton1Click:Connect(function()
 					if import.Element then
-						import.Element.TextColor3 = GetSafeColor(Fatality.CurrentTheme.TextDark);
+						import.Element.TextColor3 = Color3.fromRGB(150, 150, 150);
 						import.Element.Text = " "..import.Name;
 					end;
 
 					import.Element = button;
 					import.Name = v;
-					button.TextColor3 = GetSafeColor(Fatality.CurrentTheme.Main);
+					button.TextColor3 = Fatality.Colors.Main;
 					button.Text = "  "..tostring(v);
 				end);
 			end;
@@ -4452,8 +4452,6 @@ function Fatality:CreateConfigWindow(Root: ScreenGui , Fatal , Button: ImageButt
 
 			res.ConfigDirectory = cfgPath;
 
-            res:ReloadConfig()
-
 			AddConfigButton.MouseButton1Click:Connect(function()
 				local configName = TextBox.Text;
 
@@ -4513,16 +4511,6 @@ function Fatality:CreateConfigWindow(Root: ScreenGui , Fatal , Button: ImageButt
 					res:ReloadConfig();
 				end;
 			end);
-			
-			RefreshButton.MouseButton1Click:Connect(function()
-				res:ReloadConfig();
-				Fatal.Notifier:Notify({
-					Title = "Config",
-					Content = "Refreshed list",
-					Icon = "loader",
-					Duration = 2,
-				});
-			end);
 
 			DeleteButton.MouseButton1Click:Connect(function()
 				if import and import.Name then
@@ -4542,7 +4530,7 @@ function Fatality:CreateConfigWindow(Root: ScreenGui , Fatal , Button: ImageButt
 	});
 
 	return res;
-end;
+end; -- 54345345
 
 function Fatality.new(Window: Window)
 	Window = Window or {};
