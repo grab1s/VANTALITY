@@ -4332,7 +4332,7 @@ function Fatality:CreateConfigWindow(Root: ScreenGui , Fatal , Button: ImageButt
 	};
 
 local res;
-	res = Fatality:CreateResponse({ -- 534534
+	res = Fatality:CreateResponse({
 		SetFiles = function(configs,bypass)
 			local OldLen = #Configs;
 			Configs = configs;
@@ -4377,19 +4377,17 @@ local res;
 		ReloadConfig = function()
 			if not res.ConfigDirectory then return end
 			local files = {};
+
+			local executor = identifyexecutor and tostring(identifyexecutor()) or "Unknown"
 			
-			local isXeno = identifyexecutor and tostring(identifyexecutor()):find("Xeno")
-			
-			if isXeno then
+			if string.find(executor, "Xeno") then
 				if isfolder(res.ConfigDirectory) then
-					local success, list = pcall(listfiles, res.ConfigDirectory)
-					if success and list then
-						for i,v in next, list do
-							local spl = string.split(v, "/")
-							local name = spl[#spl]
-							if name and name ~= "" then
-								table.insert(files, name)
-							end
+					local list = listfiles(res.ConfigDirectory)
+					for i,v in next, list do
+						local spl = string.split(v, "/")
+						local name = spl[#spl]
+						if name and name ~= "" then
+							table.insert(files, name)
 						end
 					end
 				end
@@ -4429,14 +4427,6 @@ local res;
 			end;
 			if not res.ConfigDirectory then return end
 			
-			local isXeno = identifyexecutor and tostring(identifyexecutor()):find("Xeno")
-			
-			if isXeno then
-				if not isfolder(res.ConfigDirectory) then
-					pcall(makefolder, res.ConfigDirectory)
-				end
-			end
-			
 			local path = res.ConfigDirectory..'/'..tostring(name);
 			writefile(path , content);
 		end,
@@ -4463,14 +4453,16 @@ local res;
 
 		Init = function(Name: string,Folder: string)
 			local root = Folder or "Fatality"
-			
-			local isXeno = identifyexecutor and tostring(identifyexecutor()):find("Xeno")
+			local executor = identifyexecutor and tostring(identifyexecutor()) or "Unknown"
+			local isXeno = string.find(executor, "Xeno")
 
 			if isXeno then
-				pcall(makefolder, root)
-				pcall(makefolder, root.."/Config")
+				if not isfolder(root) then makefolder(root) end
+				if not isfolder(root.."/Config") then makefolder(root.."/Config") end
+				
 				local cfgPath = root.."/Config/"..tostring(Name);
-				pcall(makefolder, cfgPath)
+				if not isfolder(cfgPath) then makefolder(cfgPath) end
+				
 				res.ConfigDirectory = cfgPath;
 			else
 				local function Ensure(p) if not isfolder(p) then makefolder(p) end end
@@ -4497,7 +4489,7 @@ local res;
 				local code = game:GetService('HttpService'):JSONEncode(flags);
 				res:SaveConfig(configName , code);
 				
-				task.wait(0.1) -- Небольшая задержка для записи на диск
+				if not isXeno then task.wait(0.1) end
 				res:ReloadConfig();
 
 				Fatal.Notifier:Notify({
@@ -4538,7 +4530,7 @@ local res;
 					local code = game:GetService('HttpService'):JSONEncode(flags);
 					res:SaveConfig(configName , code);
 					
-					task.wait(0.1)
+					if not isXeno then task.wait(0.1) end
 					res:ReloadConfig();
 				end;
 			end);
@@ -4564,14 +4556,14 @@ local res;
 
 					res:DeleteConfig(import.Name);
 					
-					task.wait(0.1)
+					if not isXeno then task.wait(0.1) end
 					res:ReloadConfig();
 				end;
 			end)
 		end,
 	});
 
-	return res;
+	return res; -- 53453456
 end;
 
 function Fatality.new(Window: Window)
