@@ -13,7 +13,7 @@ local HttpService = game:GetService("HttpService")
 local FileSystem = {
     Root = "Vantality",
     Scripts = "Vantality/scripts",
-    Configs = "Vantality/scripts/configs"
+    Configs = "Vantality/scripts/configs" -- 111
 }
 
 if not isfolder(FileSystem.Root) then makefolder(FileSystem.Root) end
@@ -31,24 +31,27 @@ local State = {
 
 local function GetFiles()
     local t = {}
-    
-    if not isfolder(FileSystem.Scripts) then return t end
+    pcall(makefolder, FileSystem.Scripts)
 
-    local success, list = pcall(listfiles, FileSystem.Scripts)
-    if not success or type(list) ~= "table" then return t end
+    local list = {}
+    local s, res = pcall(listfiles, FileSystem.Scripts)
+    if s and type(res) == "table" then 
+        list = res 
+    else
+        s, res = pcall(listfiles, "./" .. FileSystem.Scripts)
+        if s and type(res) == "table" then list = res end
+    end
     
     for _, v in pairs(list) do
-        local file = v
-        if string.find(file, "/", 1, true) then
-            local spl = string.split(file, "/")
-            file = spl[#spl]
-        elseif string.find(file, "\\", 1, true) then
-            local spl = string.split(file, "\\")
-            file = spl[#spl]
-        end
-
-        if file ~= "configs" and not string.find(v, "configs/") and not string.find(v, "configs\\") and file ~= ".refresh_cache" and file ~= "" then
-            table.insert(t, file)
+        local name = string.match(tostring(v), "[^/\\]+$") or tostring(v)
+        
+        if name and name ~= "" and name ~= "configs" and name ~= ".refresh_cache" then
+            local is_dir = false
+            pcall(function() is_dir = isfolder(v) end)
+            
+            if not is_dir then
+                table.insert(t, name)
+            end
         end
     end
     
