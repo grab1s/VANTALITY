@@ -4333,7 +4333,7 @@ function Fatality:CreateConfigWindow(Root: ScreenGui , Fatal , Button: ImageButt
 
 local res;
 	res = Fatality:CreateResponse({
-		SetFiles = function(configs,bypass) -- 5345
+		SetFiles = function(configs,bypass)
 			local OldLen = #Configs;
 			Configs = configs;
 			if OldLen ~= #configs and not bypass then
@@ -4378,38 +4378,36 @@ local res;
 			if not res.ConfigDirectory then return end
 			local files = {};
 			
-			local isXeno = identifyexecutor and string.find(tostring(identifyexecutor()), "Xeno")
+			-- Универсальный метод получения файлов
+			-- Сначала пробуем получить список
+			local list = {}
+			local success, result = pcall(listfiles, res.ConfigDirectory)
 			
-			if isXeno then
-				if isfolder(res.ConfigDirectory) then
-					local list = listfiles(res.ConfigDirectory)
-					for i,v in next, list do
-						local spl = string.split(v, "/")
-						local name = spl[#spl]
-						if name and name ~= "" then
-							table.insert(files, name)
-						end
-					end
-				end
-			else
-				local success, list = pcall(listfiles, res.ConfigDirectory)
-				if not success or type(list) ~= "table" then
-					success, list = pcall(listfiles, string.gsub(res.ConfigDirectory, "/", "\\"))
-				end
+			-- Если не вышло (особенность Solara с путями), пробуем с обратными слешами
+			if not success or type(result) ~= "table" then
+				local altPath = string.gsub(res.ConfigDirectory, "/", "\\")
+				success, result = pcall(listfiles, altPath)
+			end
+
+			if success and type(result) == "table" then
+				list = result
+			end
+
+			for i, v in next, list do
+				-- САМОЕ ВАЖНОЕ: Приводим любой путь к единому виду
+				-- Xeno может вернуть "Folder\File", Solara "Folder/File"
+				local normalized = string.gsub(tostring(v), "\\", "/")
 				
-				if success and list then
-					for i,v in next, list do
-						local normalized = string.gsub(tostring(v), "\\", "/")
-						local spl = string.split(normalized, "/")
-						local name = spl[#spl]
-						if name and name ~= "" and name ~= "." and name ~= ".." then
-							table.insert(files, name)
-						end
-					end
+				-- Теперь безопасно разбиваем по "/"
+				local spl = string.split(normalized, "/")
+				local name = spl[#spl] -- Берем последний элемент (имя файла)
+
+				if name and name ~= "" and name ~= "." and name ~= ".." then
+					table.insert(files, name)
 				end
 			end
 
-			res:SetFiles(files,true);
+			res:SetFiles(files, true);
 			res:Refresh();
 		end,
 
@@ -4427,12 +4425,10 @@ local res;
 			end;
 			if not res.ConfigDirectory then return end
 			
-			local root = "Fatality" -- Дефолтное имя, если что-то пойдет не так, но обычно берется из Init
-			if res.RootFolder then root = res.RootFolder end
-			
-			if not isfolder(root) then makefolder(root) end
-			if not isfolder(root.."/Config") then makefolder(root.."/Config") end
-			if not isfolder(res.ConfigDirectory) then makefolder(res.ConfigDirectory) end
+			-- Гарантируем, что папка существует перед записью (для Xeno)
+			if not isfolder(res.ConfigDirectory) then
+				pcall(makefolder, res.ConfigDirectory)
+			end
 			
 			local path = res.ConfigDirectory..'/'..tostring(name);
 			writefile(path , content);
@@ -4460,13 +4456,12 @@ local res;
 
 		Init = function(Name: string,Folder: string)
 			local root = Folder or "Fatality"
-			res.RootFolder = root -- Сохраняем для SaveConfig
 			
-			if not isfolder(root) then makefolder(root) end
-			if not isfolder(root.."/Config") then makefolder(root.."/Config") end
-			
+			-- Глобальная инициализация папок "на всякий случай"
+			pcall(makefolder, root)
+			pcall(makefolder, root.."/Config")
 			local cfgPath = root.."/Config/"..tostring(Name);
-			if not isfolder(cfgPath) then makefolder(cfgPath) end
+			pcall(makefolder, cfgPath)
 			
 			res.ConfigDirectory = cfgPath;
 			res:ReloadConfig()
@@ -4485,7 +4480,7 @@ local res;
 				local code = game:GetService('HttpService'):JSONEncode(flags);
 				res:SaveConfig(configName , code);
 				
-				task.wait(0.1)
+				task.wait(0.1) -- Даем Xeno время обновить кэш
 				res:ReloadConfig();
 
 				Fatal.Notifier:Notify({
@@ -4559,7 +4554,7 @@ local res;
 		end,
 	});
 
-	return res;
+	return res; -- 5435346
 end;
 
 function Fatality.new(Window: Window)
