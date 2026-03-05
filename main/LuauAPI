@@ -425,4 +425,4 @@ function LuauAPI:Init(Tab, IgnoredSection, NotifierObj)
     })
 end
 
-return LuauAPI -- 53453456
+return LuauAPI
