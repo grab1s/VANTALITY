@@ -13,7 +13,7 @@ local HttpService = game:GetService("HttpService")
 local FileSystem = {
     Root = "Vantality",
     Scripts = "Vantality/scripts",
-    Configs = "Vantality/Config/Main"
+    Configs = "Vantality/scripts/configs"
 }
 
 local isXeno = identifyexecutor and string.find(tostring(identifyexecutor()), "Xeno")
@@ -44,18 +44,21 @@ local function GetFiles()
     local t = {}
     
     if isXeno then
-        if not isfolder(FileSystem.Scripts) then return t end
-        local list = listfiles(FileSystem.Scripts)
-        for _, v in pairs(list) do
-            local spl = string.split(v, "/")
-            local file = spl[#spl]
-            if file and file ~= "configs" and file ~= "" and file ~= ".refresh_cache" then
-                table.insert(t, file)
+        local success, list = pcall(listfiles, FileSystem.Scripts)
+        if success and type(list) == "table" then
+            for _, v in pairs(list) do
+                local spl = string.split(v, "/")
+                local file = spl[#spl]
+                if file and file ~= "configs" and file ~= "" and file ~= ".refresh_cache" then
+                    table.insert(t, file)
+                end
             end
         end
     else
         local success, list = pcall(listfiles, FileSystem.Scripts)
-        if not success or type(list) ~= "table" then return t end
+        if not success or type(list) ~= "table" then 
+            return t 
+        end
         
         for _, v in pairs(list) do
             local normalized = string.gsub(tostring(v), "\\", "/")
