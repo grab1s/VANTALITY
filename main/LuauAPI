@@ -16,7 +16,6 @@ local FileSystem = {
     Configs = "Vantality/scripts/configs"
 }
 
--- Инициализация папок (простая и надежная)
 if not isfolder(FileSystem.Root) then makefolder(FileSystem.Root) end
 if not isfolder(FileSystem.Scripts) then makefolder(FileSystem.Scripts) end
 if not isfolder(FileSystem.Configs) then makefolder(FileSystem.Configs) end
@@ -33,21 +32,22 @@ local State = {
 local function GetFiles()
     local t = {}
     
-    -- Получаем список файлов простым методом
-    local list = listfiles(FileSystem.Scripts)
-    
-    -- Если listfiles вернул nil (что бывает на некоторых экзекуторах при пустой папке), делаем пустую таблицу
-    if type(list) ~= "table" then return t end
+    if not isfolder(FileSystem.Scripts) then return t end
+
+    local success, list = pcall(listfiles, FileSystem.Scripts)
+    if not success or type(list) ~= "table" then return t end
     
     for _, v in pairs(list) do
-        -- ЕДИНСТВЕННОЕ ВАЖНОЕ ИСПРАВЛЕНИЕ:
-        -- Заменяем обратные слеши на прямые. Это чинит Solara, не ломая Xeno.
-        local normalized = string.gsub(tostring(v), "\\", "/")
-        
-        local spl = string.split(normalized, "/")
-        local file = spl[#spl]
+        local file = v
+        if string.find(file, "/", 1, true) then
+            local spl = string.split(file, "/")
+            file = spl[#spl]
+        elseif string.find(file, "\\", 1, true) then
+            local spl = string.split(file, "\\")
+            file = spl[#spl]
+        end
 
-        if file and file ~= "" and file ~= "configs" and not string.find(normalized, "/configs/") and file ~= ".refresh_cache" then
+        if file ~= "configs" and not string.find(v, "configs/") and not string.find(v, "configs\\") and file ~= ".refresh_cache" and file ~= "" then
             table.insert(t, file)
         end
     end
@@ -368,7 +368,7 @@ function LuauAPI:Init(Tab, IgnoredSection, NotifierObj)
         end
     })
 
-    ControlSection:AddButton({
+ControlSection:AddButton({
         Name = "Delete File",
         Risky = true,
         Callback = function()
@@ -408,4 +408,4 @@ function LuauAPI:Init(Tab, IgnoredSection, NotifierObj)
     })
 end
 
-return LuauAPI -- 5435346
+return LuauAPI
