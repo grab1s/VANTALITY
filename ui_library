@@ -4333,7 +4333,7 @@ function Fatality:CreateConfigWindow(Root: ScreenGui , Fatal , Button: ImageButt
 
 local res;
 	res = Fatality:CreateResponse({
-		SetFiles = function(configs,bypass)
+		SetFiles = function(configs,bypass) -- 5345
 			local OldLen = #Configs;
 			Configs = configs;
 			if OldLen ~= #configs and not bypass then
@@ -4377,10 +4377,10 @@ local res;
 		ReloadConfig = function()
 			if not res.ConfigDirectory then return end
 			local files = {};
-
-			local executor = identifyexecutor and tostring(identifyexecutor()) or "Unknown"
 			
-			if string.find(executor, "Xeno") then
+			local isXeno = identifyexecutor and string.find(tostring(identifyexecutor()), "Xeno")
+			
+			if isXeno then
 				if isfolder(res.ConfigDirectory) then
 					local list = listfiles(res.ConfigDirectory)
 					for i,v in next, list do
@@ -4427,7 +4427,12 @@ local res;
 			end;
 			if not res.ConfigDirectory then return end
 			
-			pcall(makefolder, res.ConfigDirectory)
+			local root = "Fatality" -- Дефолтное имя, если что-то пойдет не так, но обычно берется из Init
+			if res.RootFolder then root = res.RootFolder end
+			
+			if not isfolder(root) then makefolder(root) end
+			if not isfolder(root.."/Config") then makefolder(root.."/Config") end
+			if not isfolder(res.ConfigDirectory) then makefolder(res.ConfigDirectory) end
 			
 			local path = res.ConfigDirectory..'/'..tostring(name);
 			writefile(path , content);
@@ -4455,15 +4460,15 @@ local res;
 
 		Init = function(Name: string,Folder: string)
 			local root = Folder or "Fatality"
+			res.RootFolder = root -- Сохраняем для SaveConfig
 			
-			pcall(makefolder, root)
-			pcall(makefolder, root.."/Config")
+			if not isfolder(root) then makefolder(root) end
+			if not isfolder(root.."/Config") then makefolder(root.."/Config") end
 			
 			local cfgPath = root.."/Config/"..tostring(Name);
-			pcall(makefolder, cfgPath)
+			if not isfolder(cfgPath) then makefolder(cfgPath) end
 			
 			res.ConfigDirectory = cfgPath;
-
 			res:ReloadConfig()
 
 			AddConfigButton.MouseButton1Click:Connect(function()
@@ -4480,6 +4485,7 @@ local res;
 				local code = game:GetService('HttpService'):JSONEncode(flags);
 				res:SaveConfig(configName , code);
 				
+				task.wait(0.1)
 				res:ReloadConfig();
 
 				Fatal.Notifier:Notify({
@@ -4519,6 +4525,8 @@ local res;
 
 					local code = game:GetService('HttpService'):JSONEncode(flags);
 					res:SaveConfig(configName , code);
+					
+					task.wait(0.1)
 					res:ReloadConfig();
 				end;
 			end);
@@ -4543,6 +4551,8 @@ local res;
 					});
 
 					res:DeleteConfig(import.Name);
+					
+					task.wait(0.1)
 					res:ReloadConfig();
 				end;
 			end)
