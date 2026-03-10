@@ -4331,7 +4331,7 @@ function Fatality:CreateConfigWindow(Root: ScreenGui , Fatal , Button: ImageButt
 		Element = nil;
 	};
 
-local res;
+local res; -- 456456
 	res = Fatality:CreateResponse({
 		SetFiles = function(configs, bypass)
 			local OldLen = #Configs;
@@ -4383,12 +4383,25 @@ local res;
             
 			if success and type(list) == "table" then
 				for _, filePath in ipairs(list) do
-					local fileName = string.match(filePath, "[^\\/]+$") or filePath
+					local cleanPath = string.gsub(filePath, "[\\/]+$", "")
+					local fileName = string.match(cleanPath, "[^\\/]+$") or cleanPath
                     
-					local relPath = res.ConfigDirectory .. "/" .. fileName
+					local expectedPath = res.ConfigDirectory .. "/" .. fileName
 
-					local isFileSuccess, fileCheck = pcall(isfile, relPath)
-					if isFileSuccess and fileCheck then
+					local isFileSuccess, fileCheck = pcall(isfile, filePath) 
+					
+					if not (isFileSuccess and fileCheck) then
+						isFileSuccess, fileCheck = pcall(isfile, expectedPath) 
+					end
+					
+					if not (isFileSuccess and fileCheck) then
+						local isFolderSuccess, folderCheck = pcall(isfolder, filePath) 
+						if isFolderSuccess and not folderCheck then
+							fileCheck = true 
+						end
+					end
+
+					if fileCheck then
 						table.insert(files, fileName);
 					end
 				end
@@ -4401,20 +4414,14 @@ local res;
 		DeleteConfig = function(name)
 			if not res.ConfigDirectory then return end
 			local path = res.ConfigDirectory..'/'..tostring(name);
-
-			local isFileSuccess, fileCheck = pcall(isfile, path)
-			if isFileSuccess and fileCheck then
-				pcall(delfile, path)
-			end;
+			pcall(delfile, path)
 		end,
 
 		SaveConfig = function(name, content)
 			local safeName = string.gsub(tostring(name), "[<>:\"/\\|?*]", "")
 			if safeName == "" then return end
-
 			if not res.ConfigDirectory then return end
 			local path = res.ConfigDirectory..'/'..safeName;
-
 			pcall(writefile, path, content);
 		end,
 
@@ -4422,22 +4429,19 @@ local res;
 			if not res.ConfigDirectory then return end
 			local path = res.ConfigDirectory..'/'..tostring(name);
 
-			local isFileSuccess, fileCheck = pcall(isfile, path)
-			if isFileSuccess and fileCheck then
-				local readSuccess, content = pcall(readfile, path)
-				if readSuccess and type(content) == "string" then
-					local decodeSuccess, decoded = pcall(game:GetService('HttpService').JSONDecode, game:GetService('HttpService'), content)
-					if decodeSuccess and type(decoded) == "table" then
-						Fatal.Notifier:Notify({
-							Title = "Config",
-							Content = "Loaded config '"..tostring(name).."'",
-							Icon = "settings",
-							Duration = 4,
-						});
-						Fatal:LoadConfig(decoded);
-					end
+			local readSuccess, content = pcall(readfile, path)
+			if readSuccess and type(content) == "string" then
+				local decodeSuccess, decoded = pcall(game:GetService('HttpService').JSONDecode, game:GetService('HttpService'), content)
+				if decodeSuccess and type(decoded) == "table" then
+					Fatal.Notifier:Notify({
+						Title = "Config",
+						Content = "Loaded config '"..tostring(name).."'",
+						Icon = "settings",
+						Duration = 4,
+					});
+					Fatal:LoadConfig(decoded);
 				end
-			end;
+			end
 		end,
 
 		Init = function(Name, Folder)
