@@ -4331,13 +4331,11 @@ function Fatality:CreateConfigWindow(Root: ScreenGui , Fatal , Button: ImageButt
 		Element = nil;
 	};
 
-	local res;
+local res; -- 5345345
 	res = Fatality:CreateResponse({
-		SetFiles = function(configs,bypass)
+		SetFiles = function(configs, bypass)
 			local OldLen = #Configs;
-
 			Configs = configs;
-
 			if OldLen ~= #configs and not bypass then
 				res:ReloadConfig();
 			end;
@@ -4366,7 +4364,7 @@ function Fatality:CreateConfigWindow(Root: ScreenGui , Fatal , Button: ImageButt
 				button.MouseButton1Click:Connect(function()
 					if import.Element then
 						import.Element.TextColor3 = GetSafeColor(Fatality.CurrentTheme.TextDark);
-						import.Element.Text = " "..import.Name;
+						import.Element.Text = " "..tostring(import.Name);
 					end;
 
 					import.Element = button;
@@ -4378,108 +4376,117 @@ function Fatality:CreateConfigWindow(Root: ScreenGui , Fatal , Button: ImageButt
 		end,
 
 		ReloadConfig = function()
-			assert(res.ConfigDirectory , "Config directory not found");
+			if not res.ConfigDirectory then return end
 
 			local files = {};
+			local success, list = pcall(listfiles, res.ConfigDirectory)
+            
+			if success and type(list) == "table" then
+				for _, filePath in ipairs(list) do
+					local fileName = string.match(filePath, "[^\\/]+$") or filePath
+                    
+					local isFileSuccess, fileCheck = pcall(isfile, filePath)
+					if isFileSuccess and fileCheck then
+						table.insert(files, fileName);
+					end
+				end
+			end
 
-			for i,v in next , listfiles(res.ConfigDirectory) do
-				local spl = (string.find(v,'/',1,true) and string.split(v,'/')) or (string.find(v,'\\',1,true) and string.split(v,'\\'));
-				local name = spl[#spl];
-
-				table.insert(files,name);
-			end;
-
-			res:SetFiles(files,true);
+			res:SetFiles(files, true);
 			res:Refresh();
 		end,
 
 		DeleteConfig = function(name)
-			assert(res.ConfigDirectory , "Config directory not found");
-
+			if not res.ConfigDirectory then return end
 			local path = res.ConfigDirectory..'/'..tostring(name);
 
-			if isfile(path) then
-				delfile(path)
+			local isFileSuccess, fileCheck = pcall(isfile, path)
+			if isFileSuccess and fileCheck then
+				pcall(delfile, path)
 			end;
 		end,
 
-		SaveConfig = function(name,content)
-			if string.find(name,'/',1,true) or string.find(name,'\\',1,true) or string.find(name,':',1,true) then
-				return;	
-			end;
+		SaveConfig = function(name, content)
+			local safeName = string.gsub(tostring(name), "[<>:\"/\\|?*]", "")
+			if safeName == "" then return end
 
-			assert(res.ConfigDirectory , "Config directory not found");
+			if not res.ConfigDirectory then return end
+			local path = res.ConfigDirectory..'/'..safeName;
 
-			local path = res.ConfigDirectory..'/'..tostring(name);
-
-			writefile(path , content);
+			pcall(writefile, path, content);
 		end,
 
 		LoadConfig = function(name)
-
-			assert(res.ConfigDirectory , "Config directory not found");
-
+			if not res.ConfigDirectory then return end
 			local path = res.ConfigDirectory..'/'..tostring(name);
 
-			if isfile(path) then
-				local decoded = game:GetService('HttpService'):JSONDecode(readfile(path));
-
-				Fatal.Notifier:Notify({
-					Title = "Config",
-					Content = "Loaded config '"..tostring(name).."'",
-					Icon = "settings",
-					Duration = 4,
-				});
-
-				Fatal:LoadConfig(decoded);
+			local isFileSuccess, fileCheck = pcall(isfile, path)
+			if isFileSuccess and fileCheck then
+				local readSuccess, content = pcall(readfile, path)
+				if readSuccess and type(content) == "string" then
+					local decodeSuccess, decoded = pcall(game:GetService('HttpService').JSONDecode, game:GetService('HttpService'), content)
+					if decodeSuccess and type(decoded) == "table" then
+						Fatal.Notifier:Notify({
+							Title = "Config",
+							Content = "Loaded config '"..tostring(name).."'",
+							Icon = "settings",
+							Duration = 4,
+						});
+						Fatal:LoadConfig(decoded);
+					end
+				end
 			end;
 		end,
 
-		Init = function(Name: string,Folder: string)
-			if not isfolder(Folder or "Fatality") then
-				makefolder(Folder or "Fatality");	
-			end;
-
-			if not isfolder((Folder or "Fatality").."/Config") then
-				makefolder((Folder or "Fatality").."/Config");	
-			end;
-
-			local cfgPath = (Folder or "Fatality").."/Config/"..tostring(Name);
-
-			if not isfolder(cfgPath) then
-				makefolder(cfgPath)
-			end;
-
-			res.ConfigDirectory = cfgPath;
-
-            res:ReloadConfig()
+		Init = function(Name, Folder)
+			local baseFolder = Folder or "Fatality"
+			local configFolder = baseFolder .. "/Config"
+			local specificFolder = configFolder .. "/" .. tostring(Name)
+            
+			local function CreateTree(path)
+				local parts = string.split(string.gsub(path, "\\", "/"), "/")
+				local current = ""
+				for i, part in ipairs(parts) do
+					if part ~= "" then
+						current = current == "" and part or (current .. "/" .. part)
+						local isFolderSuccess, folderCheck = pcall(isfolder, current)
+						if isFolderSuccess and not folderCheck then
+							pcall(makefolder, current)
+						end
+					end
+				end
+			end
+            
+			CreateTree(specificFolder)
+			res.ConfigDirectory = specificFolder;
+			res:ReloadConfig()
 
 			AddConfigButton.MouseButton1Click:Connect(function()
 				local configName = TextBox.Text;
-
-				if not configName:byte() then return end;
+				local safeName = string.gsub(tostring(configName), "[<>:\"/\\|?*]", "")
+				if safeName == "" then return end;
 
 				local flags = Fatal:GetFlagConfig();
-
 				flags.Info = {
 					Name = Name,
 					Folder = Folder,
-					ConfigName = configName,
+					ConfigName = safeName,
 				};
 
-				local code = game:GetService('HttpService'):JSONEncode(flags);
+				local encodeSuccess, code = pcall(game:GetService('HttpService').JSONEncode, game:GetService('HttpService'), flags)
+				if encodeSuccess then
+					res:SaveConfig(safeName, code);
+					res:ReloadConfig();
 
-				res:SaveConfig(configName , code);
-				res:ReloadConfig();
+					Fatal.Notifier:Notify({
+						Title = "Config",
+						Content = "Saved config '"..tostring(safeName).."'",
+						Icon = "settings",
+						Duration = 4,
+					});
 
-				Fatal.Notifier:Notify({
-					Title = "Config",
-					Content = "Saved config '"..tostring(configName).."'",
-					Icon = "settings",
-					Duration = 4,
-				});
-
-				TextBox.Text = "";
+					TextBox.Text = "";
+				end
 			end);
 
 			GetConfigButton.MouseButton1Click:Connect(function()
@@ -4500,17 +4507,18 @@ function Fatality:CreateConfigWindow(Root: ScreenGui , Fatal , Button: ImageButt
 						Type = "Overwrite"
 					};
 
-					Fatal.Notifier:Notify({
-						Title = "Config",
-						Content = "Saved config '"..tostring(configName).."'",
-						Icon = "settings",
-						Duration = 4,
-					});
-
-					local code = game:GetService('HttpService'):JSONEncode(flags);
-
-					res:SaveConfig(configName , code);
-					res:ReloadConfig();
+					local encodeSuccess, code = pcall(game:GetService('HttpService').JSONEncode, game:GetService('HttpService'), flags)
+					if encodeSuccess then
+						res:SaveConfig(configName, code);
+						res:ReloadConfig();
+                        
+						Fatal.Notifier:Notify({
+							Title = "Config",
+							Content = "Saved config '"..tostring(configName).."'",
+							Icon = "settings",
+							Duration = 4,
+						});
+					end
 				end;
 			end);
 			
@@ -4526,7 +4534,6 @@ function Fatality:CreateConfigWindow(Root: ScreenGui , Fatal , Button: ImageButt
 
 			DeleteButton.MouseButton1Click:Connect(function()
 				if import and import.Name then
-
 					Fatal.Notifier:Notify({
 						Title = "Config",
 						Content = "Deleted config '"..tostring(import.Name).."'",
@@ -4536,6 +4543,9 @@ function Fatality:CreateConfigWindow(Root: ScreenGui , Fatal , Button: ImageButt
 
 					res:DeleteConfig(import.Name);
 					res:ReloadConfig();
+                    
+					import.Name = nil
+					import.Element = nil
 				end;
 			end)
 		end,
