@@ -4331,7 +4331,7 @@ function Fatality:CreateConfigWindow(Root: ScreenGui , Fatal , Button: ImageButt
 		Element = nil;
 	};
 
-local res; -- 5345345
+local res;
 	res = Fatality:CreateResponse({
 		SetFiles = function(configs, bypass)
 			local OldLen = #Configs;
@@ -4385,7 +4385,9 @@ local res; -- 5345345
 				for _, filePath in ipairs(list) do
 					local fileName = string.match(filePath, "[^\\/]+$") or filePath
                     
-					local isFileSuccess, fileCheck = pcall(isfile, filePath)
+					local relPath = res.ConfigDirectory .. "/" .. fileName
+
+					local isFileSuccess, fileCheck = pcall(isfile, relPath)
 					if isFileSuccess and fileCheck then
 						table.insert(files, fileName);
 					end
