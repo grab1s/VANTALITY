@@ -4331,7 +4331,7 @@ function Fatality:CreateConfigWindow(Root: ScreenGui , Fatal , Button: ImageButt
 		Element = nil;
 	};
 
-local res; -- 456456
+local res;
 	res = Fatality:CreateResponse({
 		SetFiles = function(configs, bypass)
 			local OldLen = #Configs;
@@ -4379,29 +4379,17 @@ local res; -- 456456
 			if not res.ConfigDirectory then return end
 
 			local files = {};
+			-- Просто получаем список. Если папки нет, pcall подавит ошибку.
 			local success, list = pcall(listfiles, res.ConfigDirectory)
             
 			if success and type(list) == "table" then
 				for _, filePath in ipairs(list) do
-					local cleanPath = string.gsub(filePath, "[\\/]+$", "")
-					local fileName = string.match(cleanPath, "[^\\/]+$") or cleanPath
+					-- Вытаскиваем чистое имя файла (например "3425345" из "C:\...\3425345")
+					local fileName = string.match(filePath, "[^\\/]+$") or filePath
                     
-					local expectedPath = res.ConfigDirectory .. "/" .. fileName
-
-					local isFileSuccess, fileCheck = pcall(isfile, filePath) 
-					
-					if not (isFileSuccess and fileCheck) then
-						isFileSuccess, fileCheck = pcall(isfile, expectedPath) 
-					end
-					
-					if not (isFileSuccess and fileCheck) then
-						local isFolderSuccess, folderCheck = pcall(isfolder, filePath) 
-						if isFolderSuccess and not folderCheck then
-							fileCheck = true 
-						end
-					end
-
-					if fileCheck then
+					if fileName and fileName ~= "" then
+						-- Мы больше не используем isfile()!
+						-- Если listfiles вернул этот путь, мы просто доверяем ему и добавляем в UI.
 						table.insert(files, fileName);
 					end
 				end
@@ -4414,6 +4402,8 @@ local res; -- 456456
 		DeleteConfig = function(name)
 			if not res.ConfigDirectory then return end
 			local path = res.ConfigDirectory..'/'..tostring(name);
+			
+			-- Слепое удаление. Если файла нет, pcall просто скроет ошибку.
 			pcall(delfile, path)
 		end,
 
@@ -4421,6 +4411,7 @@ local res; -- 456456
 			local safeName = string.gsub(tostring(name), "[<>:\"/\\|?*]", "")
 			if safeName == "" then return end
 			if not res.ConfigDirectory then return end
+			
 			local path = res.ConfigDirectory..'/'..safeName;
 			pcall(writefile, path, content);
 		end,
@@ -4429,6 +4420,7 @@ local res; -- 456456
 			if not res.ConfigDirectory then return end
 			local path = res.ConfigDirectory..'/'..tostring(name);
 
+			-- Слепое чтение. Мы не проверяем isfile, сразу пытаемся прочитать.
 			local readSuccess, content = pcall(readfile, path)
 			if readSuccess and type(content) == "string" then
 				local decodeSuccess, decoded = pcall(game:GetService('HttpService').JSONDecode, game:GetService('HttpService'), content)
@@ -4449,21 +4441,21 @@ local res; -- 456456
 			local configFolder = baseFolder .. "/Config"
 			local specificFolder = configFolder .. "/" .. tostring(Name)
             
-			local function CreateTree(path)
+			-- Создаем папки "вслепую"
+			local function SafeCreateDir(path)
 				local parts = string.split(string.gsub(path, "\\", "/"), "/")
 				local current = ""
-				for i, part in ipairs(parts) do
+				for _, part in ipairs(parts) do
 					if part ~= "" then
 						current = current == "" and part or (current .. "/" .. part)
-						local isFolderSuccess, folderCheck = pcall(isfolder, current)
-						if isFolderSuccess and not folderCheck then
-							pcall(makefolder, current)
-						end
+						-- pcall(makefolder) попытается создать папку.
+						-- Если она уже есть, экзекутор кинет ошибку, которую pcall благополучно заглушит.
+						pcall(makefolder, current)
 					end
 				end
 			end
             
-			CreateTree(specificFolder)
+			SafeCreateDir(specificFolder)
 			res.ConfigDirectory = specificFolder;
 			res:ReloadConfig()
 
@@ -4555,7 +4547,7 @@ local res; -- 456456
 				end;
 			end)
 		end,
-	});
+	}); -- 53453
 
 	return res;
 end;
