@@ -4331,240 +4331,287 @@ function Fatality:CreateConfigWindow(Root: ScreenGui , Fatal , Button: ImageButt
 		Element = nil;
 	};
 
-local res; -- 5е3453
-res = Fatality:CreateResponse({
-    SetFiles = function(configs, bypass)
-        local OldLen = #Configs;
-        Configs = configs;
-        if OldLen ~= #configs and not bypass then
-            res:ReloadConfig();
-        end;
-    end,
+ 	local function SafeWrite(path, content) - 5е3453
+		if type(writefile) == "function" then
+			return pcall(writefile, path, content)
+		elseif type(appendfile) == "function" then
+			if isfile(path) then pcall(delfile, path) end
+			return pcall(appendfile, path, content)
+		end
+		return false, "Нет поддерживаемой функции записи"
+	end
 
-    Refresh = function()
-        for i,v in next , ScrollingFrame:GetChildren() do
-            if v:IsA('TextButton') then
-                v:Destroy();
-            end;
-        end;
+	local function GetConfigIndex(dirPath)
+		local indexPath = dirPath .. '/Index.json'
+		if isfile(indexPath) then
+			local succ, content = pcall(readfile, indexPath)
+			if succ and type(content) == "string" then
+				local succ2, decoded = pcall(game:GetService('HttpService').JSONDecode, game:GetService('HttpService'), content)
+				if succ2 and type(decoded) == "table" then
+					return decoded
+				end
+			end
+		end
+		return {}
+	end
 
-        for i,v in next, Configs do
-            local button = new_button();
+	local function SaveConfigIndex(dirPath, tbl)
+		local indexPath = dirPath .. '/Index.json'
+		local succ, encoded = pcall(game:GetService('HttpService').JSONEncode, game:GetService('HttpService'), tbl)
+		if succ then
+			SafeWrite(indexPath, encoded)
+		end
+	end
 
-            button.Parent = ScrollingFrame;
-            button.Text = " "..tostring(v);
+	local res;
+	res = Fatality:CreateResponse({
+		SetFiles = function(configs, bypass)
+			local OldLen = #Configs;
+			Configs = configs;
+			if OldLen ~= #configs and not bypass then
+				res:ReloadConfig();
+			end;
+		end,
 
-            if tostring(import.Name) == tostring(v) or import.Name == v then
-                import.Element = button;
-                import.Name = v;
-                button.TextColor3 = GetSafeColor(Fatality.CurrentTheme.Main);
-                button.Text = "  "..tostring(v);
-            end;
+		Refresh = function()
+			for i,v in next , ScrollingFrame:GetChildren() do
+				if v:IsA('TextButton') then
+					v:Destroy();
+				end;
+			end;
 
-            button.MouseButton1Click:Connect(function()
-                if import.Element then
-                    import.Element.TextColor3 = GetSafeColor(Fatality.CurrentTheme.TextDark);
-                    import.Element.Text = " "..tostring(import.Name);
-                end;
+			for i,v in next, Configs do
+				local button = new_button();
 
-                import.Element = button;
-                import.Name = v;
-                button.TextColor3 = GetSafeColor(Fatality.CurrentTheme.Main);
-                button.Text = "  "..tostring(v);
-            end);
-        end;
-    end,
+				button.Parent = ScrollingFrame;
+				button.Text = " "..tostring(v);
 
-    ReloadConfig = function()
-        if not res.ConfigDirectory then return end
+				if tostring(import.Name) == tostring(v) or import.Name == v then
+					import.Element = button;
+					import.Name = v;
+					button.TextColor3 = GetSafeColor(Fatality.CurrentTheme.Main);
+					button.Text = "  "..tostring(v);
+				end;
 
-        local files = {};
-        
-        local success, list = pcall(listfiles, res.ConfigDirectory)
-        
-        if not success then
-            warn("[Fatality] Ошибка при чтении списка файлов (listfiles):", tostring(list))
-        elseif success and type(list) == "table" then
-            for _, filePath in ipairs(list) do
-                local fileName = string.match(filePath, "[^\\/]+$") or filePath
-                
-                if fileName and fileName ~= "" and string.match(fileName, "%.json$") then
-                    local cleanName = string.gsub(fileName, "%.json$", "")
-                    table.insert(files, cleanName);
-                end
-            end
-        end
+				button.MouseButton1Click:Connect(function()
+					if import.Element then
+						import.Element.TextColor3 = GetSafeColor(Fatality.CurrentTheme.TextDark);
+						import.Element.Text = " "..tostring(import.Name);
+					end;
 
-        res:SetFiles(files, true);
-        res:Refresh();
-    end,
+					import.Element = button;
+					import.Name = v;
+					button.TextColor3 = GetSafeColor(Fatality.CurrentTheme.Main);
+					button.Text = "  "..tostring(v);
+				end);
+			end;
+		end,
 
-    DeleteConfig = function(name)
-        if not res.ConfigDirectory then return end
-        local path = res.ConfigDirectory..'/'..tostring(name)..'.json';
-        
-        local success, err = pcall(delfile, path)
-        if not success then
-            warn("[Fatality] Ошибка при удалении файла:", tostring(err))
-        end
-    end,
+		ReloadConfig = function()
+			if not res.ConfigDirectory then return end
 
-    SaveConfig = function(name, content)
-        local safeName = string.gsub(tostring(name), "[<>:\"/\\|?*]", "")
-        if safeName == "" then return end
-        if not res.ConfigDirectory then return end
-        
-        local path = res.ConfigDirectory..'/'..safeName..'.json';
-        
-        local success, err = pcall(writefile, path, content);
-        if not success then
-            warn("[Fatality] Ошибка при сохранении конфига (writefile):", tostring(err))
-        end
-    end,
+			local files = {};
+			local foundMap = {};
 
-    LoadConfig = function(name)
-        if not res.ConfigDirectory then return end
-        local path = res.ConfigDirectory..'/'..tostring(name)..'.json';
+			if type(listfiles) == "function" then
+				local success, list = pcall(listfiles, res.ConfigDirectory)
+				if success and type(list) == "table" then
+					for _, filePath in ipairs(list) do
+						local fileName = string.match(filePath, "[^\\/]+$") or filePath
+						if fileName and fileName ~= "" and fileName ~= "Index.json" then
+							table.insert(files, fileName);
+							foundMap[fileName] = true;
+						end
+					end
+				end
+			end
 
-        local readSuccess, content = pcall(readfile, path)
-        if not readSuccess then
-            warn("[Fatality] Ошибка при чтении конфига (readfile):", tostring(content))
-            return 
-        end
-        
-        if type(content) == "string" then
-            local decodeSuccess, decoded = pcall(game:GetService('HttpService').JSONDecode, game:GetService('HttpService'), content)
-            if decodeSuccess and type(decoded) == "table" then
-                Fatal.Notifier:Notify({
-                    Title = "Config",
-                    Content = "Loaded config '"..tostring(name).."'",
-                    Icon = "settings",
-                    Duration = 4,
-                });
-                Fatal:LoadConfig(decoded);
-            else
-                warn("[Fatality] Ошибка парсинга JSON:", tostring(decoded))
-            end
-        end
-    end,
+			if type(listfiles) ~= "function" then
+				local indexList = GetConfigIndex(res.ConfigDirectory)
+				for _, fileName in ipairs(indexList) do
+					if fileName ~= "Index.json" and not foundMap[fileName] then
+						local path = res.ConfigDirectory..'/'..fileName;
+						if type(isfile) == "function" and isfile(path) then
+							table.insert(files, fileName);
+							foundMap[fileName] = true;
+						end
+					end
+				end
+			end
 
-    Init = function(Name, Folder)
-        local baseFolder = Folder or "Fatality"
-        local configFolder = baseFolder .. "/Config"
-        local specificFolder = configFolder .. "/" .. tostring(Name)
-        
-        local function SafeCreateDir(path)
-            local parts = string.split(string.gsub(path, "\\", "/"), "/")
-            local current = ""
-            for _, part in ipairs(parts) do
-                if part ~= "" then
-                    current = current == "" and part or (current .. "/" .. part)
+			res:SetFiles(files, true);
+			res:Refresh();
+		end,
+
+		DeleteConfig = function(name)
+			if not res.ConfigDirectory then return end
+			local path = res.ConfigDirectory..'/'..tostring(name);
+			
+			pcall(delfile, path)
+
+			if type(listfiles) ~= "function" then
+				local indexList = GetConfigIndex(res.ConfigDirectory)
+				local newIndex = {}
+				for _, v in ipairs(indexList) do
+					if v ~= tostring(name) then
+						table.insert(newIndex, v)
+					end
+				end
+				SaveConfigIndex(res.ConfigDirectory, newIndex)
+			end
+		end,
+
+		SaveConfig = function(name, content)
+			local safeName = string.gsub(tostring(name), "[<>:\"/\\|?*]", "")
+			if safeName == "" then return end
+			if not res.ConfigDirectory then return end
+			
+			local path = res.ConfigDirectory..'/'..safeName;
+			
+			SafeWrite(path, content)
+
+			if type(listfiles) ~= "function" then
+				local indexList = GetConfigIndex(res.ConfigDirectory)
+				local exists = false
+				for _, v in ipairs(indexList) do
+					if v == safeName then exists = true break end
+				end
+				
+				if not exists then
+					table.insert(indexList, safeName)
+					SaveConfigIndex(res.ConfigDirectory, indexList)
+				end
+			end
+		end,
+
+		LoadConfig = function(name)
+			if not res.ConfigDirectory then return end
+			local path = res.ConfigDirectory..'/'..tostring(name);
+
+			local readSuccess, content = pcall(readfile, path)
+			if readSuccess and type(content) == "string" then
+				local decodeSuccess, decoded = pcall(game:GetService('HttpService').JSONDecode, game:GetService('HttpService'), content)
+				if decodeSuccess and type(decoded) == "table" then
+					Fatal.Notifier:Notify({
+						Title = "Config",
+						Content = "Loaded config '"..tostring(name).."'",
+						Icon = "settings",
+						Duration = 4,
+					});
+					Fatal:LoadConfig(decoded);
+				end
+			end
+		end,
+
+		Init = function(Name, Folder)
+			local baseFolder = Folder or "Fatality"
+			local configFolder = baseFolder .. "/Config"
+			local specificFolder = configFolder .. "/" .. tostring(Name)
+            
+			local function SafeCreateDir(path)
+				local parts = string.split(string.gsub(path, "\\", "/"), "/")
+				local current = ""
+				for _, part in ipairs(parts) do
+					if part ~= "" then
+						current = current == "" and part or (current .. "/" .. part)
+						if not isfolder(current) then pcall(makefolder, current) end
+					end
+				end
+			end
+            
+			SafeCreateDir(specificFolder)
+			res.ConfigDirectory = specificFolder;
+			res:ReloadConfig()
+
+			AddConfigButton.MouseButton1Click:Connect(function()
+				local configName = TextBox.Text;
+				local safeName = string.gsub(tostring(configName), "[<>:\"/\\|?*]", "")
+				if safeName == "" then return end;
+
+				local flags = Fatal:GetFlagConfig();
+				flags.Info = {
+					Name = Name,
+					Folder = Folder,
+					ConfigName = safeName,
+				};
+
+				local encodeSuccess, code = pcall(game:GetService('HttpService').JSONEncode, game:GetService('HttpService'), flags)
+				if encodeSuccess then
+					res:SaveConfig(safeName, code);
+					res:ReloadConfig();
+
+					Fatal.Notifier:Notify({
+						Title = "Config",
+						Content = "Saved config '"..tostring(safeName).."'",
+						Icon = "settings",
+						Duration = 4,
+					});
+
+					TextBox.Text = "";
+				end
+			end);
+
+			GetConfigButton.MouseButton1Click:Connect(function()
+				if import and import.Name then
+					res:LoadConfig(import.Name);
+				end;
+			end);
+
+			SaveConfigButton.MouseButton1Click:Connect(function()
+				if import and import.Name then
+					local flags = Fatal:GetFlagConfig();
+					local configName = import.Name;
+
+					flags.Info = {
+						Name = Name,
+						Folder = Folder,
+						ConfigName = configName,
+						Type = "Overwrite"
+					};
+
+					local encodeSuccess, code = pcall(game:GetService('HttpService').JSONEncode, game:GetService('HttpService'), flags)
+					if encodeSuccess then
+						res:SaveConfig(configName, code);
+						res:ReloadConfig();
+                        
+						Fatal.Notifier:Notify({
+							Title = "Config",
+							Content = "Saved config '"..tostring(configName).."'",
+							Icon = "settings",
+							Duration = 4,
+						});
+					end
+				end;
+			end);
+			
+			RefreshButton.MouseButton1Click:Connect(function()
+				res:ReloadConfig();
+				Fatal.Notifier:Notify({
+					Title = "Config",
+					Content = "Refreshed list",
+					Icon = "loader",
+					Duration = 2,
+				});
+			end);
+
+			DeleteButton.MouseButton1Click:Connect(function()
+				if import and import.Name then
+					Fatal.Notifier:Notify({
+						Title = "Config",
+						Content = "Deleted config '"..tostring(import.Name).."'",
+						Icon = "settings",
+						Duration = 4,
+					});
+
+					res:DeleteConfig(import.Name);
+					res:ReloadConfig();
                     
-                    if not isfolder(current) then
-                        local succ, err = pcall(makefolder, current)
-                        if not succ then
-                            warn("[Fatality] Ошибка при создании папки", current, ":", tostring(err))
-                        end
-                    end
-                end
-            end
-        end
-        
-        SafeCreateDir(specificFolder)
-        res.ConfigDirectory = specificFolder;
-        res:ReloadConfig()
-
-        AddConfigButton.MouseButton1Click:Connect(function()
-            local configName = TextBox.Text;
-            local safeName = string.gsub(tostring(configName), "[<>:\"/\\|?*]", "")
-            if safeName == "" then return end;
-
-            local flags = Fatal:GetFlagConfig();
-            flags.Info = {
-                Name = Name,
-                Folder = Folder,
-                ConfigName = safeName,
-            };
-
-            local encodeSuccess, code = pcall(game:GetService('HttpService').JSONEncode, game:GetService('HttpService'), flags)
-            if encodeSuccess then
-                res:SaveConfig(safeName, code);
-                res:ReloadConfig();
-
-                Fatal.Notifier:Notify({
-                    Title = "Config",
-                    Content = "Saved config '"..tostring(safeName).."'",
-                    Icon = "settings",
-                    Duration = 4,
-                });
-
-                TextBox.Text = "";
-            else
-                warn("[Fatality] Ошибка энкодинга JSON при добавлении.")
-            end
-        end);
-
-        GetConfigButton.MouseButton1Click:Connect(function()
-            if import and import.Name then
-                res:LoadConfig(import.Name);
-            end;
-        end);
-
-        SaveConfigButton.MouseButton1Click:Connect(function()
-            if import and import.Name then
-                local flags = Fatal:GetFlagConfig();
-                local configName = import.Name;
-
-                flags.Info = {
-                    Name = Name,
-                    Folder = Folder,
-                    ConfigName = configName,
-                    Type = "Overwrite"
-                };
-
-                local encodeSuccess, code = pcall(game:GetService('HttpService').JSONEncode, game:GetService('HttpService'), flags)
-                if encodeSuccess then
-                    res:SaveConfig(configName, code);
-                    res:ReloadConfig();
-                    
-                    Fatal.Notifier:Notify({
-                        Title = "Config",
-                        Content = "Saved config '"..tostring(configName).."'",
-                        Icon = "settings",
-                        Duration = 4,
-                    });
-                end
-            end;
-        end);
-        
-        RefreshButton.MouseButton1Click:Connect(function()
-            res:ReloadConfig();
-            Fatal.Notifier:Notify({
-                Title = "Config",
-                Content = "Refreshed list",
-                Icon = "loader",
-                Duration = 2,
-            });
-        end);
-
-        DeleteButton.MouseButton1Click:Connect(function()
-            if import and import.Name then
-                Fatal.Notifier:Notify({
-                    Title = "Config",
-                    Content = "Deleted config '"..tostring(import.Name).."'",
-                    Icon = "settings",
-                    Duration = 4,
-                });
-
-                res:DeleteConfig(import.Name);
-                res:ReloadConfig();
-                
-                import.Name = nil
-                import.Element = nil
-            end;
-        end)
-    end,
-}); -- 5е3453
+					import.Name = nil
+					import.Element = nil
+				end;
+			end)
+		end,
+	});
 
 	return res;
 end;
