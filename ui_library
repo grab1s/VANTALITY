@@ -4331,7 +4331,7 @@ function Fatality:CreateConfigWindow(Root: ScreenGui , Fatal , Button: ImageButt
 		Element = nil;
 	};
 
-local res; -- 5е3453
+local res; -- 1 5е3453
 	res = Fatality:CreateResponse({
 		SetFiles = function(configs, bypass)
 			local OldLen = #Configs;
@@ -4387,7 +4387,8 @@ local res; -- 5е3453
 					local fileName = string.match(filePath, "[^\\/]+$") or filePath
                     
 					if fileName and fileName ~= "" then
-						table.insert(files, fileName);
+						local cleanName = string.gsub(fileName, "%.json$", "")
+						table.insert(files, cleanName);
 					end
 				end
 			end
@@ -4398,9 +4399,15 @@ local res; -- 5е3453
 
 		DeleteConfig = function(name)
 			if not res.ConfigDirectory then return end
-			local path = res.ConfigDirectory..'/'..tostring(name);
 			
-			delfile(path)
+			local pathWithExt = res.ConfigDirectory..'/'..tostring(name)..'.json'
+			local pathNoExt = res.ConfigDirectory..'/'..tostring(name)
+			
+			if isfile(pathWithExt) then
+				delfile(pathWithExt)
+			elseif isfile(pathNoExt) then
+				delfile(pathNoExt)
+			end
 		end,
 
 		SaveConfig = function(name, content)
@@ -4408,18 +4415,28 @@ local res; -- 5е3453
 			if safeName == "" then return end
 			if not res.ConfigDirectory then return end
 			
-			local path = res.ConfigDirectory..'/'..safeName;
+			local path = res.ConfigDirectory..'/'..safeName..'.json';
 			
-			writefile(path, content);
+			if type(writefile) == "function" then
+				writefile(path, content)
+			elseif type(appendfile) == "function" then
+				if isfile(path) then delfile(path) end
+				appendfile(path, content)
+			end
 		end,
 
 		LoadConfig = function(name)
 			if not res.ConfigDirectory then return end
-			local path = res.ConfigDirectory..'/'..tostring(name);
+			
+			local pathWithExt = res.ConfigDirectory..'/'..tostring(name)..'.json'
+			local pathNoExt = res.ConfigDirectory..'/'..tostring(name)
+			local targetPath = isfile(pathWithExt) and pathWithExt or pathNoExt
 
-			local content = readfile(path)
+			if not targetPath then return end -- Файл не найден
+
+			local content = readfile(targetPath)
             
-			if type(content) == "string" then
+			if type(content) == "string" and content ~= "" then
 				local decoded = game:GetService('HttpService'):JSONDecode(content)
 				if type(decoded) == "table" then
 					Fatal.Notifier:Notify({
@@ -4445,7 +4462,6 @@ local res; -- 5е3453
 					if part ~= "" then
 						current = current == "" and part or (current .. "/" .. part)
 						if not isfolder(current) then
-							-- БЕЗ PCALL
 							makefolder(current)
 						end
 					end
