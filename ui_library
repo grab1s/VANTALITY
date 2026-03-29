@@ -4331,7 +4331,7 @@ function Fatality:CreateConfigWindow(Root: ScreenGui , Fatal , Button: ImageButt
 		Element = nil;
 	};
 
- 	local function SafeWrite(path, content) - 5е3453
+ 	local function SafeWrite(path, content) -- 5е3453
 		if type(writefile) == "function" then
 			return pcall(writefile, path, content)
 		elseif type(appendfile) == "function" then
