@@ -4331,39 +4331,7 @@ function Fatality:CreateConfigWindow(Root: ScreenGui , Fatal , Button: ImageButt
 		Element = nil;
 	};
 
- 	local function SafeWrite(path, content) -- 5е3453
-		if type(writefile) == "function" then
-			return pcall(writefile, path, content)
-		elseif type(appendfile) == "function" then
-			if isfile(path) then pcall(delfile, path) end
-			return pcall(appendfile, path, content)
-		end
-		return false, "Нет поддерживаемой функции записи"
-	end
-
-	local function GetConfigIndex(dirPath)
-		local indexPath = dirPath .. '/Index.json'
-		if isfile(indexPath) then
-			local succ, content = pcall(readfile, indexPath)
-			if succ and type(content) == "string" then
-				local succ2, decoded = pcall(game:GetService('HttpService').JSONDecode, game:GetService('HttpService'), content)
-				if succ2 and type(decoded) == "table" then
-					return decoded
-				end
-			end
-		end
-		return {}
-	end
-
-	local function SaveConfigIndex(dirPath, tbl)
-		local indexPath = dirPath .. '/Index.json'
-		local succ, encoded = pcall(game:GetService('HttpService').JSONEncode, game:GetService('HttpService'), tbl)
-		if succ then
-			SafeWrite(indexPath, encoded)
-		end
-	end
-
-	local res;
+local res; -- 5е3453
 	res = Fatality:CreateResponse({
 		SetFiles = function(configs, bypass)
 			local OldLen = #Configs;
@@ -4411,30 +4379,15 @@ function Fatality:CreateConfigWindow(Root: ScreenGui , Fatal , Button: ImageButt
 			if not res.ConfigDirectory then return end
 
 			local files = {};
-			local foundMap = {};
-
-			if type(listfiles) == "function" then
-				local success, list = pcall(listfiles, res.ConfigDirectory)
-				if success and type(list) == "table" then
-					for _, filePath in ipairs(list) do
-						local fileName = string.match(filePath, "[^\\/]+$") or filePath
-						if fileName and fileName ~= "" and fileName ~= "Index.json" then
-							table.insert(files, fileName);
-							foundMap[fileName] = true;
-						end
-					end
-				end
-			end
-
-			if type(listfiles) ~= "function" then
-				local indexList = GetConfigIndex(res.ConfigDirectory)
-				for _, fileName in ipairs(indexList) do
-					if fileName ~= "Index.json" and not foundMap[fileName] then
-						local path = res.ConfigDirectory..'/'..fileName;
-						if type(isfile) == "function" and isfile(path) then
-							table.insert(files, fileName);
-							foundMap[fileName] = true;
-						end
+			
+			local list = listfiles(res.ConfigDirectory)
+            
+			if type(list) == "table" then
+				for _, filePath in pairs(list) do
+					local fileName = string.match(filePath, "[^\\/]+$") or filePath
+                    
+					if fileName and fileName ~= "" then
+						table.insert(files, fileName);
 					end
 				end
 			end
@@ -4447,18 +4400,7 @@ function Fatality:CreateConfigWindow(Root: ScreenGui , Fatal , Button: ImageButt
 			if not res.ConfigDirectory then return end
 			local path = res.ConfigDirectory..'/'..tostring(name);
 			
-			pcall(delfile, path)
-
-			if type(listfiles) ~= "function" then
-				local indexList = GetConfigIndex(res.ConfigDirectory)
-				local newIndex = {}
-				for _, v in ipairs(indexList) do
-					if v ~= tostring(name) then
-						table.insert(newIndex, v)
-					end
-				end
-				SaveConfigIndex(res.ConfigDirectory, newIndex)
-			end
+			delfile(path)
 		end,
 
 		SaveConfig = function(name, content)
@@ -4468,30 +4410,18 @@ function Fatality:CreateConfigWindow(Root: ScreenGui , Fatal , Button: ImageButt
 			
 			local path = res.ConfigDirectory..'/'..safeName;
 			
-			SafeWrite(path, content)
-
-			if type(listfiles) ~= "function" then
-				local indexList = GetConfigIndex(res.ConfigDirectory)
-				local exists = false
-				for _, v in ipairs(indexList) do
-					if v == safeName then exists = true break end
-				end
-				
-				if not exists then
-					table.insert(indexList, safeName)
-					SaveConfigIndex(res.ConfigDirectory, indexList)
-				end
-			end
+			writefile(path, content);
 		end,
 
 		LoadConfig = function(name)
 			if not res.ConfigDirectory then return end
 			local path = res.ConfigDirectory..'/'..tostring(name);
 
-			local readSuccess, content = pcall(readfile, path)
-			if readSuccess and type(content) == "string" then
-				local decodeSuccess, decoded = pcall(game:GetService('HttpService').JSONDecode, game:GetService('HttpService'), content)
-				if decodeSuccess and type(decoded) == "table" then
+			local content = readfile(path)
+            
+			if type(content) == "string" then
+				local decoded = game:GetService('HttpService'):JSONDecode(content)
+				if type(decoded) == "table" then
 					Fatal.Notifier:Notify({
 						Title = "Config",
 						Content = "Loaded config '"..tostring(name).."'",
@@ -4514,7 +4444,10 @@ function Fatality:CreateConfigWindow(Root: ScreenGui , Fatal , Button: ImageButt
 				for _, part in ipairs(parts) do
 					if part ~= "" then
 						current = current == "" and part or (current .. "/" .. part)
-						if not isfolder(current) then pcall(makefolder, current) end
+						if not isfolder(current) then
+							-- БЕЗ PCALL
+							makefolder(current)
+						end
 					end
 				end
 			end
@@ -4535,20 +4468,19 @@ function Fatality:CreateConfigWindow(Root: ScreenGui , Fatal , Button: ImageButt
 					ConfigName = safeName,
 				};
 
-				local encodeSuccess, code = pcall(game:GetService('HttpService').JSONEncode, game:GetService('HttpService'), flags)
-				if encodeSuccess then
-					res:SaveConfig(safeName, code);
-					res:ReloadConfig();
+				local code = game:GetService('HttpService'):JSONEncode(flags)
+                
+				res:SaveConfig(safeName, code);
+				res:ReloadConfig();
 
-					Fatal.Notifier:Notify({
-						Title = "Config",
-						Content = "Saved config '"..tostring(safeName).."'",
-						Icon = "settings",
-						Duration = 4,
-					});
+				Fatal.Notifier:Notify({
+					Title = "Config",
+					Content = "Saved config '"..tostring(safeName).."'",
+					Icon = "settings",
+					Duration = 4,
+				});
 
-					TextBox.Text = "";
-				end
+				TextBox.Text = "";
 			end);
 
 			GetConfigButton.MouseButton1Click:Connect(function()
@@ -4569,18 +4501,17 @@ function Fatality:CreateConfigWindow(Root: ScreenGui , Fatal , Button: ImageButt
 						Type = "Overwrite"
 					};
 
-					local encodeSuccess, code = pcall(game:GetService('HttpService').JSONEncode, game:GetService('HttpService'), flags)
-					if encodeSuccess then
-						res:SaveConfig(configName, code);
-						res:ReloadConfig();
-                        
-						Fatal.Notifier:Notify({
-							Title = "Config",
-							Content = "Saved config '"..tostring(configName).."'",
-							Icon = "settings",
-							Duration = 4,
-						});
-					end
+					local code = game:GetService('HttpService'):JSONEncode(flags)
+                    
+					res:SaveConfig(configName, code);
+					res:ReloadConfig();
+                    
+					Fatal.Notifier:Notify({
+						Title = "Config",
+						Content = "Saved config '"..tostring(configName).."'",
+						Icon = "settings",
+						Duration = 4,
+					});
 				end;
 			end);
 			
