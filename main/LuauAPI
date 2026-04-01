@@ -31,24 +31,20 @@ local State = {
 
 local function GetFiles()
     local t = {}
+    local dirPath = string.gsub(FileSystem.Scripts, "\\", "/")
     
-    if not isfolder(FileSystem.Scripts) then return t end
+    if not isfolder(dirPath) then return t end
 
-    local success, list = pcall(listfiles, FileSystem.Scripts)
-    if not success or type(list) ~= "table" then return t end
+    local list = listfiles(dirPath)
     
-    for _, v in pairs(list) do
-        local file = v
-        if string.find(file, "/", 1, true) then
-            local spl = string.split(file, "/")
-            file = spl[#spl]
-        elseif string.find(file, "\\", 1, true) then
-            local spl = string.split(file, "\\")
-            file = spl[#spl]
-        end
+    if type(list) == "table" then
+        for _, v in pairs(list) do
+            local normPath = string.gsub(v, "\\", "/")
+            local file = string.match(normPath, "[^/]+$") or normPath
 
-        if file ~= "configs" and not string.find(v, "configs/") and not string.find(v, "configs\\") and file ~= ".refresh_cache" and file ~= "" then
-            table.insert(t, file)
+            if file ~= "configs" and not string.find(normPath, "configs/") and file ~= ".refresh_cache" and file ~= "" then
+                table.insert(t, file)
+            end
         end
     end
     
@@ -150,15 +146,28 @@ local function SaveScriptConfig(name)
     end
 
     local success, json = pcall(HttpService.JSONEncode, HttpService, cfgToSave)
-    if success then writefile(FileSystem.Configs .. "/" .. name, json) end
+    if success then 
+        local path = string.gsub(FileSystem.Configs .. "/" .. name .. ".json", "\\", "/")
+        if type(writefile) == "function" then
+            writefile(path, json)
+        elseif type(appendfile) == "function" then
+            if isfile(path) then delfile(path) end
+            appendfile(path, json)
+        end
+    end
 end
 
 local function LoadScriptConfig(name)
-    local path = FileSystem.Configs .. "/" .. name
-    if isfile(path) then
-        local content = readfile(path)
-        local success, decoded = pcall(HttpService.JSONDecode, HttpService, content)
-        if success and type(decoded) == "table" then return decoded end
+    local pathWithExt = string.gsub(FileSystem.Configs .. "/" .. name .. ".json", "\\", "/")
+    local pathNoExt = string.gsub(FileSystem.Configs .. "/" .. name, "\\", "/")
+    local targetPath = isfile(pathWithExt) and pathWithExt or pathNoExt
+    
+    if targetPath and isfile(targetPath) then
+        local content = readfile(targetPath)
+        if type(content) == "string" and content ~= "" then
+            local success, decoded = pcall(HttpService.JSONDecode, HttpService, content)
+            if success and type(decoded) == "table" then return decoded end
+        end
     end
     return {}
 end
@@ -333,7 +342,7 @@ function LuauAPI:Init(Tab, IgnoredSection, NotifierObj)
         Name = "Load",
         Callback = function()
             if not SelectedFile then return end
-            local path = FileSystem.Scripts .. "/" .. SelectedFile
+            local path = string.gsub(FileSystem.Scripts .. "/" .. SelectedFile, "\\", "/")
             if isfile(path) then
                 LuauAPI:Execute(SelectedFile, readfile(path))
             else
@@ -368,13 +377,13 @@ function LuauAPI:Init(Tab, IgnoredSection, NotifierObj)
         end
     })
 
-ControlSection:AddButton({
+    ControlSection:AddButton({
         Name = "Delete File",
         Risky = true,
         Callback = function()
             if SelectedFile then
                 local cachedName = SelectedFile
-                local path = FileSystem.Scripts .. "/" .. cachedName
+                local path = string.gsub(FileSystem.Scripts .. "/" .. cachedName, "\\", "/")
                 
                 LuauAPI:UnloadScript(cachedName)
                 
