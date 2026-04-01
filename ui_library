@@ -4331,7 +4331,7 @@ function Fatality:CreateConfigWindow(Root: ScreenGui , Fatal , Button: ImageButt
 		Element = nil;
 	};
 
-local res; --  5е3453 
+local res; -- 5е3453 5е3453
 	res = Fatality:CreateResponse({
 		SetFiles = function(configs, bypass)
 			local OldLen = #Configs;
@@ -4348,7 +4348,7 @@ local res; --  5е3453
 				end;
 			end;
 
-			for i,v in next, Configs do
+			for i,v in pairs(Configs) do
 				local button = new_button();
 
 				button.Parent = ScrollingFrame;
@@ -4379,14 +4379,14 @@ local res; --  5е3453
 			if not res.ConfigDirectory then return end
 
 			local files = {};
+			local dirPath = string.gsub(res.ConfigDirectory, "\\", "/")
 			
-			local safePath = string.gsub(res.ConfigDirectory, "/", "\\")
-			
-			local list = listfiles(safePath)
+			local list = listfiles(dirPath)
             
 			if type(list) == "table" then
 				for _, filePath in pairs(list) do
-					local fileName = string.match(filePath, "[^\\/]+$") or filePath
+					local normPath = string.gsub(filePath, "\\", "/")
+					local fileName = string.match(normPath, "[^/]+$") or normPath
                     
 					if fileName and fileName ~= "" and string.match(fileName, "%.json$") then
 						local cleanName = string.gsub(fileName, "%.json$", "")
@@ -4402,14 +4402,11 @@ local res; --  5е3453
 		DeleteConfig = function(name)
 			if not res.ConfigDirectory then return end
 			
-			local basePath = string.gsub(res.ConfigDirectory, "/", "\\")
-			local pathWithExt = basePath .. "\\" .. tostring(name) .. ".json"
-			local pathNoExt = basePath .. "\\" .. tostring(name)
+			local dirPath = string.gsub(res.ConfigDirectory, "\\", "/")
+			local path = dirPath .. '/' .. tostring(name) .. '.json'
 			
-			if isfile(pathWithExt) then
-				delfile(pathWithExt) 
-			elseif isfile(pathNoExt) then
-				delfile(pathNoExt) 
+			if isfile(path) then
+				delfile(path)
 			end
 		end,
 
@@ -4418,62 +4415,60 @@ local res; --  5е3453
 			if safeName == "" then return end
 			if not res.ConfigDirectory then return end
 			
-			local basePath = string.gsub(res.ConfigDirectory, "/", "\\")
-			local path = basePath .. "\\" .. safeName .. ".json"
+			local dirPath = string.gsub(res.ConfigDirectory, "\\", "/")
+			local path = dirPath .. '/' .. safeName .. '.json'
 			
 			if type(writefile) == "function" then
-				writefile(path, content) -- БЕЗ PCALL
+				writefile(path, content)
 			elseif type(appendfile) == "function" then
-				if isfile(path) then delfile(path) end
-				appendfile(path, content) -- БЕЗ PCALL
+				if isfile(path) then
+					delfile(path)
+				end
+				appendfile(path, content)
 			else
-				error("Critical Error: Executor does not support writefile or appendfile")
+				error("[Fatality] Экзекутор не поддерживает writefile и appendfile!")
 			end
 		end,
 
 		LoadConfig = function(name)
 			if not res.ConfigDirectory then return end
 			
-			local basePath = string.gsub(res.ConfigDirectory, "/", "\\")
-			local pathWithExt = basePath .. "\\" .. tostring(name) .. ".json"
-			local pathNoExt = basePath .. "\\" .. tostring(name)
-			
-			local targetPath = isfile(pathWithExt) and pathWithExt or pathNoExt
-			if not targetPath or not isfile(targetPath) then 
-				error("Config file not found: " .. tostring(name))
-				return 
-			end
+			local dirPath = string.gsub(res.ConfigDirectory, "\\", "/")
+			local path = dirPath .. '/' .. tostring(name) .. '.json'
 
-			local content = readfile(targetPath)
-            
-			if type(content) == "string" and content ~= "" then
-				local decoded = game:GetService('HttpService'):JSONDecode(content) -- БЕЗ PCALL
-				if type(decoded) == "table" then
-					Fatal.Notifier:Notify({
-						Title = "Config",
-						Content = "Loaded config '"..tostring(name).."'",
-						Icon = "settings",
-						Duration = 4,
-					});
-					Fatal:LoadConfig(decoded);
+			if isfile(path) then
+				local content = readfile(path)
+                
+				if type(content) == "string" and content ~= "" then
+					local decoded = game:GetService('HttpService'):JSONDecode(content)
+					if type(decoded) == "table" then
+						Fatal.Notifier:Notify({
+							Title = "Config",
+							Content = "Loaded config '"..tostring(name).."'",
+							Icon = "settings",
+							Duration = 4,
+						});
+						Fatal:LoadConfig(decoded);
+					end
 				end
 			end
 		end,
 
 		Init = function(Name, Folder)
 			local baseFolder = Folder or "Fatality"
-			local configFolder = baseFolder .. "\\Config"
-			local specificFolder = configFolder .. "\\" .. tostring(Name)
+			local configFolder = baseFolder .. "/Config"
+			local specificFolder = configFolder .. "/" .. tostring(Name)
             
 			local function SafeCreateDir(path)
-				local cleanPath = string.gsub(path, "/", "\\")
-				local parts = string.split(cleanPath, "\\")
+				local normPath = string.gsub(path, "\\", "/")
+				local parts = string.split(normPath, "/")
 				local current = ""
-				
-				for _, part in ipairs(parts) do
+                
+				for _, part in pairs(parts) do
 					if part ~= "" then
-						current = current == "" and part or (current .. "\\" .. part)
+						current = current == "" and part or (current .. "/" .. part)
 						if not isfolder(current) then
+							-- Прямое создание без pcall
 							makefolder(current)
 						end
 					end
@@ -4497,7 +4492,7 @@ local res; --  5е3453
 				};
 
 				local code = game:GetService('HttpService'):JSONEncode(flags)
-                
+				
 				res:SaveConfig(safeName, code);
 				res:ReloadConfig();
 
@@ -4529,7 +4524,7 @@ local res; --  5е3453
 						Type = "Overwrite"
 					};
 
-					local code = game:GetService('HttpService'):JSONEncode(flags) -- БЕЗ PCALL
+					local code = game:GetService('HttpService'):JSONEncode(flags)
                     
 					res:SaveConfig(configName, code);
 					res:ReloadConfig();
