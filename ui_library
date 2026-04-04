@@ -331,7 +331,14 @@ function Fatality:Register(Object, Category, Property)
 	end
 end
 
-function Fatality:SetTheme(NewTheme)
+function Fatality:SetTheme(NewTheme) -- 7fix
+	for i = #Fatality.ThemeRegistry, 1, -1 do
+		local item = Fatality.ThemeRegistry[i]
+		if not item.Object or not item.Object.Parent then
+			table.remove(Fatality.ThemeRegistry, i)
+		end
+	end
+
 	for key, val in pairs(NewTheme) do
 		Fatality.CurrentTheme[key] = val
 	end
@@ -2611,8 +2618,10 @@ function Fatality:CreateOption(OptionButton: ImageButton): Elements
 	SpaceBox.Size = UDim2.new(0, 0, 0, 3)
 
 	local SPAWN_THREAD;
+	local isOpen = false; -- 4fix
 
 	local ToggleExt = function(bool)
+		isOpen = bool; -- 4fix
 		if bool then
 			Bindable:SetAttribute('V',true);
 			Bindable:Fire(true);
@@ -2679,8 +2688,8 @@ function Fatality:CreateOption(OptionButton: ImageButton): Elements
 		ToggleExt(true);
 	end);
 
-	UserInputService.InputBegan:Connect(function(input)
-		if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+	UserInputService.InputBegan:Connect(function(input) -- 5fix
+		if isOpen and (input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1) then
 			if not Fatality:IsMouseOverFrame(ExtElementFrame) and not Fatality.GLOBAL_ENVIRONMENT.IS_HOLD_COLOR_PICKER then
 				ToggleExt(false);
 			end;
@@ -2728,6 +2737,7 @@ function Fatality:CreateColorPicker(ColorBox: Frame,Transparency, Callback)
 	local CodeH,CodeV = 1, 1;
 	local IsPressM1 = false;
 	local UI_SPAWN_THREAD;
+	local isOpen = false; -- 1fix
 
 	local updateColor = function()
 		local H , S , V = ColorBox.BackgroundColor3:ToHSV();
@@ -2738,6 +2748,7 @@ function Fatality:CreateColorPicker(ColorBox: Frame,Transparency, Callback)
 	end;
 
 	local VisibleToggle = function(value)
+		isOpen = value; -- 2fix
 		if value then
 			ColorPickBox.BackgroundColor3 = Color3.fromHSV(OldCode,1,1);
 			ColorOpc.BackgroundColor3 = ColorBox.BackgroundColor3;
@@ -3226,8 +3237,8 @@ function Fatality:CreateColorPicker(ColorBox: Frame,Transparency, Callback)
 			end;
 		end)
 
-		UserInputService.InputBegan:Connect(function(Input)
-			if Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch then
+	UserInputService.InputBegan:Connect(function(Input) -- 3fix
+			if isOpen and (Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch) then
 				if not Fatality:IsMouseOverFrame(ColorPickerFrame) then
 					VisibleToggle(false);
 				end;
@@ -3339,9 +3350,9 @@ function Fatality:RandomStr(len: number): string
 	return main;
 end;
 
-function Fatality:AddDragBlacklist(Frame: Frame)
+function Fatality:AddDragBlacklist(Frame: Frame) -- 8fix
 	Frame.InputBegan:Connect(function(input)
-		if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.MouseMovement then
+		if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
 			local finder = table.find(Fatality.DragBlacklist , Frame);
 
 			if not finder then
@@ -3351,7 +3362,7 @@ function Fatality:AddDragBlacklist(Frame: Frame)
 	end);
 
 	Frame.InputEnded:Connect(function(input)
-		if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.MouseMovement then
+		if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
 			local finder = table.find(Fatality.DragBlacklist , Frame);
 
 			if finder then
@@ -6362,7 +6373,18 @@ function Fatal:AddMenu(Menu : Menu)
 				else Fatality:CreateAnimation(Icon,0.5,{ ImageTransparency = 0.5, ImageColor3 = GetSafeColor(Fatality.CurrentTheme.Text) }); Fatality:CreateAnimation(MenuButton,0.5,{ BackgroundTransparency = 1 }) Fatality:CreateAnimation(menu_name,0.5,{ TextTransparency = 0.5 }); end
 			end;
 		end)
-		Fatality:NewInput(MenuButton,function() for i,v in next , Fatal.Menus do if v.Root == MenuLiber then Fatal.MenuSelected = v; v.ValueSelect(true) else v.ValueSelect(false) end; end; end);
+		Fatality:NewInput(MenuButton, function() -- 6fix
+			if Fatal.MenuSelected and Fatal.MenuSelected.Root == MenuLiber then return end 
+			
+			for i, v in next, Fatal.Menus do 
+				if v.Root == MenuLiber then 
+					Fatal.MenuSelected = v; 
+					v.ValueSelect(true) 
+				else 
+					v.ValueSelect(false) 
+				end; 
+			end; 
+		end);
 		
 -- 111111111111111111111
 
