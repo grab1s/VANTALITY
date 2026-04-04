@@ -372,7 +372,7 @@ function Fatality:SetTheme(NewTheme)
 	end)
 end
 
-local LucideIcons = {
+Fatality.Lucide = {
 	["lucide-air-vent"] = "rbxassetid://10709752131",
 	["lucide-airplay"] = "rbxassetid://10709752254",
 	["lucide-alarm-check"] = "rbxassetid://10709752405",
@@ -2326,7 +2326,7 @@ local LucideIcons = {
 	["lucide-zodiac-scorpio"] = "rbxassetid://113640924054631",
 	["lucide-zodiac-taurus"] = "rbxassetid://123053219704400",
 	["lucide-zodiac-virgo"] = "rbxassetid://99462994613661",
-}
+};
 
 Fatality.IsPC = not UserInputService.TouchEnabled;
 
