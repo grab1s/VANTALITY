@@ -535,6 +535,7 @@ local LucideIcons = {
 	["lucide-layout-list"] = "rbxassetid://10723424963",
 	["lucide-link-2-off"] = "rbxassetid://10723426513",
 	["lucide-list-checks"] = "rbxassetid://10734884548",
+	["lucide-loader"] = "rbxassetid://10723434070",
 	["lucide-loader-2"] = "rbxassetid://10723433935",
 	["lucide-mail-question"] = "rbxassetid://10723435515",
 	["lucide-mail-search"] = "rbxassetid://10734884739",
