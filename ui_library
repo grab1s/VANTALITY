@@ -5026,6 +5026,120 @@ function elements:AddDropdown(Config: Dropdown)
 		return Response
 	end;
 
+function elements:AddMetric(Config)
+		Config = Config or {}
+		
+		if not Fatality:CanShow(Config) then return GetDummyElement() end
+
+		Config.Name = Config.Name or "Metric"
+		Config.Default = Config.Default or "..."
+		Config.ButtonIcon = Config.ButtonIcon or nil
+		Config.Callback = Config.Callback or nil
+
+		local MetricFrame = Instance.new("Frame")
+		local NameLabel = Instance.new("TextLabel")
+		local ValueLabel = Instance.new("TextLabel")
+		local ActionButton = nil
+		local UICornerBtn = nil
+
+		MetricFrame.Name = Fatality:RandomString()
+		MetricFrame.Parent = Parent
+		Fatality:Register(MetricFrame, "Element")
+		MetricFrame.BackgroundTransparency = 1.000
+		MetricFrame.BorderSizePixel = 0
+		MetricFrame.Size = UDim2.new(1, -25, 0, 17)
+		MetricFrame.ZIndex = ZIndex + 1
+
+		NameLabel.Name = "MetricName"
+		NameLabel.Parent = MetricFrame
+		NameLabel.AnchorPoint = Vector2.new(0, 0.5)
+		NameLabel.BackgroundTransparency = 1.000
+		NameLabel.Position = UDim2.new(0, 0, 0.5, 0)
+		NameLabel.Size = UDim2.new(0.5, 0, 0.8, 0)
+		NameLabel.ZIndex = ZIndex + 2
+		NameLabel.FontFace = Fatality.FontSemiBold
+		NameLabel.Text = Config.Name
+		Fatality:Register(NameLabel, "TextDark", "TextColor3") 
+		NameLabel.TextSize = 12.000
+		NameLabel.TextXAlignment = Enum.TextXAlignment.Left
+
+		local valueOffset = Config.ButtonIcon and -22 or 0 
+		
+		ValueLabel.Name = "MetricValue"
+		ValueLabel.Parent = MetricFrame
+		ValueLabel.AnchorPoint = Vector2.new(1, 0.5)
+		ValueLabel.BackgroundTransparency = 1.000
+		ValueLabel.Position = UDim2.new(1, valueOffset, 0.5, 0)
+		ValueLabel.Size = UDim2.new(0.5, 0, 0.8, 0)
+		ValueLabel.ZIndex = ZIndex + 2
+		ValueLabel.FontFace = Fatality.FontSemiBold
+		ValueLabel.Text = tostring(Config.Default)
+		Fatality:Register(ValueLabel, "Text", "TextColor3") 
+		ValueLabel.TextSize = 12.000
+		ValueLabel.TextXAlignment = Enum.TextXAlignment.Right
+
+		if Config.ButtonIcon and Config.Callback then
+			ActionButton = Instance.new("ImageButton")
+			ActionButton.Name = "MetricAction"
+			ActionButton.Parent = MetricFrame
+			ActionButton.AnchorPoint = Vector2.new(1, 0.5)
+			ActionButton.BackgroundTransparency = 1.000
+			ActionButton.Position = UDim2.new(1, 0, 0.5, 0)
+			ActionButton.Size = UDim2.new(0, 14, 0, 14)
+			ActionButton.ZIndex = ZIndex + 3
+			ActionButton.Image = Fatality:GetIcon(Config.ButtonIcon)
+			ActionButton.ImageTransparency = 0.4
+			Fatality:Register(ActionButton, "Text", "ImageColor3")
+
+			Fatality:CreateHover(ActionButton, function(bool)
+				if bool then
+					Fatality:CreateAnimation(ActionButton, 0.2, { ImageTransparency = 0 })
+				else
+					Fatality:CreateAnimation(ActionButton, 0.2, { ImageTransparency = 0.4 })
+				end
+			end)
+
+			ActionButton.MouseButton1Click:Connect(function()
+				Fatality:CreateAnimation(ActionButton, 0.1, { Size = UDim2.new(0, 11, 0, 11) })
+				task.delay(0.1, function()
+					Fatality:CreateAnimation(ActionButton, 0.1, { Size = UDim2.new(0, 14, 0, 14) })
+				end)
+				Config.Callback(ValueLabel.Text)
+			end)
+		end
+
+		local OpcToggle = function(value)
+			if value then
+				Fatality:CreateAnimation(NameLabel, 0.45, { TextTransparency = 0 })
+				Fatality:CreateAnimation(ValueLabel, 0.45, { TextTransparency = 0 })
+				if ActionButton then Fatality:CreateAnimation(ActionButton, 0.45, { ImageTransparency = 0.4 }) end
+			else
+				Fatality:CreateAnimation(NameLabel, 0.45, { TextTransparency = 1 })
+				Fatality:CreateAnimation(ValueLabel, 0.45, { TextTransparency = 1 })
+				if ActionButton then Fatality:CreateAnimation(ActionButton, 0.45, { ImageTransparency = 1 }) end
+			end
+		end
+
+		OpcToggle(Event:GetAttribute('V'))
+		Event.Event:Connect(OpcToggle)
+
+		local Response = {
+			Set = function(self, newText)
+				local strText = tostring(newText)
+				if ValueLabel.Text == strText then return end
+				ValueLabel.Text = strText
+			end,
+			SetName = function(self, newName)
+				NameLabel.Text = tostring(newName)
+			end,
+			Get = function(self)
+				return ValueLabel.Text
+			end
+		}
+		
+		return Response
+	end; 
+
 	return elements;
 end;
 
