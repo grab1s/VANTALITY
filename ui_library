@@ -287,6 +287,7 @@ Fatality.FontSemiBold = Font.new('rbxasset://fonts/families/GothamSSm.json',Enum
 Fatality.Flags = {};
 Fatality.DragBlacklist = {};
 Fatality.Version = '1.7 - Theme Engine';
+Fatality.ScalesRegistry = {}; -- 9fix
 
 -- THEME SYSTEM --
 Fatality.CurrentTheme = {
@@ -2497,16 +2498,9 @@ function Fatality:Drag(InputFrame: Frame, MoveFrame: Frame, Speed : number)
 	end);
 end;
 
-function Fatality:ScrollSignal(Scroll: ScrollingFrame,UIListLayout: UIListLayout,Type:string)
-	if Type == 'X' then
-		UIListLayout:GetPropertyChangedSignal('AbsoluteContentSize'):Connect(function()
-			Scroll.CanvasSize = UDim2.fromOffset(UIListLayout.AbsoluteContentSize.X / Fatality.Scale, 0)
-		end)
-	else
-		UIListLayout:GetPropertyChangedSignal('AbsoluteContentSize'):Connect(function()
-			Scroll.CanvasSize = UDim2.fromOffset(0, UIListLayout.AbsoluteContentSize.Y / Fatality.Scale)
-		end)
-	end;
+function Fatality:ScrollSignal(Scroll: ScrollingFrame,UIListLayout: UIListLayout,Type:string) -- 11fix
+	Scroll.AutomaticCanvasSize = (Type == 'X') and Enum.AutomaticSize.X or Enum.AutomaticSize.Y
+	Scroll.CanvasSize = UDim2.new(0,0,0,0)
 end;
 
 function Fatality:CreateResponse(args: {[string] : (any) -> any})
@@ -2569,6 +2563,9 @@ function Fatality:CreateOption(OptionButton: ImageButton): Elements
 	ExtElementFrame.Position = UDim2.new(2, 0, 2, 0)
 	ExtElementFrame.Size = UDim2.new(0, 200, 0, 0)
 	ExtElementFrame.ZIndex = 100
+	local OptScale = Instance.new("UIScale", ExtElementFrame) -- 20fix
+	OptScale.Scale = Fatality.Scale
+	table.insert(Fatality.ScalesRegistry, OptScale)
 
 	UICorner.CornerRadius = UDim.new(0, 2)
 	UICorner.Parent = ExtElementFrame
@@ -2940,6 +2937,9 @@ function Fatality:CreateColorPicker(ColorBox: Frame,Transparency, Callback)
 	ColorPickerFrame.Position = UDim2.new(4,0,4,0)
 	ColorPickerFrame.Size = UDim2.new(0, 175, 0, 195)
 	ColorPickerFrame.ZIndex = 200
+	local CPScale = Instance.new("UIScale", ColorPickerFrame) -- 19fix
+	CPScale.Scale = Fatality.Scale
+	table.insert(Fatality.ScalesRegistry, CPScale)
 	Fatality:AddDragBlacklist(ColorPickerFrame);
 
 	UICorner.CornerRadius = UDim.new(0, 2)
@@ -3425,7 +3425,8 @@ function Fatality:CreateDropdown(Parent: Frame, Default: string | {[string]: boo
 					return 
 				end
 				
-				local baseSize = UIListLayout.AbsoluteContentSize.Y + 10;
+				local unscaledHeight = UIListLayout.AbsoluteContentSize.Y / Fatality.Scale
+				local baseSize = unscaledHeight + 10;
 				
 				local btnPos = Parent.AbsolutePosition
 				local btnSize = Parent.AbsoluteSize
@@ -3485,6 +3486,9 @@ function Fatality:CreateDropdown(Parent: Frame, Default: string | {[string]: boo
 	DropdownItemFrame.Visible = false
 	DropdownItemFrame.ZIndex = 10000 
 	DropdownItemFrame.Active = true
+	local DDScale = Instance.new("UIScale", DropdownItemFrame)
+	DDScale.Scale = Fatality.Scale
+	table.insert(Fatality.ScalesRegistry, DDScale)
 
 	UICorner.CornerRadius = UDim.new(0, 2)
 	UICorner.Parent = DropdownItemFrame
@@ -3525,9 +3529,7 @@ function Fatality:CreateDropdown(Parent: Frame, Default: string | {[string]: boo
 	UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
 	UIListLayout.Padding = UDim.new(0, 5)
 
-	UIListLayout:GetPropertyChangedSignal('AbsoluteContentSize'):Connect(function()
-		ScrollingFrame.CanvasSize = UDim2.fromOffset(0,UIListLayout.AbsoluteContentSize.Y + 4)
-	end)
+	ScrollingFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y
 
 	local new_button = function()
 		local db_selected = Instance.new("TextButton")
@@ -5322,6 +5324,9 @@ function Fatality:CreateConfigWindow(Root: ScreenGui , Fatal , Button: ImageButt
 	ConfigWindowFrame.Position = UDim2.new(2,0,2,0)
 	ConfigWindowFrame.Size = UDim2.new(0, 185, 0, 0)
 	ConfigWindowFrame.ZIndex = 205
+	local ConfigScale = Instance.new("UIScale", ConfigWindowFrame) -- 14fix
+	ConfigScale.Scale = Fatality.Scale
+	table.insert(Fatality.ScalesRegistry, ConfigScale)
 
 	UICorner.CornerRadius = UDim.new(0, 2)
 	UICorner.Parent = ConfigWindowFrame
@@ -6241,9 +6246,14 @@ function Fatality.new(Window: Window)
 	function Fatal:SetProfile(icon: string) UserIcon.Image = icon or Players:GetUserThumbnailAsync(Client.UserId,Enum.ThumbnailType.HeadShot,Enum.ThumbnailSize.Size180x180); end;
 	function Fatal:SetExpire(str: string) expire_days.Text = string.format("<font transparency=\"0.5\">expires:</font> <font color=\"#f53174\">%s</font>",str) end;
 	
-	function Fatal:SetScale(percent: number) 
+	function Fatal:SetScale(percent: number) -- 10fix
 		Fatality.Scale = percent / 100 
 		MainScale.Scale = Fatality.Scale 
+		for _, scaleObj in pairs(Fatality.ScalesRegistry) do
+			if scaleObj and scaleObj.Parent then
+				scaleObj.Scale = Fatality.Scale
+			end
+		end
 	end
 	
 	function Fatal:SetKeybind(key) CurrentKeybind = key end
@@ -6608,17 +6618,15 @@ function Fatal:AddMenu(Menu : Menu)
 			UIListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 			UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
 			UIListLayout.Padding = UDim.new(0, 5)
-			UIListLayout:GetPropertyChangedSignal('AbsoluteContentSize'):Connect(function()
+			UIListLayout:GetPropertyChangedSignal('AbsoluteContentSize'):Connect(function() -- 13fix
 				local all = (#ScrollingFrame:GetChildren() - 1);
-				local scale = math.clamp((all * (10 + UIListLayout.Padding.Offset)) + (Config.Height + UIListLayout.Padding.Offset),25,400);
+				local unscaledSize = math.clamp((all * (10 + UIListLayout.Padding.Offset)) + (Config.Height + UIListLayout.Padding.Offset), 25, 400);
 				
 				if Menu.AutoFill then 
-					ListBox.Size = UDim2.new(1,0,0, (scale / 2.5) / Fatality.Scale); 
+					ListBox.Size = UDim2.new(1, 0, 0, unscaledSize / 2.5); 
 				else 
-					ListBox.Size = UDim2.new(1,0,0, scale / Fatality.Scale); 
+					ListBox.Size = UDim2.new(1, 0, 0, unscaledSize); 
 				end;
-				
-				ScrollingFrame.CanvasSize = UDim2.fromOffset(0, UIListLayout.AbsoluteContentSize.Y / Fatality.Scale);
 			end)
 			SpaceBox.Name = Fatality:RandomString()
 			SpaceBox.Parent = ScrollingFrame
@@ -6768,12 +6776,14 @@ function Fatal:AddMenu(Menu : Menu)
 			SectionName.TextSize = 15.000
 			SectionName.TextStrokeTransparency = 0.750
 			SectionName.TextXAlignment = Enum.TextXAlignment.Left
-			UIListLayout:GetPropertyChangedSignal('AbsoluteContentSize'):Connect(function()
-				local MainScale = UIListLayout.AbsoluteContentSize.Y + 20 + Config.Height;
+			UIListLayout:GetPropertyChangedSignal('AbsoluteContentSize'):Connect(function() -- 12fix
+				local unscaledHeight = UIListLayout.AbsoluteContentSize.Y / Fatality.Scale
+				local targetHeight = unscaledHeight + 20 + Config.Height
+				
 				if not Menu.AutoFill then 
-					Fatality:CreateAnimation(Section,0.25,{ Size = UDim2.new(1, 0, 0, MainScale / Fatality.Scale) }) 
+					Fatality:CreateAnimation(Section, 0.25, { Size = UDim2.new(1, 0, 0, targetHeight) }) 
 				else 
-					Section.Size = UDim2.new(1,0,0, (MainScale / 2.5) / Fatality.Scale); 
+					Section.Size = UDim2.new(1, 0, 0, targetHeight / 2.5); 
 				end;
 			end);
 			Toggle(BindEvent:GetAttribute('V'));
@@ -6784,7 +6794,6 @@ function Fatal:AddMenu(Menu : Menu)
 			});
 		end;
 
--- AddColumnTitle
 		function MenuLib:AddColumnTitle(Config)
 			Config = Config or {}
 			Config.Text = Config.Text or "TITLE"
@@ -6859,6 +6868,9 @@ function Fatal:AddMenu(Menu : Menu)
 		SearchFrame.Size = searchScale
 		SearchFrame.ZIndex = 100
 		SearchFrame.ClipsDescendants = true
+		local SearchScaleObj = Instance.new("UIScale", SearchFrame) -- 15fix
+		SearchScaleObj.Scale = Fatality.Scale
+		table.insert(Fatality.ScalesRegistry, SearchScaleObj)
 		UIStroke.Color = Color3.fromRGB(29, 29, 29)
 		Fatality:Register(UIStroke, "Stroke", "Color")
 		UIStroke.Parent = SearchFrame
@@ -6924,7 +6936,7 @@ function Fatal:AddMenu(Menu : Menu)
 		UIListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 		UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
 		UIListLayout.Padding = UDim.new(0, 4)
-		UIListLayout:GetPropertyChangedSignal('AbsoluteContentSize'):Connect(function() ScrollingFrame.CanvasSize = UDim2.fromOffset(0,UIListLayout.AbsoluteContentSize.Y) end)
+		ScrollingFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y -- 16fix
 		SearchToggle(false);
 		Fatality:CreateHover(SearchButton,function(bool) if bool then Fatality:CreateAnimation(SearchButton,0.5,{ ImageTransparency = 0.1 }) else Fatality:CreateAnimation(SearchButton,0.5,{ ImageTransparency = 0.5 }) end	end);
 		local SearchInformation = {};
@@ -7013,7 +7025,10 @@ function Fatal:AddMenu(Menu : Menu)
 		AboutFrame.BorderSizePixel = 0
 		AboutFrame.Visible = false
 		AboutFrame.ZIndex = 200
-		AboutFrame.Active = true 
+		AboutFrame.Active = true
+		local AboutScale = Instance.new("UIScale", AboutFrame) -- 17fix
+		AboutScale.Scale = Fatality.Scale
+		table.insert(Fatality.ScalesRegistry, AboutScale)
 		
 		Fatality:AddDragBlacklist(AboutFrame)
 		Fatality:Drag(AboutFrame, AboutFrame, 0.1)
@@ -7417,6 +7432,9 @@ function Fatality:CreateNotifier(): Notifier
 	layout.BorderSizePixel = 0
 	layout.Position = UDim2.new(1, -5, 0, 5)
 	layout.Size = UDim2.new(0, 150, 0, 50)
+	local NotifyScale = Instance.new("UIScale", layout) -- 18fix
+	NotifyScale.Scale = Fatality.Scale
+	table.insert(Fatality.ScalesRegistry, NotifyScale)
 
 	UIListLayout.Parent = layout
 	UIListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Right
