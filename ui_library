@@ -6958,6 +6958,7 @@ function Fatal:AddMenu(Menu : Menu)
 		ScrollingFrame.ScrollBarImageTransparency = 1
 		ScrollingFrame.AutomaticCanvasSize = Enum.AutomaticSize.None
 
+		UIListLayout.Parent = ScrollingFrame
 		UIListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 		UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
 		UIListLayout.Padding = UDim.new(0, 4)
