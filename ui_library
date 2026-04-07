@@ -2505,11 +2505,11 @@ function Fatality:ScrollSignal(Scroll: ScrollingFrame,UIListLayout: UIListLayout
 
 	if Type == 'X' then
 		UIListLayout:GetPropertyChangedSignal('AbsoluteContentSize'):Connect(function()
-			Scroll.CanvasSize = UDim2.fromOffset(UIListLayout.AbsoluteContentSize.X, 0)
+			Scroll.CanvasSize = UDim2.fromOffset(math.round(UIListLayout.AbsoluteContentSize.X / Fatality.Scale), 0)
 		end)
 	else
 		UIListLayout:GetPropertyChangedSignal('AbsoluteContentSize'):Connect(function()
-			Scroll.CanvasSize = UDim2.fromOffset(0, UIListLayout.AbsoluteContentSize.Y)
+			Scroll.CanvasSize = UDim2.fromOffset(0, math.round(UIListLayout.AbsoluteContentSize.Y / Fatality.Scale))
 		end)
 	end;
 end;
@@ -3543,7 +3543,7 @@ function Fatality:CreateDropdown(Parent: Frame, Default: string | {[string]: boo
 	UIListLayout.Padding = UDim.new(0, 5)
 
 	UIListLayout:GetPropertyChangedSignal('AbsoluteContentSize'):Connect(function()
-		ScrollingFrame.CanvasSize = UDim2.fromOffset(0, UIListLayout.AbsoluteContentSize.Y + 4)
+		ScrollingFrame.CanvasSize = UDim2.fromOffset(0, math.round(UIListLayout.AbsoluteContentSize.Y / Fatality.Scale) + 4)
 	end)
 
 	local new_button = function()
@@ -6645,7 +6645,7 @@ function Fatal:AddMenu(Menu : Menu)
 					ListBox.Size = UDim2.new(1, 0, 0, unscaledSize); 
 				end;
 				
-				ScrollingFrame.CanvasSize = UDim2.fromOffset(0, UIListLayout.AbsoluteContentSize.Y);
+				ScrollingFrame.CanvasSize = UDim2.fromOffset(0, math.round(UIListLayout.AbsoluteContentSize.Y / Fatality.Scale));
 			end)
 			SpaceBox.Name = Fatality:RandomString()
 			SpaceBox.Parent = ScrollingFrame
@@ -6958,13 +6958,12 @@ function Fatal:AddMenu(Menu : Menu)
 		ScrollingFrame.ScrollBarImageTransparency = 1
 		ScrollingFrame.AutomaticCanvasSize = Enum.AutomaticSize.None
 
-		UIListLayout.Parent = ScrollingFrame
 		UIListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 		UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
-		UIListLayout.Padding = UDim.new(0, 4) -- 6456456
+		UIListLayout.Padding = UDim.new(0, 4)
 		
 		UIListLayout:GetPropertyChangedSignal('AbsoluteContentSize'):Connect(function() 
-			ScrollingFrame.CanvasSize = UDim2.fromOffset(0, UIListLayout.AbsoluteContentSize.Y) 
+			ScrollingFrame.CanvasSize = UDim2.fromOffset(0, math.round(UIListLayout.AbsoluteContentSize.Y / Fatality.Scale)) 
 		end)
 
 		SearchToggle(false);
