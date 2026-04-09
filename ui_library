@@ -283,8 +283,14 @@ Fatality.Scale = 1
 Fatality.Ascii = "qwertyuiopasdfghjklzxcvbnmQWRTYUIOPASDFGHJKLZXCVBNM";
 Fatality.GLOBAL_ENVIRONMENT = {};
 Fatality.Windows = {};
-Fatality.FontSemiBold = Font.new('rbxasset://fonts/families/GothamSSm.json',Enum.FontWeight.SemiBold,Enum.FontStyle.Normal);
-Fatality.Flags = {};
+Fatality.Fonts = {
+	Regular = Font.new('rbxasset://fonts/families/Montserrat.json', Enum.FontWeight.Regular, Enum.FontStyle.Normal),
+	Medium = Font.new('rbxasset://fonts/families/Montserrat.json', Enum.FontWeight.Medium, Enum.FontStyle.Normal),
+	SemiBold = Font.new('rbxasset://fonts/families/Montserrat.json', Enum.FontWeight.SemiBold, Enum.FontStyle.Normal),
+	Bold = Font.new('rbxasset://fonts/families/Montserrat.json', Enum.FontWeight.Bold, Enum.FontStyle.Normal),
+	Black = Font.new('rbxasset://fonts/families/Montserrat.json', Enum.FontWeight.Heavy, Enum.FontStyle.Normal)
+}
+Fatality.FontSemiBold = Fatality.Fonts.SemiBold; 
 Fatality.DragBlacklist = {};
 Fatality.Version = '1.7 - Theme Engine';
 Fatality.ScalesRegistry = {}; 
@@ -341,6 +347,10 @@ function Fatality:Register(Object, Category, Property)
 			local grad = Object:FindFirstChildOfClass("UIGradient")
 			if grad then grad.Enabled = false end
 		end
+	end
+	
+	if Object:IsA("UIStroke") and Category == "Stroke" then
+		Object.Transparency = 0.65
 	end
 end
 
@@ -2443,6 +2453,12 @@ function Fatality:CreateAnimation(Instance: Instance , Time: number , Style : En
 			Style = nil;
 		end;
 	end;
+
+	if Instance:IsA("UIStroke") and Property.Transparency ~= nil then
+		if Property.Transparency < 0.65 then
+			Property.Transparency = 0.65
+		end
+	end
 
 	for key, value in pairs(Property) do
 		if typeof(value) == "ColorSequence" then
@@ -5954,7 +5970,7 @@ function Fatality.new(Window: Window)
 	HeaderText.Position = UDim2.new(0, 5, 0.5, 0)
 	HeaderText.Size = UDim2.new(0, 100, 0.699999988, 0)
 	HeaderText.ZIndex = 4
-	HeaderText.Font = Enum.Font.GothamBold
+	HeaderText.FontFace = Fatality.Fonts.Bold
 	HeaderText.Text = Window.Name
 	Fatality:Register(HeaderText, "Text", "TextColor3")
 	HeaderText.TextSize = 21.000
@@ -6029,8 +6045,7 @@ function Fatality.new(Window: Window)
 	User_name.Position = UDim2.new(1, -40, 0, 3)
 	User_name.Size = UDim2.new(0, 200, 0, 15)
 	User_name.ZIndex = 4
-	User_name.Font = Enum.Font.GothamMedium
-	User_name.Text = Client.DisplayName;
+  User_name.FontFace = Fatality.Fonts.Medium	User_name.Text = Client.DisplayName;
 	Fatality:Register(User_name, "Text", "TextColor3")
 	User_name.TextSize = 13.000
 	User_name.TextStrokeTransparency = 0.700
@@ -6045,7 +6060,7 @@ function Fatality.new(Window: Window)
 	expire_days.Position = UDim2.new(1, -40, 0, 16)
 	expire_days.Size = UDim2.new(0, 200, 0, 15)
 	expire_days.ZIndex = 4
-	expire_days.Font = Enum.Font.GothamMedium
+	expire_days.FontFace = Fatality.Fonts.Medium
 	Fatality:Register(expire_days, "Text", "TextColor3")
 	expire_days.Text = string.format("<font transparency=\"0.5\">expires:</font> <font color=\"#f53174\">%s</font>",Window.Expire)
 	expire_days.TextSize = 12.000
@@ -6285,7 +6300,7 @@ function Fatal:AddMenu(Menu : Menu)
 		menu_name.Position = UDim2.new(0, 28, 0.5, 0)
 		menu_name.Size = UDim2.new(1, 0, 1, 0)
 		menu_name.ZIndex = 5
-		menu_name.Font = Enum.Font.GothamBold
+		menu_name.FontFace = Fatality.Fonts.Bold
 		menu_name.Text = Menu.Name
 		Fatality:Register(menu_name, "Text", "TextColor3") 
 		menu_name.TextSize = 13.000
@@ -6753,7 +6768,7 @@ function Fatal:AddMenu(Menu : Menu)
 			Label.BackgroundTransparency = 1
 			Label.Size = UDim2.new(1, 0, 1, -2) 
 			Label.Position = UDim2.new(0, 0, 0, 2)
-			Label.Font = Enum.Font.GothamBold
+			Label.FontFace = Fatality.Fonts.Bold
 			Label.TextColor3 = Color3.fromRGB(90, 90, 90) 
 			Label.TextSize = 15
 			Label.Text = string.upper(Config.Text)
@@ -7012,7 +7027,7 @@ function Fatal:AddMenu(Menu : Menu)
 		HeaderText.Position = UDim2.new(0, 10, 0, 8)
 		HeaderText.Size = UDim2.new(1, -20, 0, 20)
 		HeaderText.ZIndex = 201
-		HeaderText.Font = Enum.Font.GothamBold
+		HeaderText.FontFace = Fatality.Fonts.Bold
 		HeaderText.Text = "About"
 		Fatality:Register(HeaderText, "Main", "TextColor3") 
 		HeaderText.TextSize = 14
@@ -7569,4 +7584,4 @@ end;
 
 Fatality.FATALITY_PID = Fatality:RandomString();
 
-return Fatality;
+return Fatality; -- 656456
