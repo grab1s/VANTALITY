@@ -4241,12 +4241,12 @@ function Fatality:CreateElements(Parent : Frame , ZIndex : number , Event : Bind
 
 		Fatality:CreateHover(Button,function(value)
 			if value then
-				Fatality:CreateAnimation(Button,0.45,{
-					BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+				Fatality:CreateAnimation(Button,0.25,{
+					BackgroundColor3 = Fatality:GetColor("Hover")
 				})
 			else
 				Fatality:CreateAnimation(Button,0.45,{
-					BackgroundColor3 = Fatality.CurrentTheme.Element
+					BackgroundColor3 = Fatality:GetColor("Element")
 				})
 			end;
 		end)
