@@ -1,4 +1,3 @@
-
 --[[
     Fatality: Marketplace UI
 	Modded by: grab1s
@@ -5541,20 +5540,23 @@ function Fatality.new(Window: Window)
 			local TagBox = Instance.new("Frame", Product); TagBox.BackgroundTransparency=1; TagBox.Size=UDim2.new(1,0,0,16); TagBox.AutomaticSize=Enum.AutomaticSize.Y; TagBox.LayoutOrder=4; TagBox.ZIndex=20
 			local TL = Instance.new("UIListLayout", TagBox); TL.FillDirection=Enum.FillDirection.Horizontal; TL.Padding=UDim.new(0,4); TL.Wraps=true
 			for _, t in ipairs(Config.Tags) do
-				local Ch = Instance.new("Frame", TagBox); Ch.BackgroundColor3=Color3.fromRGB(35,35,35); Ch.Size=UDim2.new(0,0,0,14); Ch.AutomaticSize=Enum.AutomaticSize.X; Ch.ZIndex=21; Instance.new("UICorner", Ch).CornerRadius=UDim.new(0,3); local S=Instance.new("UIStroke", Ch); S.Color=Color3.fromRGB(50,50,50); local P=Instance.new("UIPadding", Ch); P.PaddingLeft=UDim.new(0,4); P.PaddingRight=UDim.new(0,4)
-				local L = Instance.new("TextLabel", Ch); L.BackgroundTransparency=1; L.Size=UDim2.new(1,0,1,0); L.Font=Enum.Font.Gotham; L.TextSize=9; L.TextColor3=Color3.fromRGB(180,180,180); L.Text=string.lower(t); L.ZIndex=22
+				local Ch = Instance.new("Frame", TagBox); Ch.BackgroundColor3=Fatality:GetColor("TabActive"); Ch.Size=UDim2.new(0,0,0,14); Ch.AutomaticSize=Enum.AutomaticSize.X; Ch.ZIndex=21; Fatality:Register(Ch, "TabActive")
+				Instance.new("UICorner", Ch).CornerRadius=UDim.new(0,3); 
+				local S=Instance.new("UIStroke", Ch); S.Color=Fatality:GetColor("Stroke"); Fatality:Register(S, "Stroke", "Color")
+				local P=Instance.new("UIPadding", Ch); P.PaddingLeft=UDim.new(0,4); P.PaddingRight=UDim.new(0,4)
+				local L = Instance.new("TextLabel", Ch); L.BackgroundTransparency=1; L.Size=UDim2.new(1,0,1,0); L.Font=Enum.Font.Gotham; L.TextSize=9; L.TextColor3=Fatality:GetColor("TextDark"); Fatality:Register(L, "TextDark", "TextColor3"); L.Text=string.lower(t); L.ZIndex=22
 			end
 			if #Config.Tags == 0 then TagBox.Visible=false end
 
 			local StatRow = Instance.new("Frame", Product); StatRow.BackgroundTransparency=1; StatRow.Size=UDim2.new(1,0,0,16); StatRow.LayoutOrder=5; StatRow.ZIndex=20
 			
-			local LkBtn = Instance.new("ImageButton", StatRow); LkBtn.BackgroundTransparency=1; LkBtn.Size=UDim2.new(0,14,0,14); LkBtn.Position=UDim2.new(0,0,0.5,-7); LkBtn.Image=Fatality:GetIcon("chevron-up"); LkBtn.ImageColor3=(Config.UserVote==1 and Color3.fromRGB(100,255,100) or Color3.fromRGB(150,150,150)); LkBtn.ZIndex=21
+			local LkBtn = Instance.new("ImageButton", StatRow); LkBtn.BackgroundTransparency=1; LkBtn.Size=UDim2.new(0,14,0,14); LkBtn.Position=UDim2.new(0,0,0.5,-7); LkBtn.Image=Fatality:GetIcon("chevron-up"); LkBtn.ImageColor3=(Config.UserVote==1 and Color3.fromRGB(100,255,100) or Fatality:GetColor("TextDark")); LkBtn.ZIndex=21
 			local LkCnt = Instance.new("TextLabel", StatRow); LkCnt.BackgroundTransparency=1; LkCnt.Position=UDim2.new(0,16,0,0); LkCnt.Size=UDim2.new(0,20,1,0); LkCnt.Font=Enum.Font.GothamBold; LkCnt.TextSize=10; LkCnt.TextColor3=Color3.fromRGB(100,255,100); LkCnt.TextXAlignment=Enum.TextXAlignment.Left; LkCnt.Text=tostring(Config.Likes); LkCnt.ZIndex=21
 			
-			local DkBtn = Instance.new("ImageButton", StatRow); DkBtn.BackgroundTransparency=1; DkBtn.Size=UDim2.new(0,14,0,14); DkBtn.Position=UDim2.new(0,35,0.5,-7); DkBtn.Image=Fatality:GetIcon("chevron-down"); DkBtn.ImageColor3=(Config.UserVote==-1 and Color3.fromRGB(255,100,100) or Color3.fromRGB(150,150,150)); DkBtn.ZIndex=21
+			local DkBtn = Instance.new("ImageButton", StatRow); DkBtn.BackgroundTransparency=1; DkBtn.Size=UDim2.new(0,14,0,14); DkBtn.Position=UDim2.new(0,35,0.5,-7); DkBtn.Image=Fatality:GetIcon("chevron-down"); DkBtn.ImageColor3=(Config.UserVote==-1 and Color3.fromRGB(255,100,100) or Fatality:GetColor("TextDark")); DkBtn.ZIndex=21
 			local DkCnt = Instance.new("TextLabel", StatRow); DkCnt.BackgroundTransparency=1; DkCnt.Position=UDim2.new(0,51,0,0); DkCnt.Size=UDim2.new(0,20,1,0); DkCnt.Font=Enum.Font.GothamBold; DkCnt.TextSize=10; DkCnt.TextColor3=Color3.fromRGB(255,100,100); DkCnt.TextXAlignment=Enum.TextXAlignment.Left; DkCnt.Text=tostring(Config.Dislikes); DkCnt.ZIndex=21
 
-			local FavBtn = Instance.new("ImageButton", StatRow); FavBtn.BackgroundTransparency=1; FavBtn.Size=UDim2.new(0,16,0,16); FavBtn.AnchorPoint=Vector2.new(1,0.5); FavBtn.Position=UDim2.new(1,0,0.5,0); FavBtn.Image=Fatality:GetIcon("star"); FavBtn.ImageColor3=(Config.IsFavorite and Color3.fromRGB(255,220,80) or Color3.fromRGB(80,80,80)); FavBtn.ZIndex=21
+			local FavBtn = Instance.new("ImageButton", StatRow); FavBtn.BackgroundTransparency=1; FavBtn.Size=UDim2.new(0,16,0,16); FavBtn.AnchorPoint=Vector2.new(1,0.5); FavBtn.Position=UDim2.new(1,0,0.5,0); FavBtn.Image=Fatality:GetIcon("star"); FavBtn.ImageColor3=(Config.IsFavorite and Color3.fromRGB(255,220,80) or Fatality:GetColor("TextDark")); FavBtn.ZIndex=21
 
 			local BtnCont = Instance.new("Frame", Product); BtnCont.BackgroundTransparency=1; BtnCont.Size=UDim2.new(1,0,0,22); BtnCont.LayoutOrder=6; BtnCont.ZIndex=20
 			
@@ -5587,7 +5589,7 @@ function Fatality.new(Window: Window)
 			InstBtn.MouseButton1Click:Connect(Config.Callback)
 			FavBtn.MouseButton1Click:Connect(function()
 				Config.IsFavorite = not Config.IsFavorite
-				FavBtn.ImageColor3 = Config.IsFavorite and Color3.fromRGB(255,220,80) or Color3.fromRGB(80,80,80)
+				FavBtn.ImageColor3 = Config.IsFavorite and Color3.fromRGB(255,220,80) or Fatality:GetColor("TextDark")
 				Config.FavCallback(Config.IsFavorite)
 			end)
 			
@@ -5622,6 +5624,14 @@ function Fatality.new(Window: Window)
 			Toggle(BindEvent:GetAttribute('V'))
 			BindEvent.Event:Connect(Toggle)
 
+			Fatality.ThemeEvent.Event:Connect(function()
+				if LkBtn and LkBtn.Parent then
+					if Config.UserVote ~= 1 then game:GetService("TweenService"):Create(LkBtn, TweenInfo.new(0.3), {ImageColor3 = Fatality:GetColor("TextDark")}):Play() end
+					if Config.UserVote ~= -1 then game:GetService("TweenService"):Create(DkBtn, TweenInfo.new(0.3), {ImageColor3 = Fatality:GetColor("TextDark")}):Play() end
+					if not Config.IsFavorite then game:GetService("TweenService"):Create(FavBtn, TweenInfo.new(0.3), {ImageColor3 = Fatality:GetColor("TextDark")}):Play() end
+				end
+			end)
+
 			return {
 				SetStatus = function(self, s) if StatusColors[s] then Fatality:CreateAnimation(StatDot, 0.3, {BackgroundColor3=StatusColors[s]}) end end,
 				SetButton = function(self, t) 
@@ -5636,13 +5646,13 @@ function Fatality.new(Window: Window)
 					
 					if data.Vote ~= nil then
 						Config.UserVote = data.Vote
-						LkBtn.ImageColor3 = (data.Vote==1) and Color3.fromRGB(100,255,100) or Color3.fromRGB(150,150,150)
-						DkBtn.ImageColor3 = (data.Vote==-1) and Color3.fromRGB(255,100,100) or Color3.fromRGB(150,150,150)
+						LkBtn.ImageColor3 = (data.Vote==1) and Color3.fromRGB(100,255,100) or Fatality:GetColor("TextDark")
+						DkBtn.ImageColor3 = (data.Vote==-1) and Color3.fromRGB(255,100,100) or Fatality:GetColor("TextDark")
 					end
 					
 					if data.Fav ~= nil then
 						Config.IsFavorite = data.Fav
-						FavBtn.ImageColor3 = data.Fav and Color3.fromRGB(255,220,80) or Color3.fromRGB(80,80,80)
+						FavBtn.ImageColor3 = data.Fav and Color3.fromRGB(255,220,80) or Fatality:GetColor("TextDark")
 					end
 				end,
 				Destroy = function(self) Product:Destroy() end,
