@@ -3782,6 +3782,378 @@ function Fatality:CreateElements(Parent : Frame , ZIndex : number , Event : Bind
 		return Respons;
 	end;
 
+	function elements:AddDropdown(Config: Dropdown)
+		Config = Config or {};
+		if not Fatality:CanShow(Config) then return GetDummyElement() end
+
+		Config.Name = Config.Name or "Dropdown";
+		Config.Option = Config.Option or false;
+		Config.Default = Config.Default or nil;
+		Config.Callback = Config.Callback or function(any) end;
+		Config.Values = Config.Values or {};
+		Config.Multi = Config.Multi or false;
+
+		local DataParser = function(value)
+			if not value then return 'None'; end;
+			local Out;
+			if typeof(value) == 'table' then
+				if #value > 0 then
+					local x = {};
+					for i,v in next , value do table.insert(x , tostring(v)) end;
+					Out = table.concat(x,' , ');
+				else
+					local x = {};
+					for i,v in next , value do if v == true then table.insert(x , tostring(i)); end end;
+					Out = table.concat(x,' , ');
+				end;
+			else
+				Out = tostring(value);
+			end;
+			return Out;
+		end;
+
+		local Dropdown = Instance.new("Frame")
+		local Dropdown_Name = Instance.new("TextLabel")
+		local ValueFrame = Instance.new("Frame")
+		local UICorner = Instance.new("UICorner")
+		local OptionButton = Instance.new("ImageButton")
+		local icon = Instance.new("ImageLabel")
+		local Value_Text = Instance.new("TextLabel")
+
+		if SearchAPI then SearchAPI.Memory(Config.Name); end;
+
+		Dropdown.Name = Fatality:RandomString()
+		Dropdown.Parent = Parent
+		Fatality:Register(Dropdown, "Element")
+		Dropdown.BackgroundTransparency = 1.000
+		Dropdown.BorderColor3 = Color3.fromRGB(0, 0, 0)
+		Dropdown.BorderSizePixel = 0
+		Dropdown.Size = UDim2.new(1, -25, 0, 17)
+		Dropdown.ZIndex = ZIndex + 3
+		Fatality:AddDragBlacklist(Dropdown);
+
+		Dropdown_Name.Name = Fatality:RandomString()
+		Dropdown_Name.Parent = Dropdown
+		Dropdown_Name.AnchorPoint = Vector2.new(0, 0.5)
+		Dropdown_Name.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+		Dropdown_Name.BackgroundTransparency = 1.000
+		Dropdown_Name.BorderColor3 = Color3.fromRGB(0, 0, 0)
+		Dropdown_Name.BorderSizePixel = 0
+		Dropdown_Name.Position = UDim2.new(0, 0, 0, 8)
+		Dropdown_Name.Size = UDim2.new(1, 0, 0.800000012, 0)
+		Dropdown_Name.ZIndex = 7
+		Dropdown_Name.FontFace = Fatality.FontSemiBold
+		Dropdown_Name.Text = Config.Name
+		Fatality:Register(Dropdown_Name, "Text", "TextColor3")
+		Dropdown_Name.TextSize = 13.000
+		Dropdown_Name.TextTransparency = 0.200
+		Dropdown_Name.TextXAlignment = Enum.TextXAlignment.Left
+		Dropdown_Name.ZIndex = ZIndex + 4
+		Fatality:ProtectText(Dropdown_Name,Config.Name);
+
+		ValueFrame.Name = Fatality:RandomString()
+		ValueFrame.Parent = Dropdown
+		ValueFrame.AnchorPoint = Vector2.new(1, 0.5)
+		Fatality:Register(ValueFrame, "Element")
+		ValueFrame.BorderColor3 = Color3.fromRGB(0, 0, 0)
+		ValueFrame.BorderSizePixel = 0
+		ValueFrame.Position = UDim2.new(1, -3, 0.5, 0)
+		ValueFrame.Size = UDim2.new(0, 75, 0.925000012, 0)
+		ValueFrame.ZIndex = ZIndex + 4
+
+		UICorner.CornerRadius = UDim.new(0, 2)
+		UICorner.Parent = ValueFrame
+
+		OptionButton.Name = Fatality:RandomString()
+		OptionButton.Parent = ValueFrame
+		OptionButton.AnchorPoint = Vector2.new(0, 0.5)
+		OptionButton.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+		OptionButton.BackgroundTransparency = 1.000
+		OptionButton.BorderColor3 = Color3.fromRGB(0, 0, 0)
+		OptionButton.BorderSizePixel = 0
+		OptionButton.Position = UDim2.new(0, -20, 0, 7)
+		OptionButton.Size = UDim2.new(0, 13, 0, 13)
+		OptionButton.SizeConstraint = Enum.SizeConstraint.RelativeYY
+		OptionButton.Image = "http://www.roblox.com/asset/?id=14007344336"
+		OptionButton.ImageTransparency = 0.600
+		OptionButton.ZIndex = 8
+		OptionButton.Visible = Config.Option;
+		Fatality:Register(OptionButton, "Text", "ImageColor3")
+
+		icon.Name = Fatality:RandomString()
+		icon.Parent = ValueFrame
+		icon.AnchorPoint = Vector2.new(1, 0)
+		icon.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+		icon.BackgroundTransparency = 1.000
+		icon.BorderColor3 = Color3.fromRGB(0, 0, 0)
+		icon.BorderSizePixel = 0
+		icon.Position = UDim2.new(1, 0, 0, 0)
+		icon.Size = UDim2.new(0,15,0,15)
+		icon.SizeConstraint = Enum.SizeConstraint.RelativeYY
+		icon.ZIndex = ZIndex + 5
+		icon.Image = "rbxassetid://10709790948"
+		Fatality:Register(icon, "Text", "ImageColor3")
+
+		Value_Text.Name = Fatality:RandomString()
+		Value_Text.Parent = ValueFrame
+		Value_Text.AnchorPoint = Vector2.new(0, 0.5)
+		Value_Text.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+		Value_Text.BackgroundTransparency = 1.000
+		Value_Text.BorderColor3 = Color3.fromRGB(0, 0, 0)
+		Value_Text.BorderSizePixel = 0
+		Value_Text.Position = UDim2.new(0, 3, 0.5, 0)
+		Value_Text.Size = UDim2.new(1, -18, 0.800000012, 0)
+		Value_Text.ZIndex = ZIndex + 5
+		Value_Text.FontFace = Fatality.FontSemiBold
+		Value_Text.Text = DataParser(Config.Default)
+		Fatality:Register(Value_Text, "Text", "TextColor3") 
+		Value_Text.TextSize = 10.000
+		Value_Text.TextTransparency = 0.500
+		Value_Text.TextXAlignment = Enum.TextXAlignment.Left
+		Value_Text.TextYAlignment = Enum.TextYAlignment.Top
+		Value_Text.TextWrapped = true
+		Value_Text.TextTruncate = Enum.TextTruncate.SplitWord
+
+		local res;
+		res = Fatality:CreateDropdown(ValueFrame, Config.Default, Config.Multi, Config.AutoUpdate, function(args)
+			Config.Default = args;
+			Value_Text.Text = DataParser(Config.Default);
+			res:change_default(Config.Default);
+			Config.Callback(args);
+		end);
+
+		res:set_data(Config.Values);
+		res:refresh();
+
+		res:on_toggle(function(b)
+			if b then
+				Fatality:CreateAnimation(icon,0.35,{ Rotation = -180, ImageColor3 = Fatality:GetColor("Main") })
+			else
+				Fatality:CreateAnimation(icon,0.35,{ Rotation = 0, ImageColor3 = Fatality:GetColor("Text") })
+			end;
+		end);
+
+		local OpcToggle = function(value)
+			if value then
+				Fatality:CreateAnimation(Dropdown_Name,0.45,{ TextTransparency = 0.2, })
+				Fatality:CreateAnimation(ValueFrame,0.45,{ BackgroundTransparency = 0 })
+				Fatality:CreateAnimation(icon,0.45,{ ImageTransparency = 0 })
+				Fatality:CreateAnimation(Value_Text,0.45,{ TextTransparency = 0.5 })
+				Fatality:CreateAnimation(OptionButton,0.45,{ ImageTransparency = (Config.Option and 0.6) or 1, })
+			else
+				Fatality:CreateAnimation(Dropdown_Name,0.45,{ TextTransparency = 1, })
+				Fatality:CreateAnimation(ValueFrame,0.45,{ BackgroundTransparency = 1 })
+				Fatality:CreateAnimation(icon,0.45,{ ImageTransparency = 1 })
+				Fatality:CreateAnimation(Value_Text,0.45,{ TextTransparency = 1 })
+				Fatality:CreateAnimation(OptionButton,0.45,{ ImageTransparency = 1 })
+			end;
+		end;
+
+		OpcToggle(Event:GetAttribute('V'));
+
+		local Respons = Fatality:CreateResponse({
+			Rename = function(new_name)
+				Dropdown_Name.Text = new_name
+				Fatality:ProtectText(Dropdown_Name,new_name);
+			end,
+			GetValue = function()
+				return Config.Default;
+			end,
+			Signal = Event.Event:Connect(OpcToggle),
+			SetValue = function(def, force)
+				Config.Default = def;
+				Value_Text.Text = DataParser(Config.Default);
+				res:change_default(Config.Default);
+				if force then Config.Callback(def) end
+			end,
+			SetData = function(def)
+				Config.Values = def;
+				res:set_data(Config.Values);
+				if not Config.AutoUpdate then res:refresh(); end
+			end,
+			Flag = Config.Flag and Config.Flag.."Dropdown",
+			Option = (Config.Option and Fatality:CreateOption(OptionButton)) or nil;
+		});
+
+		if Config.Flag then
+			Fatality.WindowFlags[FatalWindow][Config.Flag.."Dropdown"] = Respons;
+		end;
+		
+		if Config.Default then Config.Callback(Config.Default) end
+
+		return Respons;
+	end;
+
+	function elements:AddKeybind(Config: Keybind)
+		Config = Config or {};
+		if not Fatality:CanShow(Config) then return GetDummyElement() end
+
+		Config.Name = Config.Name or "Keybind";
+		Config.Option = Config.Option or false;
+		Config.Default = Config.Default or nil;
+		Config.Callback = Config.Callback or function(any) end;
+
+		local Keys = {
+			One = '1', Two = '2', Three = '3', Four = '4', Five = '5', Six = '6', Seven = '7', Eight = '8', Nine = '9', Zero = '0',
+			['Minus'] = "-", ['Plus'] = "+", BackSlash = "\\", Slash = "/", Period = '.', Semicolon = ';', Colon = ":",
+			LeftControl = "LCtrl", RightControl = "RCtrl", LeftShift = "LShift", RightShift = "RShift", Return = "Enter",
+			LeftBracket = "[", RightBracket = "]", Quote = "'", Comma = ",", Equals = "=", LeftSuper = "Super", RightSuper = "Super"
+		};
+
+		local GetItem = function(item)
+			if item then
+				if typeof(item) == 'EnumItem' then
+					return Keys[item.Name] or item.Name;
+				else
+					return Keys[tostring(item)] or tostring(item);
+				end;
+			else
+				return 'None';
+			end;
+		end;
+
+		local Keybind = Instance.new("Frame")
+		local Keybind_Name = Instance.new("TextLabel")
+		local ValueFrame = Instance.new("Frame")
+		local UICorner = Instance.new("UICorner")
+		local OptionButton = Instance.new("ImageButton")
+		local ValueText = Instance.new("TextLabel")
+
+		if SearchAPI then SearchAPI.Memory(Config.Name); end;
+
+		Keybind.Name = Fatality:RandomString()
+		Keybind.Parent = Parent
+		Fatality:Register(Keybind, "Element")
+		Keybind.BackgroundTransparency = 1.000
+		Keybind.BorderColor3 = Color3.fromRGB(0, 0, 0)
+		Keybind.BorderSizePixel = 0
+		Keybind.Size = UDim2.new(1, -25, 0, 17)
+		Keybind.ZIndex = ZIndex + 1
+		Fatality:AddDragBlacklist(Keybind);
+
+		Keybind_Name.Name = Fatality:RandomString()
+		Keybind_Name.Parent = Keybind
+		Keybind_Name.AnchorPoint = Vector2.new(0, 0.5)
+		Keybind_Name.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+		Keybind_Name.BackgroundTransparency = 1.000
+		Keybind_Name.BorderColor3 = Color3.fromRGB(0, 0, 0)
+		Keybind_Name.BorderSizePixel = 0
+		Keybind_Name.Position = UDim2.new(0, 0, 0.5, 0)
+		Keybind_Name.Size = UDim2.new(1, 0, 0.800000012, 0)
+		Keybind_Name.ZIndex = ZIndex + 2
+		Keybind_Name.FontFace = Fatality.FontSemiBold
+		Keybind_Name.Text = Config.Name
+		Fatality:Register(Keybind_Name, "Text", "TextColor3")
+		Keybind_Name.TextSize = 13.000
+		Keybind_Name.TextTransparency = 0.200
+		Keybind_Name.TextXAlignment = Enum.TextXAlignment.Left
+		Fatality:ProtectText(Keybind_Name,Config.Name);
+
+		ValueFrame.Name = Fatality:RandomString()
+		ValueFrame.Parent = Keybind
+		ValueFrame.AnchorPoint = Vector2.new(1, 0.5)
+		Fatality:Register(ValueFrame, "Element")
+		ValueFrame.BorderColor3 = Color3.fromRGB(0, 0, 0)
+		ValueFrame.BorderSizePixel = 0
+		ValueFrame.Position = UDim2.new(1, -3, 0.5, 0)
+		ValueFrame.Size = UDim2.new(0, 75, 0.850000024, 0)
+		ValueFrame.ZIndex = ZIndex + 2
+
+		UICorner.CornerRadius = UDim.new(0, 2)
+		UICorner.Parent = ValueFrame
+
+		OptionButton.Name = Fatality:RandomString()
+		OptionButton.Parent = ValueFrame
+		OptionButton.AnchorPoint = Vector2.new(0, 0.5)
+		OptionButton.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+		OptionButton.BackgroundTransparency = 1.000
+		OptionButton.BorderColor3 = Color3.fromRGB(0, 0, 0)
+		OptionButton.BorderSizePixel = 0
+		OptionButton.Position = UDim2.new(0, -20, 0.5, 0)
+		OptionButton.Size = UDim2.new(0, 13, 0, 13)
+		OptionButton.SizeConstraint = Enum.SizeConstraint.RelativeYY
+		OptionButton.Image = "http://www.roblox.com/asset/?id=14007344336"
+		OptionButton.ImageTransparency = 0.600
+		OptionButton.Visible = Config.Option or false;
+		Fatality:Register(OptionButton, "Text", "ImageColor3")
+
+		ValueText.Name = Fatality:RandomString()
+		ValueText.Parent = ValueFrame
+		ValueText.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+		ValueText.BackgroundTransparency = 1.000
+		ValueText.BorderColor3 = Color3.fromRGB(0, 0, 0)
+		ValueText.BorderSizePixel = 0
+		ValueText.Size = UDim2.new(1, 0, 1, 0)
+		ValueText.ZIndex = ZIndex + 3
+		ValueText.FontFace = Fatality.FontSemiBold
+		ValueText.Text = GetItem(Config.Default)
+		Fatality:Register(ValueText, "Text", "TextColor3")
+		ValueText.TextSize = 9.000
+		ValueText.TextStrokeTransparency = 0.850
+		ValueText.TextTransparency = 0.400
+
+		local IsBinding = false;
+		Fatality:NewInput(ValueFrame,function()
+			if IsBinding then return; end;
+			ValueText.Text = "...";
+			local Selected = nil;
+			while not Selected do
+				local Key = UserInputService.InputBegan:Wait();
+				if Key.KeyCode ~= Enum.KeyCode.Unknown then
+					Selected = Key.KeyCode;
+				else
+					if Key.UserInputType == Enum.UserInputType.MouseButton1 then Selected = "MouseLeft";
+					elseif Key.UserInputType == Enum.UserInputType.MouseButton2 then Selected = "MouseRight"; end;
+				end;
+			end;
+			Config.Default = Selected;
+			ValueText.Text = GetItem(Selected);
+			IsBinding = false;
+			Config.Callback(typeof(Selected) == "string" and Selected or Selected.Name);
+		end);
+
+		local OpcToggle = function(value)
+			if value then
+				Fatality:CreateAnimation(Keybind_Name,0.45,{ TextTransparency = 0.2, })
+				Fatality:CreateAnimation(ValueFrame,0.45,{ BackgroundTransparency = 0 })
+				Fatality:CreateAnimation(ValueText,0.45,{ TextStrokeTransparency = 0.850, TextTransparency = 0.400 })
+				Fatality:CreateAnimation(OptionButton,0.45,{ ImageTransparency = (Config.Option and 0.6) or 1, })
+			else
+				Fatality:CreateAnimation(Keybind_Name,0.45,{ TextTransparency = 1, })
+				Fatality:CreateAnimation(ValueFrame,0.45,{ BackgroundTransparency = 1 })
+				Fatality:CreateAnimation(ValueText,0.45,{ TextStrokeTransparency = 1, TextTransparency = 1 })
+				Fatality:CreateAnimation(OptionButton,0.45,{ ImageTransparency = 1, })
+			end;
+		end;
+
+		OpcToggle(Event:GetAttribute('V'));
+
+		local Respons = Fatality:CreateResponse({
+			Rename = function(new_name)
+				Keybind_Name.Text = new_name
+				Fatality:ProtectText(Keybind_Name,new_name);
+			end,
+			GetValue = function() return Config.Default; end,
+			Signal = Event.Event:Connect(OpcToggle),
+			SetValue = function(def, force)
+				local IsSame = Config.Default == def;
+				Config.Default = def;
+				ValueText.Text = GetItem(Config.Default);
+				if not IsSame or force then Config.Callback(Config.Default); end;
+			end,
+			Flag = Config.Flag and Config.Flag.."Keybind",
+			Option = (Config.Option and Fatality:CreateOption(OptionButton)) or nil;
+		});
+
+		if Config.Flag then
+			Fatality.WindowFlags[FatalWindow][Config.Flag.."Keybind"] = Respons;
+		end;
+		
+		if Config.Default then Config.Callback(Config.Default) end
+
+		return Respons;
+	end;
+
 	function elements:AddParagraph(settings)
 		settings = settings or {}
 		if not Fatality:CanShow(settings) then return GetDummyElement() end
