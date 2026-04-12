@@ -68,6 +68,18 @@
       "date_create": "22.02.2026",
       "date_update": "22.02.2026 18:00", 
       "url": "https://pastebin.com/raw/MZpYtgsq"
+    },
+    {
+      "id": "VT8",
+      "name": "Red",
+      "version": "1.0",
+      "author": "phantom_KRAIT",
+      "status": "Working",
+      "description": "best red visuals",
+      "tags": ["Black", "Light Red", "White"],
+      "date_create": "12.04.2026",
+      "date_update": "12.04.2026 18:50", 
+      "url": "https://pastebin.com/raw/SwfFSNnz"
     }
   ]
 }
