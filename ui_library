@@ -1,5 +1,5 @@
 --[[
-    Fatality.win UI Library
+    Fatality UI
 	Modded by: grab1s
     Author: 4lpaca
     Github: https://github.com/4lpaca-pin/Fatality
@@ -300,12 +300,13 @@ Fatality.CurrentTheme = {
 	Background = Color3.fromRGB(19, 19, 19),    
 	Container  = Color3.fromRGB(24, 24, 24),    
 	Element    = Color3.fromRGB(16, 16, 16),
-	Hover      = Color3.fromRGB(25, 25, 25),
+	Hover      = Color3.fromRGB(25, 25, 25), 
+	TabActive  = Color3.fromRGB(44, 44, 44), 
 	Black      = Color3.fromRGB(16, 16, 16), 
 	Text       = Color3.fromRGB(255, 255, 255),
 	TextDark   = Color3.fromRGB(150, 150, 150),
 	Stroke     = Color3.fromRGB(29, 29, 29),    
-	Outline    = Color3.fromRGB(0, 0, 0),       
+	Outline    = Color3.fromRGB(0, 0, 0),      
 };
 
 Fatality.Colors = Fatality.CurrentTheme; 
@@ -368,6 +369,9 @@ function Fatality:SetTheme(NewTheme)
 	if not NewTheme.Hover then
 		Fatality.CurrentTheme.Hover = LightenColor(Fatality:GetColor("Element"), 0.05)
 	end
+	if not NewTheme.TabActive then
+		Fatality.CurrentTheme.TabActive = LightenColor(Fatality:GetColor("Container"), 0.08) 
+	end
 
 	Fatality.Colors = Fatality.CurrentTheme
 	
@@ -375,7 +379,7 @@ function Fatality:SetTheme(NewTheme)
 		"Background",
 		"Container", "Element", "Stroke", "Outline",
 		"Text", "TextDark",
-		"Main", "Hover"
+		"Main", "Hover", "TabActive"
 	}
 	
 	local TS = game:GetService("TweenService")
@@ -4559,9 +4563,9 @@ function elements:AddDropdown(Config: Dropdown)
 		Value_Text.ZIndex = ZIndex + 5
 		Value_Text.FontFace = Fatality.FontSemiBold
 		Value_Text.Text = DataParser(Config.Default)
-		Value_Text.TextColor3 = Color3.fromRGB(255, 255, 255)
+		Fatality:Register(Value_Text, "Text", "TextColor3") 
 		Value_Text.TextSize = 10.000
-		Value_Text.TextTransparency = 0.500
+		Value_Text.TextTransparency = 0.400
 		Value_Text.TextXAlignment = Enum.TextXAlignment.Left
 		Value_Text.TextYAlignment = Enum.TextYAlignment.Top
 		Value_Text.TextWrapped = true
@@ -4604,7 +4608,7 @@ function elements:AddDropdown(Config: Dropdown)
 					ImageTransparency = 0
 				})
 				Fatality:CreateAnimation(Value_Text,0.45,{
-					TextTransparency = 0.5
+					TextTransparency = 0.4
 				})
 				Fatality:CreateAnimation(OptionButton,0.45,{
 					ImageTransparency = (Config.Option and 0.6) or 1,
@@ -4643,6 +4647,8 @@ function elements:AddDropdown(Config: Dropdown)
 				Config.Default = def;
 				Value_Text.Text = DataParser(Config.Default);
 				res:change_default(Config.Default);
+				
+				res:refresh();
 				
 				if force then Config.Callback(def) end
 			end,
@@ -4772,7 +4778,7 @@ function elements:AddDropdown(Config: Dropdown)
 		ValueText.ZIndex = ZIndex + 3
 		ValueText.FontFace = Fatality.FontSemiBold
 		ValueText.Text = GetItem(Config.Default)
-		ValueText.TextColor3 = Color3.fromRGB(255, 255, 255)
+		Fatality:Register(ValueText, "Text", "TextColor3") 
 		ValueText.TextSize = 9.000
 		ValueText.TextStrokeTransparency = 0.850
 		ValueText.TextTransparency = 0.400
@@ -5661,6 +5667,7 @@ function Fatality:CreateConfigWindow(Root: ScreenGui , Fatal , Button: ImageButt
 		ReloadConfig = function()
 			if not res.ConfigDirectory then return end
 			local files = {};
+			local seen = {}; 
 			local dirPath = string.gsub(res.ConfigDirectory, "\\", "/")
 			local list = listfiles(dirPath)
 			if type(list) == "table" then
@@ -5669,7 +5676,10 @@ function Fatality:CreateConfigWindow(Root: ScreenGui , Fatal , Button: ImageButt
 					local fileName = string.match(normPath, "[^/]+$") or normPath
 					if fileName and fileName ~= "" and string.match(fileName, "%.json$") then
 						local cleanName = string.gsub(fileName, "%.json$", "")
-						table.insert(files, cleanName);
+						if not seen[cleanName] then
+							seen[cleanName] = true
+							table.insert(files, cleanName);
+						end
 					end
 				end
 			end
@@ -5729,7 +5739,12 @@ function Fatality:CreateConfigWindow(Root: ScreenGui , Fatal , Button: ImageButt
 				local flags = Fatal:GetFlagConfig();
 				flags.Info = {Name = Name, Folder = Folder, ConfigName = safeName};
 				res:SaveConfig(safeName, game:GetService('HttpService'):JSONEncode(flags));
-				res:ReloadConfig();
+				
+				if not table.find(Configs, safeName) then
+					table.insert(Configs, safeName)
+					res:Refresh()
+				end
+				
 				Fatal.Notifier:Notify({Title="Config", Content="Saved config '"..tostring(safeName).."'", Icon="settings", Duration=4});
 				TextBox.Text = "";
 			end);
@@ -5741,7 +5756,7 @@ function Fatality:CreateConfigWindow(Root: ScreenGui , Fatal , Button: ImageButt
 					local flags = Fatal:GetFlagConfig();
 					flags.Info = {Name = Name, Folder = Folder, ConfigName = import.Name, Type = "Overwrite"};
 					res:SaveConfig(import.Name, game:GetService('HttpService'):JSONEncode(flags));
-					res:ReloadConfig();
+					
 					Fatal.Notifier:Notify({Title="Config", Content="Saved config '"..tostring(import.Name).."'", Icon="settings", Duration=4});
 				end;
 			end);
@@ -5754,7 +5769,15 @@ function Fatality:CreateConfigWindow(Root: ScreenGui , Fatal , Button: ImageButt
 			DeleteButton.MouseButton1Click:Connect(function()
 				if import and import.Name then
 					Fatal.Notifier:Notify({Title="Config", Content="Deleted config '"..tostring(import.Name).."'", Icon="settings", Duration=4});
-					res:DeleteConfig(import.Name); res:ReloadConfig(); import.Name = nil; import.Element = nil
+					res:DeleteConfig(import.Name); 
+					
+					local idx = table.find(Configs, import.Name)
+					if idx then
+						table.remove(Configs, idx)
+						res:Refresh()
+					end
+					
+					import.Name = nil; import.Element = nil
 				end;
 			end)
 		end,
@@ -6264,7 +6287,7 @@ function Fatal:AddMenu(Menu : Menu)
 
 		MenuButton.Name = Fatality:RandomString()
 		MenuButton.Parent = tbc;
-		Fatality:Register(MenuButton, "Container") 
+		Fatality:Register(MenuButton, "TabActive") 
 		MenuButton.BorderColor3 = Color3.fromRGB(0, 0, 0)
 		MenuButton.BorderSizePixel = 0
 		MenuButton.Size = UDim2.new(0, 90, 0.85, 0)
@@ -6768,9 +6791,9 @@ function Fatal:AddMenu(Menu : Menu)
 			Label.Size = UDim2.new(1, 0, 1, -2) 
 			Label.Position = UDim2.new(0, 0, 0, 2)
 			Label.FontFace = Fatality.Fonts.Bold
-			Label.TextColor3 = Color3.fromRGB(90, 90, 90) 
-			Label.TextSize = 15
 			Label.Text = string.upper(Config.Text)
+			Fatality:Register(Label, "TextDark", "TextColor3")
+			Label.TextSize = 15
 			Label.TextXAlignment = Enum.TextXAlignment.Center
 			Label.ZIndex = 11
 
@@ -7221,6 +7244,164 @@ function Fatal:AddMenu(Menu : Menu)
 		ToggleUI(true);
 	end
 
+	-- events WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW
+	local oldHoliday = CoreGui:FindFirstChild("Fatality_HolidayParticles")
+	if oldHoliday then oldHoliday:Destroy() end
+
+	local HolidayGUI = Instance.new("ScreenGui")
+	HolidayGUI.Name = "Fatality_HolidayParticles"
+	HolidayGUI.IgnoreGuiInset = true
+	HolidayGUI.DisplayOrder = Fatalitywin.DisplayOrder - 1
+	HolidayGUI.Parent = CoreGui
+	HolidayGUI.Enabled = false
+
+	local ParticlesContainer = Instance.new("Frame")
+	ParticlesContainer.Size = UDim2.fromScale(1, 1)
+	ParticlesContainer.BackgroundTransparency = 1
+	ParticlesContainer.Parent = HolidayGUI
+
+	local MascotContainer = Instance.new("Frame")
+	MascotContainer.Name = "MascotContainer"
+	MascotContainer.BackgroundTransparency = 1
+	MascotContainer.Size = Window.Scale
+	MascotContainer.Position = FatalFrame.Position
+	MascotContainer.AnchorPoint = FatalFrame.AnchorPoint
+	MascotContainer.ZIndex = 1000
+	MascotContainer.Parent = Fatalitywin
+	
+	local MascotScale = Instance.new("UIScale", MascotContainer)
+	MascotScale.Scale = Fatality.Scale
+	table.insert(Fatality.ScalesRegistry, MascotScale)
+
+	FatalFrame:GetPropertyChangedSignal("Position"):Connect(function() MascotContainer.Position = FatalFrame.Position end)
+
+	local MascotImg = Instance.new("ImageLabel")
+	MascotImg.Name = "HolidayMascot"
+	MascotImg.BackgroundTransparency = 1
+	MascotImg.ZIndex = 1000 
+	MascotImg.AnchorPoint = Vector2.new(0, 1)
+	MascotImg.Position = UDim2.new(0, 10, 0, 15)
+	MascotImg.Size = UDim2.fromOffset(120, 120)
+	MascotImg.Parent = MascotContainer
+	MascotImg.Visible = true
+
+	Fatal.HolidayState = { -- стэйты
+		MainEnabled = true, 
+		Mascot = { Enabled = true, Position = "Left", Size = 120 },
+		Particles = { Enabled = false, Count = 0, Speed = 40, Size = 15, Index = 0, Images = {}, Colors = {} },
+		ActiveParticles = {}
+	}
+
+	local function ResetParticle(p)
+		p.Pos = Vector2.new(math.random(0, CurrentCamera.ViewportSize.X), math.random(-CurrentCamera.ViewportSize.Y, -20))
+		p.Vel = Vector2.new(0, 0)
+		p.BaseSpeed = math.random(Fatal.HolidayState.Particles.Speed * 0.5, Fatal.HolidayState.Particles.Speed * 1.5)
+		p.Sway = math.random() * 6.28
+		p.RotSpeed = math.random(-100, 100) / 100
+		p.TargetTrans = math.random(10, 50) / 100
+		p.Size = Fatal.HolidayState.Particles.Size + math.random(-4, 4)
+		
+		local imgs = Fatal.HolidayState.Particles.Images
+		local idx = Fatal.HolidayState.Particles.Index
+		if idx == 0 or idx > #imgs then idx = math.random(1, math.max(1, #imgs)) end
+		p.Obj.Image = imgs[idx] or ""
+		
+		local cols = Fatal.HolidayState.Particles.Colors
+		p.Obj.ImageColor3 = cols[math.random(1, math.max(1, #cols))] or Color3.new(1,1,1)
+	end
+
+	local function SpawnParticle()
+		local img = Instance.new("ImageLabel")
+		img.BackgroundTransparency = 1
+		img.Parent = ParticlesContainer
+		local p = { Obj = img }
+		ResetParticle(p)
+		p.Pos = Vector2.new(math.random(0, CurrentCamera.ViewportSize.X), math.random(0, CurrentCamera.ViewportSize.Y))
+		return p
+	end
+
+	local HolidayRenderConn
+	HolidayRenderConn = RunService.RenderStepped:Connect(function(dt)
+		if not FatalFrame or not FatalFrame.Parent then
+			if HolidayRenderConn then HolidayRenderConn:Disconnect() end
+			if HolidayGUI then HolidayGUI:Destroy() end
+			return
+		end
+
+		local state = Fatal.HolidayState
+		if not Fatal.Toggle or not state.MainEnabled or not state.Particles.Enabled then
+			HolidayGUI.Enabled = false
+			return
+		end
+		HolidayGUI.Enabled = true
+
+		while #state.ActiveParticles < state.Particles.Count do table.insert(state.ActiveParticles, SpawnParticle()) end
+		while #state.ActiveParticles > state.Particles.Count do
+			local p = table.remove(state.ActiveParticles)
+			if p and p.Obj then p.Obj:Destroy() end
+		end
+
+		local mousePos = UserInputService:GetMouseLocation()
+		local vpSize = CurrentCamera.ViewportSize
+		local time = os.clock()
+
+		for i, p in ipairs(state.ActiveParticles) do
+			local sway = math.sin((time * 2) + p.Sway) * 20
+			local dir = p.Pos - mousePos
+			local dist = dir.Magnitude
+			
+			if dist < 90 then
+				local force = (1 - (dist / 90)) * 700
+				p.Vel = p.Vel + (dir.Unit * force * dt)
+			end
+			
+			p.Pos = p.Pos + (Vector2.new(sway, p.BaseSpeed) * dt) + (p.Vel * dt)
+			p.Vel = p.Vel * 0.98
+			p.Obj.Rotation = p.Obj.Rotation + p.RotSpeed
+			p.Obj.Position = UDim2.fromOffset(p.Pos.X, p.Pos.Y)
+			p.Obj.Size = UDim2.fromOffset(p.Size, p.Size)
+			p.Obj.ImageTransparency = p.TargetTrans
+
+			if p.Pos.Y > vpSize.Y + p.Size then ResetParticle(p) end
+		end
+	end)
+
+	function Fatal:InitHoliday(Config) -- картинки тут wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww
+		Config = Config or {}
+		MascotImg.Image = Config.MascotImage or "rbxassetid://79279979693699"
+		Fatal.HolidayState.Particles.Images = Config.ParticleImages or {"rbxassetid://80131833917905", "rbxassetid://125571352815581", "rbxassetid://102097359445566", "rbxassetid://131567563653537"}
+		Fatal.HolidayState.Particles.Colors = Config.ParticleColors or {Color3.new(1,1,1)}
+		Fatal.HolidayState.MainEnabled = true
+	end
+
+	function Fatal:UpdateHoliday(Category, Setting, Value)
+		local state = Fatal.HolidayState
+		if Category == "Main" and Setting == "Enabled" then
+			state.MainEnabled = Value
+			MascotImg.Visible = Value and state.Mascot.Enabled
+		elseif state[Category] then
+			state[Category][Setting] = Value
+			
+			if Category == "Mascot" then
+				if Setting == "Enabled" then MascotImg.Visible = state.MainEnabled and Value end
+				if Setting == "Size" then MascotImg.Size = UDim2.fromOffset(Value, Value) end
+				if Setting == "Position" then
+					if Value == "Left" then MascotImg.AnchorPoint = Vector2.new(0, 1); MascotImg.Position = UDim2.new(0, 10, 0, 15)
+					elseif Value == "Center" then MascotImg.AnchorPoint = Vector2.new(0.5, 1); MascotImg.Position = UDim2.new(0.5, 0, 0, 15)
+					elseif Value == "Right" then MascotImg.AnchorPoint = Vector2.new(1, 1); MascotImg.Position = UDim2.new(1, -20, 0, 15) end
+				end
+			elseif Category == "Particles" then
+				if Setting == "Index" then
+					for _, p in ipairs(state.ActiveParticles) do
+						local imgs = state.Particles.Images
+						p.Obj.Image = (Value == 0) and (imgs[math.random(1, #imgs)] or "") or (imgs[Value] or "")
+					end
+				end
+			end
+		end
+	end
+	-- WWWWWWWWWWWWWWWWWWWWWWWWWWWWWW
+
 	return Fatal;
 end;
 
@@ -7583,4 +7764,4 @@ end;
 
 Fatality.FATALITY_PID = Fatality:RandomString();
 
-return Fatality; -- 656456
+return Fatality;
