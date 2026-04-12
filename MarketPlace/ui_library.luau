@@ -5426,9 +5426,9 @@ function Fatality.new(Window: Window)
 			Label.Size = UDim2.new(1, 0, 1, -2) 
 			Label.Position = UDim2.new(0, 0, 0, 2)
 			Label.FontFace = Fatality.Fonts.Bold
-			Label.TextColor3 = Color3.fromRGB(90, 90, 90) 
-			Label.TextSize = 15
 			Label.Text = string.upper(Config.Text)
+			Fatality:Register(Label, "TextDark", "TextColor3")
+			Label.TextSize = 15
 			Label.TextXAlignment = Enum.TextXAlignment.Center
 			Label.ZIndex = 11
 
