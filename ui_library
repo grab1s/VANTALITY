@@ -7286,8 +7286,8 @@ function Fatal:AddMenu(Menu : Menu)
 	MascotImg.Visible = true
 
 	Fatal.HolidayState = { -- стэйты
-		MainEnabled = true, 
-		Mascot = { Enabled = true, Position = "Left", Size = 120 },
+		MainEnabled = false, 
+		Mascot = { Enabled = false, Position = "Left", Size = 120 },
 		Particles = { Enabled = false, Count = 0, Speed = 40, Size = 15, Index = 0, Images = {}, Colors = {} },
 		ActiveParticles = {}
 	}
