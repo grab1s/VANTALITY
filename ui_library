@@ -6577,17 +6577,22 @@ function Fatal:AddMenu(Menu : Menu)
 			UIListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 			UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
 			UIListLayout.Padding = UDim.new(0, 5)
-			UIListLayout:GetPropertyChangedSignal('AbsoluteContentSize'):Connect(function()
-				local all = (#ScrollingFrame:GetChildren() - 1);
-				local unscaledSize = math.clamp((all * (10 + UIListLayout.Padding.Offset)) + (Config.Height + UIListLayout.Padding.Offset), 25, 400);
-				
-				if Menu.AutoFill then 
-					ListBox.Size = UDim2.new(1, 0, 0, unscaledSize / 2.5); 
-				else 
-					ListBox.Size = UDim2.new(1, 0, 0, unscaledSize); 
-				end;
-				
-				ScrollingFrame.CanvasSize = UDim2.fromOffset(0, math.round(UIListLayout.AbsoluteContentSize.Y / Fatality.Scale));
+			UIListLayout:GetPropertyChangedSignal('AbsoluteContentSize'):Connect(function() -- 235345
+    			if Config.Height and Config.Height > 0 then
+        			ListBox.Size = UDim2.new(1, 0, 0, Config.Height)
+    			else
+        			local all = (#ScrollingFrame:GetChildren() - 1)
+        			local unscaledSize = math.clamp((all * (10 + UIListLayout.Padding.Offset)) + UIListLayout.Padding.Offset, 25, 400)
+        
+        			if Menu.AutoFill then 
+            			ListBox.Size = UDim2.new(1, 0, 0, unscaledSize / 2.5)
+        			else 
+            			ListBox.Size = UDim2.new(1, 0, 0, unscaledSize)
+        			end
+    			end
+
+    			local safeScale = math.max(Fatality.Scale, 0.1)
+    			ScrollingFrame.CanvasSize = UDim2.fromOffset(0, math.ceil(UIListLayout.AbsoluteContentSize.Y / safeScale))
 			end)
 			SpaceBox.Name = Fatality:RandomString()
 			SpaceBox.Parent = ScrollingFrame
